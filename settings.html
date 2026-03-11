@@ -148,9 +148,9 @@
         </div>
       </section>
 
-      <!-- ジャンル追加フォーム -->
-      <section class="section glass-panel mt">
-        <h2 class="section-title">➕ ジャンルを追加</h2>
+      <!-- ジャンル追加/編集フォーム -->
+      <section class="section glass-panel mt" id="add-genre-section">
+        <h2 class="section-title" id="form-section-title">➕ ジャンルを追加</h2>
         <div class="add-genre-form">
 
           <!-- ジャンル名 -->
@@ -189,8 +189,18 @@
             <button type="button" class="add-field-btn" id="add-field-btn">＋ フィールドを追加</button>
           </div>
 
-          <div>
+          <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
             <button id="save-genre-btn" class="primary-btn">保存する</button>
+            <button id="cancel-edit-btn" class="hidden" style="
+              background: transparent;
+              border: 1px solid var(--glass-border);
+              color: var(--text-secondary);
+              padding: 0.8rem 1.5rem;
+              border-radius: 8px;
+              font-size: 1rem;
+              cursor: pointer;
+              transition: all 0.2s;
+            ">キャンセル</button>
             <span id="save-msg" class="success-msg hidden">✅ 保存しました！</span>
           </div>
 

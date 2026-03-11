@@ -1,6 +1,7 @@
 import StorageManager from './storage.js';
 
 let genres = [];
+let editingIndex = null; // null = 新規追加, number = 編集中のインデックス
 
 const el = {
   genreList: document.getElementById('genre-list'),
@@ -10,7 +11,9 @@ const el = {
   saveGenreBtn: document.getElementById('save-genre-btn'),
   saveMsg: document.getElementById('save-msg'),
   questionLabel: document.getElementById('question-label-input'),
-  answerLabel: document.getElementById('answer-label-input')
+  answerLabel: document.getElementById('answer-label-input'),
+  formTitle: document.getElementById('form-section-title'),
+  cancelEditBtn: document.getElementById('cancel-edit-btn')
 };
 
 async function init() {
@@ -18,9 +21,9 @@ async function init() {
   renderGenreList();
 
   el.addFieldBtn.addEventListener('click', () => { addFieldRow(); renderPreview(); });
-  el.saveGenreBtn.addEventListener('click', saveNewGenre);
+  el.saveGenreBtn.addEventListener('click', saveGenre);
+  el.cancelEditBtn?.addEventListener('click', cancelEdit);
 
-  // リアルタイムプレビュー用リスナー
   el.newGenreName.addEventListener('input', renderPreview);
   el.questionLabel?.addEventListener('input', renderPreview);
   el.answerLabel?.addEventListener('input', renderPreview);
@@ -36,11 +39,10 @@ function renderGenreList() {
   genres.forEach((genre, index) => {
     const item = document.createElement('div');
     item.className = 'genre-item';
+    if (editingIndex === index) item.style.border = '1px solid rgba(99,102,241,0.6)';
 
-    const fieldsPreview = genre.fields.map(f => {
-      const typeIcon = { text: '📝', textarea: '📄', number: '🔢', image: '🖼️', url: '🔗', date: '📅' };
-      return `${typeIcon[f.type] || '📝'} ${f.label}`;
-    }).join('  ');
+    const typeIcon = { text: '📝', textarea: '📄', number: '🔢', image: '🖼️', url: '🔗', date: '📅' };
+    const fieldsPreview = genre.fields.map(f => `${typeIcon[f.type] || '📝'} ${f.label}`).join('  ');
 
     item.innerHTML = `
       <div class="genre-item-info">
@@ -48,16 +50,36 @@ function renderGenreList() {
         <div class="genre-fields-preview">${fieldsPreview}</div>
       </div>
       <div class="genre-item-actions">
+        <button class="edit-genre-btn" data-index="${index}" style="
+          background: rgba(99,102,241,0.15);
+          border: 1px solid rgba(99,102,241,0.4);
+          color: #a78bfa;
+          padding: 0.4rem 0.8rem;
+          border-radius: 6px;
+          font-size: 0.85rem;
+          cursor: pointer;
+          transition: all 0.2s;
+        ">✏️ 編集</button>
         <button class="danger-btn delete-genre-btn" data-index="${index}">🗑️ 削除</button>
       </div>
     `;
     el.genreList.appendChild(item);
   });
 
+  // 編集ボタン
+  document.querySelectorAll('.edit-genre-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const index = parseInt(e.target.closest('button').dataset.index, 10);
+      loadGenreIntoForm(index);
+    });
+  });
+
+  // 削除ボタン
   document.querySelectorAll('.delete-genre-btn').forEach(btn => {
     btn.addEventListener('click', async (e) => {
       const index = parseInt(e.target.closest('button').dataset.index, 10);
-      if (confirm(`「${genres[index].name}」を削除しますか？\nこのジャンルで作ったカードは削除されませんが、ジャンル表示は「その他」になります。`)) {
+      if (confirm(`「${genres[index].name}」を削除しますか？\nカードは削除されませんが、ジャンル表示は「その他」になります。`)) {
+        if (editingIndex === index) cancelEdit();
         genres.splice(index, 1);
         await StorageManager.saveGenres(genres);
         renderGenreList();
@@ -66,32 +88,82 @@ function renderGenreList() {
   });
 }
 
+// 既存ジャンルをフォームに読み込む
+function loadGenreIntoForm(index) {
+  const genre = genres[index];
+  editingIndex = index;
+
+  // フォームタイトル変更
+  if (el.formTitle) {
+    el.formTitle.textContent = `✏️ ジャンルを編集：${genre.name}`;
+  }
+
+  // ジャンル名
+  el.newGenreName.value = genre.name;
+
+  // 問題・答えのラベル
+  const qField = genre.fields.find(f => f.key === 'question');
+  const aField = genre.fields.find(f => f.key === 'answer');
+  if (el.questionLabel) el.questionLabel.value = qField?.label || '';
+  if (el.answerLabel)   el.answerLabel.value   = aField?.label || '';
+
+  // 追加フィールドをクリアして再構築
+  el.newFieldList.innerHTML = '';
+  const extraFields = genre.fields.filter(f => f.key !== 'question' && f.key !== 'answer');
+  extraFields.forEach(field => {
+    addFieldRow(field.label, field.type, field.required);
+  });
+
+  // 保存ボタン・キャンセルボタンの切り替え
+  el.saveGenreBtn.textContent = '更新する';
+  el.cancelEditBtn?.classList.remove('hidden');
+
+  // フォームまでスクロール
+  document.getElementById('add-genre-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+  renderGenreList(); // ハイライト更新
+  renderPreview();
+}
+
+function cancelEdit() {
+  editingIndex = null;
+  el.newGenreName.value = '';
+  el.newFieldList.innerHTML = '';
+  if (el.questionLabel) el.questionLabel.value = '';
+  if (el.answerLabel)   el.answerLabel.value = '';
+  el.saveGenreBtn.textContent = '保存する';
+  el.cancelEditBtn?.classList.add('hidden');
+  if (el.formTitle) el.formTitle.textContent = '➕ ジャンルを追加';
+  renderGenreList();
+  renderPreview();
+}
+
 // フィールドタイプの選択肢
 const FIELD_TYPES = [
-  { value: 'text',     label: '📝 1行テキスト',      desc: '短い文章・単語' },
-  { value: 'textarea', label: '📄 複数行テキスト',    desc: '長い説明・解説' },
-  { value: 'number',   label: '🔢 数値',              desc: '年号・数式の答え' },
-  { value: 'image',    label: '🖼️ 画像（Ctrl+V）',    desc: '画像を貼り付け' },
-  { value: 'url',      label: '🔗 URL',               desc: '参考リンク' },
-  { value: 'date',     label: '📅 日付',              desc: '年月日' }
+  { value: 'text',     label: '📝 1行テキスト' },
+  { value: 'textarea', label: '📄 複数行テキスト' },
+  { value: 'number',   label: '🔢 数値' },
+  { value: 'image',    label: '🖼️ 画像（Ctrl+V）' },
+  { value: 'url',      label: '🔗 URL' },
+  { value: 'date',     label: '📅 日付' }
 ];
 
-function addFieldRow() {
+function addFieldRow(defaultLabel = '', defaultType = 'text', defaultRequired = false) {
   const row = document.createElement('div');
   row.className = 'field-row';
-  const id = Date.now();
+  const id = Date.now() + Math.random();
 
   const typeOptions = FIELD_TYPES.map(t =>
-    `<option value="${t.value}">${t.label}</option>`
+    `<option value="${t.value}" ${t.value === defaultType ? 'selected' : ''}>${t.label}</option>`
   ).join('');
 
   row.innerHTML = `
-    <input type="text" placeholder="フィールド名（例: 例文）" class="field-label-input" data-id="${id}">
+    <input type="text" value="${defaultLabel}" placeholder="フィールド名（例: 例文）" class="field-label-input" data-id="${id}">
     <select class="field-type-select" data-id="${id}" title="フィールドの種類">
       ${typeOptions}
     </select>
     <label class="required-check-wrap" title="必須フィールドにする">
-      <input type="checkbox" class="field-required-check" data-id="${id}">
+      <input type="checkbox" class="field-required-check" data-id="${id}" ${defaultRequired ? 'checked' : ''}>
       <span style="font-size: 0.8rem; white-space: nowrap;">必須</span>
     </label>
     <button type="button" class="small-btn remove-field-btn" data-id="${id}">✕</button>
@@ -104,53 +176,39 @@ function addFieldRow() {
   row.querySelector('.field-required-check').addEventListener('change', renderPreview);
 }
 
-async function saveNewGenre() {
+async function saveGenre() {
   const name = el.newGenreName.value.trim();
-  if (!name) {
-    alert('ジャンル名を入力してください');
-    return;
-  }
+  if (!name) { alert('ジャンル名を入力してください'); return; }
 
   const questionLabel = el.questionLabel?.value.trim() || '問題';
-  const answerLabel = el.answerLabel?.value.trim() || '答え';
+  const answerLabel   = el.answerLabel?.value.trim()   || '答え';
 
   const fields = [
     { key: 'question', label: questionLabel, type: 'textarea', required: true },
     { key: 'answer',   label: answerLabel,   type: 'textarea', required: true }
   ];
 
-  const fieldRows = el.newFieldList.querySelectorAll('.field-row');
-  fieldRows.forEach((row, i) => {
-    const label = row.querySelector('.field-label-input')?.value.trim();
-    const type  = row.querySelector('.field-type-select')?.value || 'text';
+  el.newFieldList.querySelectorAll('.field-row').forEach((row, i) => {
+    const label    = row.querySelector('.field-label-input')?.value.trim();
+    const type     = row.querySelector('.field-type-select')?.value || 'text';
     const required = row.querySelector('.field-required-check')?.checked || false;
-    if (label) {
-      fields.push({
-        key: `custom_${i}_${Date.now()}`,
-        label,
-        type,
-        required
-      });
-    }
+    if (label) fields.push({ key: `custom_${i}_${Date.now()}`, label, type, required });
   });
 
-  const newGenre = {
-    id: 'custom_' + Date.now(),
-    name,
-    isDefault: false,
-    fields
-  };
+  if (editingIndex !== null) {
+    // 編集モード：既存ジャンルを上書き（id・isDefault は保持）
+    genres[editingIndex] = {
+      ...genres[editingIndex],
+      name,
+      fields
+    };
+  } else {
+    // 新規追加
+    genres.push({ id: 'custom_' + Date.now(), name, isDefault: false, fields });
+  }
 
-  genres.push(newGenre);
   await StorageManager.saveGenres(genres);
-
-  el.newGenreName.value = '';
-  el.newFieldList.innerHTML = '';
-  if (el.questionLabel) el.questionLabel.value = '';
-  if (el.answerLabel) el.answerLabel.value = '';
-  renderPreview();
-
-  renderGenreList();
+  cancelEdit(); // フォームリセット
 
   el.saveMsg.classList.remove('hidden');
   setTimeout(() => el.saveMsg.classList.add('hidden'), 3000);
@@ -166,15 +224,9 @@ function renderPreview() {
   const questionLabel = el.questionLabel?.value.trim() || '問題';
   const answerLabel   = el.answerLabel?.value.trim()   || '答え';
 
-  // バッジ更新
-  if (name) {
-    badge.textContent = name;
-    badge.style.display = 'inline-block';
-  } else {
-    badge.style.display = 'none';
-  }
+  if (name) { badge.textContent = name; badge.style.display = 'inline-block'; }
+  else      { badge.style.display = 'none'; }
 
-  // フィールドリスト収集
   const extraFields = [];
   el.newFieldList.querySelectorAll('.field-row').forEach(row => {
     const label    = row.querySelector('.field-label-input')?.value.trim();
@@ -190,23 +242,19 @@ function renderPreview() {
   ];
 
   const typeIcon = { text: '📝', textarea: '📄', number: '🔢', image: '🖼️', url: '🔗', date: '📅' };
-  const inputStyle = `
-    width: 100%; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1);
-    border-radius: 6px; padding: 0.5rem 0.75rem; color: rgba(255,255,255,0.4);
-    font-family: inherit; font-size: 0.88rem; pointer-events: none;
-  `;
+  const inputStyle = `width:100%;background:rgba(0,0,0,0.2);border:1px solid rgba(255,255,255,0.1);border-radius:6px;padding:0.5rem 0.75rem;color:rgba(255,255,255,0.4);font-family:inherit;font-size:0.88rem;pointer-events:none;`;
 
   previewForm.innerHTML = allFields.map(field => `
     <div>
-      <div style="font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 0.3rem;">
+      <div style="font-size:0.82rem;color:var(--text-secondary);margin-bottom:0.3rem;">
         ${typeIcon[field.type] || '📝'} ${field.label}
         ${field.required ? '<span style="background:rgba(99,102,241,0.3);color:#a78bfa;font-size:0.7rem;padding:0.1rem 0.4rem;border-radius:3px;margin-left:0.3rem;">必須</span>' : ''}
       </div>
-      ${ field.type === 'textarea'
-          ? `<textarea rows="2" disabled placeholder="${field.label}の入力欄" style="${inputStyle}"></textarea>`
-          : field.type === 'image'
-          ? `<div style="${inputStyle}border:2px dashed rgba(99,102,241,0.3);border-radius:8px;padding:1rem;text-align:center;color:rgba(255,255,255,0.3);">🖼️ Ctrl+V で画像を貼り付け（最大3枚）</div>`
-          : `<input type="${ field.type === 'url' ? 'url' : field.type === 'number' ? 'number' : field.type === 'date' ? 'date' : 'text'}" disabled placeholder="${field.label}の入力欄" style="${inputStyle}">`
+      ${field.type === 'textarea'
+        ? `<textarea rows="2" disabled placeholder="${field.label}の入力欄" style="${inputStyle}"></textarea>`
+        : field.type === 'image'
+        ? `<div style="${inputStyle}border:2px dashed rgba(99,102,241,0.3);border-radius:8px;padding:1rem;text-align:center;color:rgba(255,255,255,0.3);">🖼️ Ctrl+V で画像を貼り付け（最大3枚）</div>`
+        : `<input type="${field.type === 'url' ? 'url' : field.type === 'number' ? 'number' : field.type === 'date' ? 'date' : 'text'}" disabled placeholder="${field.label}の入力欄" style="${inputStyle}">`
       }
     </div>
   `).join('');

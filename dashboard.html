@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>Dashboard - AutoAnki</title>
+  <link rel="stylesheet" href="options.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+    .db-card {
+      background: rgba(0,0,0,0.2);
+      border: 1px solid var(--glass-border);
+      border-radius: 12px;
+      padding: 1.5rem;
+      text-align: center;
+      transition: transform 0.2s;
+    }
+    .db-card:hover {
+      transform: translateY(-2px);
+      background: rgba(255,255,255,0.05);
+    }
+    .db-label {
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+      margin-bottom: 0.5rem;
+    }
+    .db-val {
+      font-size: 2.5rem;
+      font-weight: 700;
+      color: #a78bfa;
+    }
+    
+    .chart-container {
+      background: rgba(0,0,0,0.2);
+      border: 1px solid var(--glass-border);
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin-top: 2rem;
+    }
+    .period-controls {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+      align-items: center;
+    }
+    .period-btn {
+      background: rgba(255,255,255,0.1);
+      border: none;
+      color: var(--text-primary);
+      padding: 0.5rem 1rem;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.9rem;
+    }
+    .period-btn.active {
+      background: var(--primary-accent);
+    }
+    .bar-chart {
+      display: flex;
+      align-items: flex-end;
+      height: 200px;
+      gap: 10px;
+      padding-top: 20px;
+      border-bottom: 1px solid var(--glass-border);
+    }
+    .bar-wrap {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-end;
+      position: relative;
+    }
+    .bar {
+      width: 100%;
+      background: linear-gradient(to top, #6366f1, #a78bfa);
+      border-radius: 4px 4px 0 0;
+      transition: height 0.5s ease;
+      min-height: 2px;
+    }
+    .bar-val {
+      position: absolute;
+      top: -20px;
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+    }
+    .bar-label {
+      margin-top: 8px;
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+    }
+  </style>
+</head>
+<body>
+  <div class="background-animation"></div>
+
+  <div class="layout">
+    <aside class="sidebar glass-panel">
+      <div class="logo">
+        <h1>AutoAnki</h1>
+        <p>Effortless Spaced Repetition</p>
+      </div>
+      <div class="nav-links" style="margin-top: 2rem;">
+        <a href="index.html" class="nav-btn">▶️ 問題を解く</a>
+        <a href="dashboard.html" class="nav-btn active">📊 ダッシュボード</a>
+        <a href="options.html" class="nav-btn">➕ 問題作成</a>
+        <a href="cardlist.html" class="nav-btn">📋 問題一覧 (DB)</a>
+      </div>
+      <div style="margin-top: auto; padding-top: 1rem; border-top: 1px solid var(--glass-border);">
+        <button id="shutdown-btn" class="nav-btn" style="color: #ef4444; width: 100%; text-align: left; opacity: 0.7;">🔒 サーバー停止</button>
+      </div>
+    </aside>
+
+    <main class="main-content" style="max-width: 1200px;">
+      <section class="section glass-panel">
+        <h2 class="section-title">あなたの学習記録 (Dashboard)</h2>
+        
+        <div class="dashboard-grid">
+          <div class="db-card">
+            <div class="db-label">今日の復習数</div>
+            <div class="db-val" id="val-today">0</div>
+          </div>
+          <div class="db-card">
+            <div class="db-label">昨日の復習数</div>
+            <div class="db-val" id="val-yesterday" style="color: #60a5fa;">0</div>
+          </div>
+          <div class="db-card">
+            <div class="db-label">連続達成日数</div>
+            <div class="db-val" id="val-streak" style="color: #f472b6;">0</div>
+          </div>
+          <div class="db-card">
+            <div class="db-label">登録カード総数</div>
+            <div class="db-val" id="val-total" style="color: #34d399;">0</div>
+          </div>
+        </div>
+
+        <div class="chart-container">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+            <h3 style="font-weight: 500;">学習履歴グラフ</h3>
+            <div class="period-controls">
+              <button class="period-btn active" data-days="7">直近7日間</button>
+              <button class="period-btn" data-days="14">直近14日間</button>
+              <button class="period-btn" data-days="30">直近30日間</button>
+            </div>
+          </div>
+          
+          <div class="bar-chart" id="history-chart">
+            <!-- JSで動的にバーを生成 -->
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script type="module" src="dashboard.js"></script>
+</body>
+</html>

@@ -96,8 +96,12 @@ const StorageManager = {
       await LocalStore.set('stats', {
         todayReviews: 0,
         lastReviewDate: new Date().toDateString(),
-        streak: 0
+        streak: 0,
+        history: {} // 日別レビュー数を記録: { 'YYYY-MM-DD': count }
       });
+    } else if (!stats.history) {
+      stats.history = {};
+      await LocalStore.set('stats', stats);
     }
   },
 
@@ -179,7 +183,13 @@ const StorageManager = {
     let stats = await LocalStore.get('stats');
     if (!stats) return;
 
-    const todayString = new Date().toDateString();
+    const todayObj = new Date();
+    const todayString = todayObj.toDateString();
+    
+    // YYYY-MM-DD フォーマットで履歴用キーを作成
+    const historyKey = todayObj.toISOString().split('T')[0];
+    if (!stats.history) stats.history = {};
+
     if (stats.lastReviewDate !== todayString) {
       const yesterday = new Date();
       yesterday.setDate(yesterday.getDate() - 1);
@@ -193,6 +203,9 @@ const StorageManager = {
     } else {
       stats.todayReviews += 1;
     }
+    
+    // 履歴を更新
+    stats.history[historyKey] = (stats.history[historyKey] || 0) + 1;
     
     await LocalStore.set('stats', stats);
   },

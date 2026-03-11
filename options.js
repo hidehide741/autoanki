@@ -5,25 +5,11 @@ const el = {
   questionInput: document.getElementById('question-input'),
   answerInput: document.getElementById('answer-input'),
   imageInput: document.getElementById('image-input'),
-  successMsg: document.getElementById('add-success-msg'),
-  
-  optTodayCount: document.getElementById('opt-today-count'),
-  optStreakCount: document.getElementById('opt-streak-count'),
-  optTotalCards: document.getElementById('opt-total-cards')
+  successMsg: document.getElementById('add-success-msg')
 };
 
 async function init() {
-  await renderStats();
   setupListeners();
-}
-
-async function renderStats() {
-  const stats = await StorageManager.getStats();
-  const cards = await StorageManager.getAllCards();
-  
-  el.optTodayCount.textContent = stats.todayReviews;
-  el.optStreakCount.textContent = stats.streak;
-  el.optTotalCards.textContent = cards.length;
 }
 
 function setupListeners() {
@@ -46,18 +32,6 @@ function setupListeners() {
     setTimeout(() => {
       el.successMsg.classList.add('hidden');
     }, 3000);
-
-    await renderStats();
-  });
-
-  // デモデータ復元ボタン
-  el.resetDemoBtn?.addEventListener('click', async () => {
-    if (confirm('現在のカードに追加して、デモデータを復元しますか？')) {
-      await chrome.storage.local.remove('cards');
-      await StorageManager.initDemoData();
-      await renderStats();
-      alert('デモデータを復元しました。');
-    }
   });
 
   // サーバーシャットダウン

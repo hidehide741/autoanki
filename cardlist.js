@@ -3,26 +3,12 @@ import StorageManager from './storage.js';
 const el = {
   cardsTbody: document.getElementById('cards-tbody'),
   emptyState: document.getElementById('empty-state'),
-  resetDemoBtn: document.getElementById('reset-demo-btn'),
-  
-  optTodayCount: document.getElementById('opt-today-count'),
-  optStreakCount: document.getElementById('opt-streak-count'),
-  optTotalCards: document.getElementById('opt-total-cards')
+  resetDemoBtn: document.getElementById('reset-demo-btn')
 };
 
 async function init() {
-  await renderStats();
   await renderCardList();
   setupListeners();
-}
-
-async function renderStats() {
-  const stats = await StorageManager.getStats();
-  const cards = await StorageManager.getAllCards();
-  
-  el.optTodayCount.textContent = stats.todayReviews;
-  el.optStreakCount.textContent = stats.streak;
-  el.optTotalCards.textContent = cards.length;
 }
 
 async function renderCardList() {
@@ -65,7 +51,6 @@ async function renderCardList() {
         const id = e.target.closest('button').getAttribute('data-id');
         if (confirm('このカードを削除しますか？')) {
           await StorageManager.deleteCard(id);
-          await renderStats();
           await renderCardList();
         }
       });

@@ -20,7 +20,9 @@ const el = {
   genreBadge:    document.getElementById('genre-badge'),
   progressBar:   document.getElementById('progress-bar'),
   doneToday:     document.getElementById('done-today'),
-  doneStreak:    document.getElementById('done-streak')
+  doneStreak:    document.getElementById('done-streak'),
+  questionArea:  document.getElementById('question-area'), // 追加
+  answerArea:    document.getElementById('answer-area'),   // 追加
 };
 
 // 初期化
@@ -54,9 +56,10 @@ async function loadNextCard() {
   currentCard = result.card;
   
   if (currentCard) {
-    showQuestionMode();
-    el.questionText.textContent = currentCard.question;
-    el.answerText.textContent   = currentCard.answer;
+    const genres = await StorageManager.getGenres();
+    const genreDef = genres.find(g => g.id === currentCard.genre);
+    
+    showQuestionMode(genreDef);
     
     // ジャンルバッジ
     if (el.genreBadge) {
@@ -85,35 +88,76 @@ async function loadNextCard() {
   }
 }
 
-function showQuestionMode() {
+function showQuestionMode(genreDef) {
   answerShown = false;
   el.answerSection.classList.add('hidden');
   el.showAnswerBtn.classList.remove('hidden');
 
-  // 画像表示（単一URL または JSON配列に対応）
-  el.questionImages.innerHTML = '';
-  if (currentCard && currentCard.image) {
-    let urls = [];
+  el.questionArea.innerHTML = '';
+  el.answerArea.innerHTML = '';
+
+  const fields = genreDef?.fields || [
+    { key: 'question', label: '問題', type: 'textarea', role: 'question' },
+    { key: 'answer',   label: '答え', type: 'textarea', role: 'answer' }
+  ];
+
+  // 画像データのパース
+  let images = [];
+  if (currentCard.image) {
     try {
       const parsed = JSON.parse(currentCard.image);
-      urls = Array.isArray(parsed) ? parsed : [currentCard.image];
+      images = Array.isArray(parsed) ? parsed : [{ url: currentCard.image, role: 'question' }];
+      // 古い形式（URL配列）のフォールバック
+      if (images.length > 0 && typeof images[0] === 'string') {
+        images = images.map(url => ({ url, role: 'question' }));
+      }
     } catch {
-      urls = [currentCard.image];
+      images = [{ url: currentCard.image, role: 'question' }];
     }
-    urls.forEach(url => {
-      if (!url) return;
-      const img = document.createElement('img');
-      img.src = url;
-      img.alt = 'Question Image';
-      el.questionImages.appendChild(img);
-    });
-    el.questionImages.dataset.cols = Math.min(urls.length, 3);
-    el.questionImages.className = 'image-grid';
-    el.questionImages.classList.remove('hidden');
-  } else {
-    el.questionImages.classList.add('hidden');
-    el.questionImages.style.display = 'none';
   }
+
+  // フィールドごとのレンダリング
+  fields.forEach(field => {
+    const container = field.role === 'question' ? el.questionArea : el.answerArea;
+    const rawContent = (field.role === 'question' ? currentCard.question : currentCard.answer) || '';
+    
+    if (field.type === 'image') {
+      const fieldImages = images.filter(img => img.role === field.role);
+      if (fieldImages.length > 0) {
+        const grid = document.createElement('div');
+        grid.className = 'image-grid';
+        grid.dataset.cols = Math.min(fieldImages.length, 3);
+        fieldImages.forEach(img => {
+          const imgEl = document.createElement('img');
+          imgEl.src = img.url;
+          grid.appendChild(imgEl);
+        });
+        container.appendChild(grid);
+      }
+    } else {
+      // テキスト抽出
+      let val = '';
+      const searchStr = `[${field.label}]\n`;
+      const startIdx = rawContent.indexOf(searchStr);
+      if (startIdx !== -1) {
+        const contentStart = startIdx + searchStr.length;
+        const nextIdx = rawContent.indexOf('\n\n[', contentStart);
+        val = (nextIdx !== -1 ? rawContent.substring(contentStart, nextIdx) : rawContent.substring(contentStart)).trim();
+      } else if (field.key === 'question' || field.key === 'answer') {
+        val = rawContent;
+      }
+
+      if (val) {
+        const p = document.createElement('p');
+        p.className = field.role === 'question' ? 'question' : 'answer';
+        p.style.whiteSpace = 'pre-wrap';
+        p.textContent = val;
+        container.appendChild(p);
+      }
+    }
+  });
+
+  // 進捗バーは questionText ではなく全体のアニメーションに合わせるため、ここでは操作しない
 }
 
 function showAnswerMode() {

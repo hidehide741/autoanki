@@ -210,20 +210,26 @@ function setupListeners() {
       const fullAnswer = aParts.join('\n\n');
 
       // 画像をSupabaseにアップロード
-      // 全フィールドの画像を1つのJSON配列に集約
+      // 全フィールドの画像を role 情報付きで集約
       let imageValue = null;
-      const allFiles = [];
+      const uploadTasks = [];
       const imageFieldKeys = Object.keys(pendingImages);
       
       for (const key of imageFieldKeys) {
+        const field = genre.fields.find(f => f.key === key);
+        const role = field?.role || 'question';
+        
         pendingImages[key].forEach(img => {
-          allFiles.push(img.file);
+          uploadTasks.push((async () => {
+            const url = await uploadImageToSupabase(img.file);
+            return { url, role };
+          })());
         });
       }
-
-      if (allFiles.length > 0) {
-        const urls = await Promise.all(allFiles.map(file => uploadImageToSupabase(file)));
-        imageValue = JSON.stringify(urls);
+      
+      if (uploadTasks.length > 0) {
+        const results = await Promise.all(uploadTasks);
+        imageValue = JSON.stringify(results);
       }
 
       await StorageManager.addCard(question, fullAnswer, imageValue, selectedGenreId);

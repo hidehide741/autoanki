@@ -245,23 +245,37 @@ function openModal(id) {
   if (!card) return;
   activeCardId = id;
 
-  const genreDef = genres.find(g => g.id === card.genre);
   const fields = genreDef?.fields || [
-    { key: 'question', label: '問題', type: 'textarea' },
-    { key: 'answer',   label: '答え', type: 'textarea' }
+    { key: 'question', label: '問題', type: 'textarea', role: 'question' },
+    { key: 'answer',   label: '答え', type: 'textarea', role: 'answer' }
   ];
+
+  // 画像のパース
+  let images = [];
+  if (card.image) {
+    try {
+      const parsed = JSON.parse(card.image);
+      images = Array.isArray(parsed) ? parsed : [{ url: card.image, role: 'question' }];
+      if (images.length > 0 && typeof images[0] === 'string') {
+        images = images.map(url => ({ url, role: 'question' }));
+      }
+    } catch {
+      images = [{ url: card.image, role: 'question' }];
+    }
+  }
 
   el.modalGenre.textContent = genreDef?.name || 'その他';
   el.modalQ.innerHTML = ''; 
-  el.modalImages.innerHTML = '';
-  el.modalImages.className = 'image-grid hidden'; // 初期化
   el.modalAnswer.innerHTML = '';
+  el.modalImages.innerHTML = ''; // Clear the old modalImages container
+  el.modalImages.classList.add('hidden'); // Hide it by default
 
+  // フィールドごとのレンダリング
   fields.forEach(field => {
     let val = '';
     const rawContent = (field.role === 'question' ? card.question : card.answer) || '';
     
-    // "[ラベル]\n内容" 形式から抽出
+    // テキスト抽出
     const searchStr = `[${field.label}]\n`;
     const startIdx = rawContent.indexOf(searchStr);
     if (startIdx !== -1) {
@@ -269,33 +283,24 @@ function openModal(id) {
       const nextIdx = rawContent.indexOf('\n\n[', contentStart);
       val = (nextIdx !== -1 ? rawContent.substring(contentStart, nextIdx) : rawContent.substring(contentStart)).trim();
     } else if (field.key === 'question' || field.key === 'answer') {
-      // 互換性のため、ラベルがない場合は全体を表示
       val = rawContent;
     }
 
-    if (!val && !field.required) return;
+    if (!val && !field.required && field.type !== 'image') return;
 
     if (field.type === 'image') {
-      // 画像は一括管理されているものを表示（便宜上、最初の画像フィールドにすべて表示）
-      if (card.image && el.modalImages.childElementCount === 0) {
-        try {
-          const urls = JSON.parse(card.image).filter(u => u);
-          if (urls.length > 0) {
-            urls.forEach(url => {
-              const img = document.createElement('img');
-              img.src = url; img.alt = field.label;
-              el.modalImages.appendChild(img);
-            });
-            el.modalImages.dataset.cols = Math.min(urls.length, 3);
-            el.modalImages.classList.remove('hidden');
-          }
-        } catch {
-          const img = document.createElement('img');
-          img.src = card.image; img.alt = field.label;
-          el.modalImages.appendChild(img);
-          el.modalImages.dataset.cols = 1;
-          el.modalImages.classList.remove('hidden');
-        }
+      const fieldImages = images.filter(img => img.role === field.role);
+      if (fieldImages.length > 0) {
+        const grid = document.createElement('div');
+        grid.className = 'image-grid';
+        grid.style.marginTop = '0.5rem';
+        grid.dataset.cols = Math.min(fieldImages.length, 3);
+        fieldImages.forEach(img => {
+          const imgEl = document.createElement('img');
+          imgEl.src = img.url;
+          grid.appendChild(imgEl);
+        });
+        (field.role === 'question' ? el.modalQ : el.modalAnswer).appendChild(grid);
       }
     } else {
       const fieldWrap = document.createElement('div');

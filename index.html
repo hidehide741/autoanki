@@ -56,19 +56,17 @@
               <div class="progress-bar-fill" id="progress-bar" style="width: 0%"></div>
             </div>
 
-            <!-- 問題テキスト -->
-            <h2 id="question-text" class="question"></h2>
-
-            <!-- 複数画像（最大3枚） -->
-            <div id="question-images" class="hidden"></div>
-
+            <!-- 動的コンテンツ：問題エリア -->
+            <div id="question-area"></div>
+ 
             <!-- 答えを見るボタン -->
             <button id="show-answer-btn" class="primary-btn">答えを見る&nbsp;&nbsp;<span style="opacity:0.6;font-size:0.85em;">(Space)</span></button>
-
+ 
             <!-- 答えセクション -->
             <div id="answer-section" class="answer-section hidden">
               <div class="divider"></div>
-              <p id="answer-text" class="answer"></p>
+              <!-- 動的コンテンツ：回答エリア -->
+              <div id="answer-area"></div>
 
               <div class="rating-buttons">
                 <button class="rating-btn btn-again" data-quality="1">

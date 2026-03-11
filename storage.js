@@ -512,7 +512,7 @@ const StorageManager = {
         updated_at: new Date().toISOString()
       };
       
-      const res = await fetch(MEMO_API_BASE, {
+      const res = await fetch(`${MEMO_API_BASE}?on_conflict=id`, {
         method: 'POST',
         headers: {
           ...HEADERS,

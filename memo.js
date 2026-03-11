@@ -116,9 +116,16 @@ function handleInput() {
   // デバウンス処理
   clearTimeout(saveTimeout);
   saveTimeout = setTimeout(async () => {
-    await StorageManager.saveMemo(memo);
-    el.saveStatus.textContent = '保存完了';
-    renderMemoList(); // リストのタイトルや日付を更新
+    try {
+      await StorageManager.saveMemo(memo);
+      el.saveStatus.textContent = '保存完了';
+      el.saveStatus.style.color = 'var(--text-secondary)';
+      renderMemoList(); // リストのタイトルや日付を更新
+    } catch (err) {
+      el.saveStatus.textContent = '保存失敗';
+      el.saveStatus.style.color = '#ef4444';
+      console.error('Auto-save failed:', err);
+    }
   }, 1000);
 }
 

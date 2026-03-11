@@ -507,22 +507,27 @@ const StorageManager = {
     try {
       const payload = {
         id: memo.id,
-        title: memo.title,
-        content: memo.content,
+        title: memo.title || '',
+        content: memo.content || '',
         updated_at: new Date().toISOString()
       };
       
-      const res = await fetch(`${MEMO_API_BASE}?on_conflict=id`, {
+      const url = `${MEMO_API_BASE}?on_conflict=id`;
+      const res = await fetch(url, {
         method: 'POST',
         headers: {
           ...HEADERS,
           'Prefer': 'resolution=merge-duplicates,return=minimal'
         },
-        body: JSON.stringify(payload)
+        // PostgreSQL (PostgREST) の UPSERT は配列形式で送るのが標準
+        body: JSON.stringify([payload])
       });
+
       if (!res.ok) {
         const errorText = await res.text();
-        console.error('Supabase Upsert Error Detail:', errorText);
+        console.error(`Supabase UPSERT Error: ${res.status} ${res.statusText}`, errorText);
+        console.error('URL:', url);
+        console.error('Payload:', payload);
         throw new Error(`Supabase Upsert Error: ${res.status} ${errorText}`);
       }
     } catch (err) {

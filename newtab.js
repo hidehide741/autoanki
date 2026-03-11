@@ -121,7 +121,14 @@ function showQuestionMode(genreDef) {
     const rawContent = (field.role === 'question' ? currentCard.question : currentCard.answer) || '';
     
     if (field.type === 'image') {
-      const fieldImages = images.filter(img => img.role === field.role);
+      // role と fieldKey モードの両方に対応
+      const fieldImages = images.filter(img => {
+        if (img.fieldKey) {
+          return img.fieldKey === field.key;
+        }
+        return img.role === field.role;
+      });
+
       if (fieldImages.length > 0) {
         const grid = document.createElement('div');
         grid.className = 'image-grid';

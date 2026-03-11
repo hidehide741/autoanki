@@ -222,7 +222,7 @@ function setupListeners() {
         pendingImages[key].forEach(img => {
           uploadTasks.push((async () => {
             const url = await uploadImageToSupabase(img.file);
-            return { url, role };
+            return { url, role, fieldKey: key }; // fieldKey を追加
           })());
         });
       }

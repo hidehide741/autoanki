@@ -1,4 +1,4 @@
-import StorageManager from './storage.js';
+import StorageManager, { uploadImageToSupabase } from './storage.js';
 
 const PAGE_SIZE = 25;
 
@@ -9,6 +9,8 @@ let currentPage = 1;
 let sortCol   = 'nextReviewDate';
 let sortAsc   = true;
 let activeCardId = null;
+let pendingEditImages = []; // { file, previewUrl } or { url } ※既存画像
+const MAX_EDIT_IMAGES = 3;
 
 const el = {
   searchInput:  document.getElementById('search-input'),
@@ -278,6 +280,7 @@ function openEditModal(id) {
   const card = allCards.find(c => c.id === id);
   if (!card) return;
   activeCardId = id;
+  pendingEditImages = [];
 
   const genreDef = genres.find(g => g.id === card.genre);
   const fields = genreDef?.fields || [
@@ -285,91 +288,179 @@ function openEditModal(id) {
     { key: 'answer',   label: '答え', type: 'textarea', required: false }
   ];
 
-  const inputStyle = `
-    width:100%;background:rgba(0,0,0,0.2);border:1px solid var(--glass-border);
-    border-radius:6px;padding:0.55rem 0.75rem;color:var(--text-primary);
-    font-family:inherit;font-size:0.9rem;box-sizing:border-box;
-    transition:border-color 0.2s;
-  `;
-
   el.editFields.innerHTML = '';
-  el.editImgPrev.innerHTML = '';
 
   fields.forEach(field => {
-    if (field.type === 'image') return; // 画像は別途処理
-
-    const wrapper = document.createElement('div');
-    const labelEl = document.createElement('label');
-    labelEl.style.cssText = 'display:block;font-size:0.8rem;color:var(--text-secondary);margin-bottom:0.3rem;';
-    labelEl.textContent = field.label + (field.required ? ' *' : '');
-
-    let inputEl;
-    if (field.type === 'textarea') {
-      inputEl = document.createElement('textarea');
-      inputEl.rows = 3;
-    } else {
-      inputEl = document.createElement('input');
-      inputEl.type = ['number','date','url'].includes(field.type) ? field.type : 'text';
+    // 画像フィールド → options.js と同じ paste UI
+    if (field.type === 'image') {
+      el.editFields.appendChild(buildEditImageUI(field.label, card.image));
+      return;
     }
-    inputEl.dataset.key = field.key;
-    inputEl.style.cssText = inputStyle;
-    inputEl.value = card[field.key] || '';
-    inputEl.addEventListener('focus', () => inputEl.style.borderColor = 'var(--primary-accent)');
-    inputEl.addEventListener('blur',  () => inputEl.style.borderColor = 'var(--glass-border)');
 
-    wrapper.appendChild(labelEl);
-    wrapper.appendChild(inputEl);
-    el.editFields.appendChild(wrapper);
+    const div = document.createElement('div');
+    div.className = 'form-group';
+
+    const label = document.createElement('label');
+    label.htmlFor = `edit-field-${field.key}`;
+    label.innerHTML = field.label + (field.required
+      ? '<span class="required-badge">必須</span>'
+      : '');
+
+    let input;
+    if (field.type === 'textarea') {
+      input = document.createElement('textarea');
+      input.rows = 3;
+    } else {
+      input = document.createElement('input');
+      input.type = ['number', 'date', 'url'].includes(field.type) ? field.type : 'text';
+    }
+    input.id = `edit-field-${field.key}`;
+    input.name = field.key;
+    input.dataset.key = field.key;
+    if (field.required) input.required = true;
+    input.placeholder = `${field.label}を入力…`;
+
+    // 既存値をスマートにセット
+    // 複合フィールド（answer＋extra）: "---" 壽当の哈番目だけ抽出
+    if (field.key === 'answer') {
+      const raw = card.answer || '';
+      input.value = raw.split('\n\n---\n')[0];
+    } else {
+      input.value = card[field.key] || '';
+    }
+
+    div.appendChild(label);
+    div.appendChild(input);
+    el.editFields.appendChild(div);
   });
-
-  // 画像プレビュー
-  if (card.image) {
-    let urls = [];
-    try { const p = JSON.parse(card.image); urls = Array.isArray(p) ? p : [card.image]; }
-    catch { urls = [card.image]; }
-    urls.forEach(url => {
-      const wrap = document.createElement('div');
-      wrap.style.cssText = 'position:relative;display:inline-block;';
-      wrap.innerHTML = `
-        <img src="${esc(url)}" style="max-height:100px;border-radius:6px;border:1px solid var(--glass-border);">
-        <span style="position:absolute;top:2px;right:2px;background:rgba(0,0,0,0.7);color:#fff;font-size:0.7rem;padding:0.1rem 0.3rem;border-radius:3px;pointer-events:none;">現在の画像</span>
-      `;
-      el.editImgPrev.appendChild(wrap);
-    });
-  }
 
   el.editSaveMsg.classList.add('hidden');
   el.editOverlay.classList.remove('hidden');
   document.body.style.overflow = 'hidden';
 }
 
+function buildEditImageUI(labelText, existingImageJson) {
+  // 既存画像を pendingEditImages に読み込む
+  if (existingImageJson) {
+    try {
+      const parsed = JSON.parse(existingImageJson);
+      const urls = Array.isArray(parsed) ? parsed : [existingImageJson];
+      urls.forEach(url => pendingEditImages.push({ url }));
+    } catch {
+      pendingEditImages.push({ url: existingImageJson });
+    }
+  }
+
+  const wrapper = document.createElement('div');
+  wrapper.className = 'form-group';
+  wrapper.id = 'edit-image-upload-area';
+  wrapper.innerHTML = `
+    <label>${labelText}（任意・最大3枚）<span style="color:var(--text-secondary);font-size:0.8rem;margin-left:0.5rem;">Ctrl+V でペースト</span></label>
+    <div id="edit-paste-zone" style="
+      border:2px dashed rgba(99,102,241,0.4);
+      border-radius:12px;
+      padding:1.5rem;
+      text-align:center;
+      color:var(--text-secondary);
+      background:rgba(0,0,0,0.15);
+    ">
+      <div style="font-size:2rem;margin-bottom:0.5rem;">🖼️</div>
+      <div style="font-size:0.9rem;">Ctrl+V でスクリーンショットを貼り付け（最大3枚）</div>
+    </div>
+    <div id="edit-image-previews" style="display:flex;gap:0.75rem;flex-wrap:wrap;margin-top:0.75rem;"></div>
+  `;
+
+  // 一度描画した後に表示を更新
+  setTimeout(() => renderEditPreviews(), 0);
+  return wrapper;
+}
+
+function addEditImage(file) {
+  if (pendingEditImages.length >= MAX_EDIT_IMAGES) return;
+  const url = URL.createObjectURL(file);
+  pendingEditImages.push({ file, previewUrl: url });
+  renderEditPreviews();
+}
+
+function renderEditPreviews() {
+  const container = document.getElementById('edit-image-previews');
+  if (!container) return;
+  container.innerHTML = '';
+
+  pendingEditImages.forEach((img, i) => {
+    const src = img.previewUrl || img.url || '';
+    const wrap = document.createElement('div');
+    wrap.style.cssText = 'position:relative;display:inline-block;';
+    wrap.innerHTML = `
+      <img src="${esc(src)}" style="max-height:120px;max-width:180px;border-radius:8px;border:1px solid rgba(255,255,255,0.2);object-fit:cover;display:block;">
+      <button type="button" data-idx="${i}" style="position:absolute;top:-8px;right:-8px;background:#ef4444;color:white;border:none;border-radius:50%;width:22px;height:22px;cursor:pointer;font-size:0.75rem;display:flex;align-items:center;justify-content:center;font-weight:bold;">✕</button>
+    `;
+    wrap.querySelector('button').addEventListener('click', e => {
+      pendingEditImages.splice(parseInt(e.target.dataset.idx, 10), 1);
+      renderEditPreviews();
+    });
+    container.appendChild(wrap);
+  });
+
+  const count = document.createElement('div');
+  count.style.cssText = 'font-size:0.8rem;color:var(--text-secondary);align-self:center;';
+  count.textContent = `${pendingEditImages.length} / ${MAX_EDIT_IMAGES} 枚`;
+  container.appendChild(count);
+}
+
 function closeEditModal() {
   el.editOverlay.classList.add('hidden');
   document.body.style.overflow = '';
+  pendingEditImages = [];
 }
 
 async function saveCardEdit() {
   const card = allCards.find(c => c.id === activeCardId);
   if (!card) return;
 
-  // フィールド値を収集
-  const inputs = el.editFields.querySelectorAll('[data-key]');
-  inputs.forEach(input => {
-    const key = input.dataset.key;
-    card[key] = input.value.trim();
+  const genreDef = genres.find(g => g.id === card.genre);
+  const fields = genreDef?.fields || [];
+
+  // 各フィールド値を収集
+  const values = {};
+  el.editFields.querySelectorAll('[id^="edit-field-"]').forEach(input => {
+    const key = input.name || input.dataset.key;
+    if (key) values[key] = input.value.trim();
   });
 
-  // SupabaseにPATCH送信
-  await StorageManager.saveCardUpdate(card);
+  const question = values['question'] || card.question || '';
+  const baseAnswer = values['answer'] || '';
 
-  // ローカルデータも更新
+  // extra フィールドを answer に結合（options.js と同じロジック）
+  const extraParts = [];
+  fields
+    .filter(f => !['question', 'answer', 'image'].includes(f.key))
+    .forEach(f => { if (values[f.key]) extraParts.push(`[${f.label}]\n${values[f.key]}`); });
+  const fullAnswer = extraParts.length > 0
+    ? baseAnswer + '\n\n---\n' + extraParts.join('\n\n')
+    : baseAnswer;
+
+  // 画像アップロード（新規追加のみ）
+  let imageValue = card.image || null;
+  const newFiles = pendingEditImages.filter(img => img.file);
+  const existingUrls = pendingEditImages.filter(img => img.url && !img.file).map(img => img.url);
+  let uploadedUrls = [];
+  if (newFiles.length > 0) {
+    uploadedUrls = await Promise.all(newFiles.map(img => uploadImageToSupabase(img.file)));
+  }
+  const allUrls = [...existingUrls, ...uploadedUrls];
+  if (allUrls.length > 0) imageValue = JSON.stringify(allUrls);
+  else if (pendingEditImages.length === 0) imageValue = null; // 全削除された
+
+  const updated = { ...card, question, answer: fullAnswer, image: imageValue };
+  await StorageManager.saveCardUpdate(updated);
+
   const idx = allCards.findIndex(c => c.id === activeCardId);
-  if (idx !== -1) allCards[idx] = { ...allCards[idx], ...card };
+  if (idx !== -1) allCards[idx] = updated;
 
   el.editSaveMsg.classList.remove('hidden');
   setTimeout(() => el.editSaveMsg.classList.add('hidden'), 2500);
-
-  applyAndRender(); // テーブル更新
+  applyAndRender();
 }
 
 // ===== 削除 =====
@@ -394,6 +485,18 @@ function setupListeners() {
   el.editClose.addEventListener('click', closeEditModal);
   el.editOverlay.addEventListener('click', e => { if (e.target === el.editOverlay) closeEditModal(); });
   el.editSaveBtn.addEventListener('click', saveCardEdit);
+  // Ctrl+V 画像ペースト → 編集モーダルが開いている時のみ反応
+  document.addEventListener('paste', e => {
+    if (el.editOverlay.classList.contains('hidden')) return;
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    for (const item of items) {
+      if (item.type.startsWith('image/')) {
+        const file = item.getAsFile();
+        if (file) { e.preventDefault(); addEditImage(file); break; }
+      }
+    }
+  });
   document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeModal(); closeEditModal(); } });
 }
 

@@ -156,7 +156,14 @@ function renderTable() {
     if (card.image) {
       try {
         const imgs = JSON.parse(card.image);
-        const url = Array.isArray(imgs) ? imgs[0] : card.image;
+        let url = '';
+        if (Array.isArray(imgs) && imgs.length > 0) {
+          url = typeof imgs[0] === 'object' ? imgs[0].url : imgs[0];
+        } else if (typeof imgs === 'object' && imgs.url) {
+          url = imgs.url;
+        } else {
+          url = card.image;
+        }
         if (url) thumbHtml = `<td><img src="${esc(url)}" class="thumb-sm" alt="img" loading="lazy"></td>`;
       } catch {
         if (card.image.startsWith('http')) {
@@ -351,23 +358,24 @@ function openEditModal(id) {
     if (field.type === 'image') {
       if (!pendingEditImages[field.key]) pendingEditImages[field.key] = [];
       
-      // 初回のみ既存画像をセット（もしあれば）
-      // 現在のDBは一括保存なので、便宜上最初の画像フィールドにすべて入れる
       if (card.image && Object.keys(pendingEditImages).length === 1) {
         try {
-          const urls = JSON.parse(card.image);
-          if (Array.isArray(urls)) {
-            urls.forEach(url => {
-              if (pendingEditImages[field.key].length < MAX_EDIT_IMAGES) {
-                pendingEditImages[field.key].push({ url });
-              }
-            });
-          } else { // 単一URLの場合
-            if (pendingEditImages[field.key].length < MAX_EDIT_IMAGES) {
-              pendingEditImages[field.key].push({ url: card.image });
+          const parsed = JSON.parse(card.image);
+          const imgs = Array.isArray(parsed) ? parsed : [{ url: card.image, role: 'question' }];
+          
+          imgs.forEach(img => {
+            const url = typeof img === 'object' ? img.url : img;
+            const role = typeof img === 'object' ? img.role : 'question';
+            
+            // 該当するフィールド、またはフォールバックで現在のフィールドに追加
+            const targetKey = fields.find(f => f.type === 'image' && f.role === role)?.key || field.key;
+            if (!pendingEditImages[targetKey]) pendingEditImages[targetKey] = [];
+            
+            if (pendingEditImages[targetKey].length < MAX_EDIT_IMAGES) {
+              pendingEditImages[targetKey].push({ url });
             }
-          }
-        } catch { // JSONパース失敗 (単一URLとみなす)
+          });
+        } catch {
           if (pendingEditImages[field.key].length < MAX_EDIT_IMAGES) {
             pendingEditImages[field.key].push({ url: card.image });
           }
@@ -542,6 +550,9 @@ async function saveCardEdit() {
   const allUrls = [];
 
   for (const fieldKey in pendingEditImages) {
+    const fieldDef = fields.find(f => f.key === fieldKey);
+    const role = fieldDef?.role || 'question';
+    
     const imagesForField = pendingEditImages[fieldKey];
     const newFiles = imagesForField.filter(img => img.file);
     const existingUrls = imagesForField.filter(img => img.url && !img.file).map(img => img.url);
@@ -550,7 +561,9 @@ async function saveCardEdit() {
     if (newFiles.length > 0) {
       uploadedUrls = await Promise.all(newFiles.map(img => uploadImageToSupabase(img.file)));
     }
-    allUrls.push(...existingUrls, ...uploadedUrls);
+    
+    const combined = [...existingUrls, ...uploadedUrls].map(url => ({ url, role }));
+    allUrls.push(...combined);
   }
   
   if (allUrls.length > 0) imageValue = JSON.stringify(allUrls);

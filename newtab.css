@@ -48,14 +48,16 @@ body {
 
 /* Sidebar */
 .sidebar {
-  width: 280px;
+  width: 220px;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
   gap: 2rem;
-  background: rgba(15, 23, 42, 0.85); /* 少し暗く不透明に */
+  background: rgba(15, 23, 42, 0.85);
   backdrop-filter: blur(16px);
   border-right: 1px solid var(--glass-border);
+  border-radius: 0; /* 角丸解除 */
+  box-shadow: none;
   padding: 2rem;
   height: 100vh;
   position: sticky;
@@ -82,7 +84,7 @@ body {
 
 .nav-btn {
   display: block;
-  padding: 1rem;
+  padding: 0.8rem 1rem;
   border-radius: 8px;
   color: var(--text-primary);
   text-decoration: none;
@@ -93,7 +95,7 @@ body {
   text-align: left;
   cursor: pointer;
   font-family: 'Inter', sans-serif;
-  font-size: 1rem;
+  font-size: 0.9rem;
 }
 
 .nav-btn:hover { background: rgba(255,255,255,0.05); }

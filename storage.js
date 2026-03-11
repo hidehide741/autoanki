@@ -266,20 +266,6 @@ const StorageManager = {
     } catch (e) {
       console.error("カードの削除に失敗しました。", e);
     }
-  },
-
-  // サーバーを遠隔停止させる
-  async shutdownServer() {
-    try {
-      await fetch(API_BASE.replace('/cards', '/shutdown'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
-      });
-      return true;
-    } catch (e) {
-      console.error("シャットダウンに失敗しました。", e);
-      return false;
-    }
   }
 };
 

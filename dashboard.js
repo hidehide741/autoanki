@@ -40,25 +40,7 @@ async function init() {
     });
   });
   
-  // Shutdown Server logic
-  const shutdownBtn = document.getElementById('shutdown-btn');
-  if (shutdownBtn) {
-    shutdownBtn.addEventListener('click', async () => {
-      if (confirm('PC側のサーバーを停止します。よろしいですか？\n(停止後はブラウザを閉じてください)')) {
-        const success = await StorageManager.shutdownServer();
-        if (success) {
-          document.body.innerHTML = `
-            <div style="height: 100vh; display: flex; align-items: center; justify-content: center; background: #0f172a; color: white; font-family: sans-serif; text-align: center;">
-              <div>
-                <h1 style="font-size: 3rem; margin-bottom: 1rem;">🔒 Closed</h1>
-                <p style="font-size: 1.2rem; color: #94a3b8;">サーバーを安全に停止しました。<br>このブラウザタブを閉じて終了してください。</p>
-              </div>
-            </div>
-          `;
-        }
-      }
-    });
-  }
+
 }
 
 function renderChart(history, days) {

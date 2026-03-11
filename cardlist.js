@@ -353,35 +353,33 @@ function openEditModal(id) {
 
   el.editFields.innerHTML = '';
 
-  fields.forEach(field => {
-    // image タイプは専用UI
-    if (field.type === 'image') {
-      if (!pendingEditImages[field.key]) pendingEditImages[field.key] = [];
+  // 画像の事前配分（刷新ロジック）
+  if (card.image) {
+    try {
+      const parsed = JSON.parse(card.image);
+      const imgs = Array.isArray(parsed) ? parsed : [{ url: card.image, role: 'question' }];
       
-      if (card.image && Object.keys(pendingEditImages).length === 1) {
-        try {
-          const parsed = JSON.parse(card.image);
-          const imgs = Array.isArray(parsed) ? parsed : [{ url: card.image, role: 'question' }];
-          
-          imgs.forEach(img => {
-            const url = typeof img === 'object' ? img.url : img;
-            const role = typeof img === 'object' ? img.role : 'question';
-            
-            // 該当するフィールド、またはフォールバックで現在のフィールドに追加
-            const targetKey = fields.find(f => f.type === 'image' && f.role === role)?.key || field.key;
-            if (!pendingEditImages[targetKey]) pendingEditImages[targetKey] = [];
-            
-            if (pendingEditImages[targetKey].length < MAX_EDIT_IMAGES) {
-              pendingEditImages[targetKey].push({ url });
-            }
-          });
-        } catch {
-          if (pendingEditImages[field.key].length < MAX_EDIT_IMAGES) {
-            pendingEditImages[field.key].push({ url: card.image });
+      imgs.forEach(img => {
+        const url = typeof img === 'object' ? img.url : img;
+        const role = typeof img === 'object' ? img.role : 'question';
+        const fKey = typeof img === 'object' ? img.fieldKey : null;
+        
+        const targetKey = fKey || fields.find(f => f.type === 'image' && f.role === role)?.key;
+        if (targetKey) {
+          if (!pendingEditImages[targetKey]) pendingEditImages[targetKey] = [];
+          if (pendingEditImages[targetKey].length < MAX_EDIT_IMAGES) {
+            pendingEditImages[targetKey].push({ url });
           }
         }
-      }
+      });
+    } catch (e) {
+      console.error('Image parse failed in edit:', e);
+    }
+  }
 
+  fields.forEach(field => {
+    if (field.type === 'image') {
+      if (!pendingEditImages[field.key]) pendingEditImages[field.key] = [];
       el.editFields.appendChild(buildEditImagePasteUI(field));
       return;
     }
@@ -409,7 +407,6 @@ function openEditModal(id) {
     if (field.required) input.required = true;
     input.placeholder = `${field.label}を入力…`;
 
-    // 既存値をセット（[ラベル]\n内容 形式から抽出）
     const rawContent = (field.role === 'question' ? card.question : card.answer) || '';
     const searchStr = `[${field.label}]\n`;
     const startIdx = rawContent.indexOf(searchStr);
@@ -418,7 +415,6 @@ function openEditModal(id) {
       const nextIdx = rawContent.indexOf('\n\n[', contentStart);
       input.value = (nextIdx !== -1 ? rawContent.substring(contentStart, nextIdx) : rawContent.substring(contentStart)).trim();
     } else if (!rawContent.includes('[') && (field.key === 'question' || field.key === 'answer')) {
-      // 古い形式（ラベルなし）への互換性
       input.value = rawContent;
     } else {
       input.value = '';

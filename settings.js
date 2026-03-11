@@ -105,7 +105,9 @@ function renderGenreList() {
       const index = parseInt(e.target.closest('button').dataset.index, 10);
       if (confirm(`「${genres[index].name}」を削除しますか？\nカードは削除されませんが、ジャンル表示は「その他」になります。`)) {
         if (editingIndex === index) cancelEdit();
+        const genreId = genres[index].id;
         genres.splice(index, 1);
+        await StorageManager.deleteGenre(genreId);
         await StorageManager.saveGenres(genres);
         renderGenreList();
       }

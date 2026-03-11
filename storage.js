@@ -4,6 +4,7 @@
 const SUPABASE_URL = 'https://qahkvamgssedhjvtlika.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_g3U08ZrJjKyXaeaEuPeuaQ_SNoUxyVg';
 const API_BASE = `${SUPABASE_URL}/rest/v1/cards`;
+const GENRE_API_BASE = `${SUPABASE_URL}/rest/v1/genres`;
 
 // デフォルトジャンル定義
 const DEFAULT_GENRES = [
@@ -117,23 +118,92 @@ const StorageManager = {
     return '';
   },
 
-  // ========== ジャンル管理 ==========
+  // ========== ジャンル管理 (Supabase 同期) ==========
   async getGenres() {
-    const saved = await LocalStore.get('genres');
-    if (!saved || saved.length === 0) {
-      await LocalStore.set('genres', DEFAULT_GENRES);
-      return DEFAULT_GENRES;
+    try {
+      // 1. Supabase からジャンル一覧を取得
+      const res = await fetch(`${GENRE_API_BASE}?select=*&order=created_at.asc`, { headers: HEADERS });
+      if (!res.ok) throw new Error('Supabase Fetch Error');
+      const cloudGenres = await res.json();
+
+      // DB形式 (snake_case) から Object形式 (isDefault, etc) へ変換
+      const mappedCloud = cloudGenres.map(g => ({
+        id: g.id,
+        name: g.name,
+        isDefault: g.is_default,
+        fields: g.fields,
+        createdAt: g.created_at
+      }));
+
+      // 最初の起動時などでクラウドが空の場合、ローカルから移行を試みる
+      if (mappedCloud.length === 0) {
+        const localSaved = await LocalStore.get('genres');
+        if (localSaved && localSaved.length > 0) {
+          console.log('Migrating local genres to Supabase...');
+          await this.saveGenres(localSaved);
+          return localSaved;
+        }
+        // ローカルも空ならデフォルトを保存して返す
+        await this.saveGenres(DEFAULT_GENRES);
+        return DEFAULT_GENRES;
+      }
+
+      // 常にデフォルトジャンルの最新定義をマージ（フィールド追加などのアップデート対応）
+      const defaultIds = new Set(DEFAULT_GENRES.map(g => g.id));
+      const customs = mappedCloud.filter(g => !defaultIds.has(g.id));
+      const merged = [...DEFAULT_GENRES, ...customs];
+
+      // ローカルキャッシュも更新
+      await LocalStore.set('genres', merged);
+      return merged;
+    } catch (err) {
+      console.error('getGenres failed, falling back to local storage:', err);
+      const local = await LocalStore.get('genres');
+      return local || DEFAULT_GENRES;
     }
-    // デフォルトジャンルは常に最新のコード定義で上書き（フィールドタイプ修正に対応）
-    const defaultIds = new Set(DEFAULT_GENRES.map(g => g.id));
-    const customs = saved.filter(g => !defaultIds.has(g.id));
-    const merged = [...DEFAULT_GENRES, ...customs];
-    await LocalStore.set('genres', merged);
-    return merged;
   },
 
   async saveGenres(genres) {
-    await LocalStore.set('genres', genres);
+    try {
+      // 1. 各ジャンルをバッチでアップサート (Upsert)
+      // Supabase REST API では、POST + Prefer: resolution=merge-duplicates でアップサート
+      const payloads = genres.map(g => ({
+        id: g.id,
+        name: g.name,
+        is_default: !!g.isDefault,
+        fields: g.fields
+      }));
+
+      const res = await fetch(GENRE_API_BASE, {
+        method: 'POST',
+        headers: {
+          ...HEADERS,
+          'Prefer': 'resolution=merge-duplicates'
+        },
+        body: JSON.stringify(payloads)
+      });
+
+      if (!res.ok) throw new Error('Supabase Upsert Error');
+
+      // ローカル保存（バックアップ兼キャッシュ）
+      await LocalStore.set('genres', genres);
+    } catch (err) {
+      console.error('saveGenres failed:', err);
+      // 通信エラーでも利便性のためにローカルには保存
+      await LocalStore.set('genres', genres);
+    }
+  },
+
+  async deleteGenre(genreId) {
+    try {
+      const res = await fetch(`${GENRE_API_BASE}?id=eq.${genreId}`, {
+        method: 'DELETE',
+        headers: HEADERS
+      });
+      if (!res.ok) throw new Error('Supabase Delete Error');
+    } catch (err) {
+      console.error('deleteGenre failed:', err);
+    }
   },
   // ==================================
 

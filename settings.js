@@ -49,30 +49,50 @@ function renderGenreList() {
     const fieldsPreview = genre.fields.map(f => `${typeIcon[f.type] || '📝'} ${f.label}`).join('  ');
 
     item.innerHTML = `
-      <div class="genre-item-info">
-        <div class="genre-item-name">${genre.name}</div>
-        <div class="genre-fields-preview">${fieldsPreview}</div>
+      <div class="genre-item-header">
+        <div class="genre-item-info">
+          <div class="genre-item-name">
+            ${genre.name}
+            <span class="toggle-icon">▼</span>
+          </div>
+        </div>
       </div>
-      <div class="genre-item-actions">
-        <button class="edit-genre-btn" data-index="${index}" style="
-          background: rgba(99,102,241,0.15);
-          border: 1px solid rgba(99,102,241,0.4);
-          color: #a78bfa;
-          padding: 0.4rem 0.8rem;
-          border-radius: 6px;
-          font-size: 0.85rem;
-          cursor: pointer;
-          transition: all 0.2s;
-        ">✏️ 編集</button>
-        <button class="danger-btn delete-genre-btn" data-index="${index}">🗑️ 削除</button>
+      <div class="genre-item-content">
+        <div class="genre-fields-preview">${fieldsPreview}</div>
+        <div class="genre-item-actions">
+          <button class="edit-genre-btn" data-index="${index}" style="
+            background: rgba(99,102,241,0.15);
+            border: 1px solid rgba(99,102,241,0.4);
+            color: #a78bfa;
+            padding: 0.4rem 0.8rem;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.2s;
+          ">✏️ 編集</button>
+          <button class="danger-btn delete-genre-btn" data-index="${index}">🗑️ 削除</button>
+        </div>
       </div>
     `;
+    
+    // アコーディオン開閉ロジック
+    const header = item.querySelector('.genre-item-header');
+    header.addEventListener('click', () => {
+      // 他のすべてを閉じる
+      document.querySelectorAll('.genre-item').forEach(el => {
+        if (el !== item) el.classList.remove('expanded');
+      });
+      // 自身の開閉をトグル
+      item.classList.toggle('expanded');
+    });
+
     el.genreList.appendChild(item);
   });
 
   // 編集ボタン
   document.querySelectorAll('.edit-genre-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
+      e.stopPropagation(); // アコーディオンの開閉を防止
       const index = parseInt(e.target.closest('button').dataset.index, 10);
       loadGenreIntoForm(index);
     });
@@ -81,6 +101,7 @@ function renderGenreList() {
   // 削除ボタン
   document.querySelectorAll('.delete-genre-btn').forEach(btn => {
     btn.addEventListener('click', async (e) => {
+      e.stopPropagation(); // アコーディオンの開閉を防止
       const index = parseInt(e.target.closest('button').dataset.index, 10);
       if (confirm(`「${genres[index].name}」を削除しますか？\nカードは削除されませんが、ジャンル表示は「その他」になります。`)) {
         if (editingIndex === index) cancelEdit();

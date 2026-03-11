@@ -11,16 +11,43 @@
       background: rgba(0,0,0,0.2);
       border: 1px solid var(--glass-border);
       border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      transition: all 0.2s;
+    }
+    .genre-item-header {
       padding: 1rem 1.2rem;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 1rem;
+      cursor: pointer;
+    }
+    .genre-item-header:hover {
+      background: rgba(255,255,255,0.05);
     }
     .genre-item-info { flex: 1; }
-    .genre-item-name { font-weight: 600; margin-bottom: 0.25rem; }
-    .genre-fields-preview { font-size: 0.8rem; color: var(--text-secondary); }
-    .genre-item-actions { display: flex; gap: 0.5rem; flex-shrink: 0; }
+    .genre-item-name { font-weight: 600; font-size: 1.05rem; display: flex; align-items: center; justify-content: space-between; }
+    .genre-item-name .toggle-icon { font-size: 0.8rem; color: var(--text-secondary); transition: transform 0.2s; }
+    .genre-item.expanded .toggle-icon { transform: rotate(180deg); }
+    
+    .genre-item-content {
+      padding: 0 1.2rem;
+      max-height: 0;
+      opacity: 0;
+      overflow: hidden;
+      transition: all 0.3s ease-in-out;
+      border-top: 1px solid transparent;
+    }
+    .genre-item.expanded .genre-item-content {
+      padding: 1rem 1.2rem;
+      max-height: 500px; /* 十分な高さを確保 */
+      opacity: 1;
+      border-top-color: var(--glass-border);
+    }
+
+    .genre-fields-preview { font-size: 0.85rem; color: var(--text-secondary); line-height: 1.5; margin-bottom: 1rem; }
+    .genre-item-actions { display: flex; gap: 0.5rem; justify-content: flex-end; }
 
     /* 追加フォーム */
     .add-genre-form { display: flex; flex-direction: column; gap: 1.2rem; }

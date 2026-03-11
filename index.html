@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>AutoAnki - Cloud Flashcards</title>
+  <link rel="stylesheet" href="newtab.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="background-animation"></div>
+  
+  <div class="layout">
+    <aside class="sidebar glass-panel" id="app-sidebar">
+      <div class="logo">
+        <h1>AutoAnki</h1>
+        <p>Effortless Spaced Repetition</p>
+      </div>
+      <div class="nav-links" style="margin-top: 2rem;">
+        <a href="index.html" class="nav-btn active">▶️ 問題を解く</a>
+        <a href="options.html" class="nav-btn">➕ 問題作成</a>
+        <a href="cardlist.html" class="nav-btn">📋 問題一覧 (DB)</a>
+      </div>
+      <div style="margin-top: auto; padding-top: 1rem; border-top: 1px solid var(--glass-border);">
+        <button id="shutdown-btn" class="nav-btn" style="color: var(--color-again); width: 100%; text-align: left; opacity: 0.7;">🔒 サーバー停止</button>
+      </div>
+    </aside>
+
+    <div class="main-content">
+      <div class="top-bar">
+        <div class="stats" id="stats-display">
+      <span class="stat-item" title="今日の学習数">✅ <span id="today-count">0</span></span>
+      <span class="stat-item" title="連続学習日数">🔥 <span id="streak-count">0</span></span>
+    </div>
+    <div class="actions">
+      <button id="skip-btn" class="icon-btn" title="スキップ (Esc)">⏭️ スキップ</button>
+      <button id="options-btn" class="icon-btn" title="設定">⚙️ 管理</button>
+    </div>
+  </div>
+
+  <main class="container">
+    <div id="card-container" class="glass-card hidden">
+      <div class="card-content">
+        <h2 id="question-text" class="question"></h2>
+        <img id="question-image" class="hidden" src="" alt="Question Image" style="max-width: 100%; max-height: 200px; border-radius: 8px; margin-bottom: 1.5rem; display: block; margin-left: auto; margin-right: auto; box-shadow: 0 4px 6px rgba(0,0,0,0.3);">
+        
+        <div id="answer-section" class="answer-section hidden">
+          <div class="divider"></div>
+          <p id="answer-text" class="answer"></p>
+          
+          <div class="rating-buttons">
+            <button class="rating-btn btn-again" data-quality="1">
+              <span class="label">忘れた</span>
+              <span class="sub">10分</span>
+            </button>
+            <button class="rating-btn btn-hard" data-quality="3">
+              <span class="label">難しい</span>
+              <span class="sub">1日</span>
+            </button>
+            <button class="rating-btn btn-good" data-quality="4">
+              <span class="label">普通</span>
+              <span class="sub">3日</span>
+            </button>
+            <button class="rating-btn btn-easy" data-quality="5">
+              <span class="label">簡単</span>
+              <span class="sub">7日</span>
+            </button>
+          </div>
+        </div>
+
+        <button id="show-answer-btn" class="primary-btn">答えを見る (Space)</button>
+      </div>
+    </div>
+
+    <div id="done-container" class="glass-card done-card hidden">
+      <div class="done-content">
+        <h1 class="done-title">🎉 All Done!</h1>
+        <p class="done-message">今のところ復習するカードはありません。<br>素晴らしい習慣です！</p>
+        <div class="done-links">
+          <a href="https://www.google.com" class="link-btn">Google 検索へ</a>
+        </div>
+      </div>
+    </div>
+  </main>
+  </div>
+</div>
+
+  <script type="module" src="newtab.js"></script>
+</body>
+</html>

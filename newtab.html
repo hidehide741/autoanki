@@ -2,92 +2,124 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>New Tab - AutoAnki</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AutoAnki - 問題を解く</title>
+  <meta name="description" content="AutoAnki - スペーシングリピティションで効率的に学習">
   <link rel="stylesheet" href="newtab.css">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 </head>
 <body>
   <div class="background-animation"></div>
-  
+
   <div class="layout">
     <!-- サイドバー -->
-    <aside class="sidebar glass-panel" id="app-sidebar">
+    <aside class="sidebar" id="app-sidebar">
       <div class="logo">
         <h1>AutoAnki</h1>
         <p>Effortless Spaced Repetition</p>
       </div>
-      <div class="nav-links" style="margin-top: 2rem;">
+      <div class="nav-links">
         <a href="dashboard.html" class="nav-btn">📊 ダッシュボード</a>
-        <a href="newtab.html" class="nav-btn active">▶️ 問題を解く</a>
-        <a href="options.html" class="nav-btn">➕ 問題作成</a>
-        <a href="cardlist.html" class="nav-btn">📋 問題DB</a>
-        <a href="settings.html" class="nav-btn">⚙️ 設定</a>
+        <a href="newtab.html"    class="nav-btn active">▶️ 問題を解く</a>
+        <a href="options.html"   class="nav-btn">➕ 問題作成</a>
+        <a href="cardlist.html"  class="nav-btn">📋 問題DB</a>
+        <a href="settings.html"  class="nav-btn">⚙️ 設定</a>
       </div>
-
     </aside>
 
+    <!-- メインコンテンツ -->
     <div class="main-content">
+
+      <!-- トップバー -->
       <div class="top-bar">
         <div class="stats" id="stats-display">
-      <span class="stat-item" title="今日の学習数">✅ <span id="today-count">0</span></span>
-      <span class="stat-item" title="連続学習日数">🔥 <span id="streak-count">0</span></span>
-    </div>
-    <div class="actions">
-      <button id="skip-btn" class="icon-btn" title="スキップ (Esc)">⏭️ スキップ</button>
-      <button id="options-btn" class="icon-btn" title="設定">⚙️ 管理</button>
-    </div>
-  </div>
-
-  <main class="container">
-    <!-- 問題がある場合のコンテナ -->
-    <div id="card-container" class="glass-card hidden">
-      <div class="card-content">
-        <h2 id="question-text" class="question"></h2>
-        <!-- 複数画像コンテナ（最大3枚）-->
-        <div id="question-images" class="hidden" style="display: flex; gap: 0.75rem; flex-wrap: wrap; justify-content: center; margin-bottom: 1.5rem;">
+          <span class="stat-item" title="今日の学習数">✅ <span id="today-count">0</span></span>
+          <span class="stat-item" title="連続学習日数">🔥 <span id="streak-count">0</span></span>
         </div>
-        
-        <div id="answer-section" class="answer-section hidden">
-          <div class="divider"></div>
-          <p id="answer-text" class="answer"></p>
-          
-          <div class="rating-buttons">
-            <button class="rating-btn btn-again" data-quality="1">
-              <span class="label">忘れた</span>
-              <span class="sub">10分</span>
-            </button>
-            <button class="rating-btn btn-hard" data-quality="3">
-              <span class="label">難しい</span>
-              <span class="sub">1日</span>
-            </button>
-            <button class="rating-btn btn-good" data-quality="4">
-              <span class="label">普通</span>
-              <span class="sub">3日</span>
-            </button>
-            <button class="rating-btn btn-easy" data-quality="5">
-              <span class="label">簡単</span>
-              <span class="sub">7日</span>
-            </button>
+        <div class="actions">
+          <button id="skip-btn"    class="icon-btn" title="スキップ (Esc)">⏭ スキップ</button>
+          <button id="options-btn" class="icon-btn" title="管理">⚙️ 管理</button>
+        </div>
+      </div>
+
+      <!-- カード表示エリア -->
+      <main class="container">
+
+        <!-- 問題カード -->
+        <div id="card-container" class="glass-card hidden">
+          <div class="card-content">
+            <!-- ジャンルバッジ -->
+            <div id="genre-badge" class="genre-badge-display hidden"></div>
+
+            <!-- 進捗バー -->
+            <div class="progress-bar-wrap">
+              <div class="progress-bar-fill" id="progress-bar" style="width: 0%"></div>
+            </div>
+
+            <!-- 問題テキスト -->
+            <h2 id="question-text" class="question"></h2>
+
+            <!-- 複数画像（最大3枚） -->
+            <div id="question-images" class="hidden"></div>
+
+            <!-- 答えを見るボタン -->
+            <button id="show-answer-btn" class="primary-btn">答えを見る&nbsp;&nbsp;<span style="opacity:0.6;font-size:0.85em;">(Space)</span></button>
+
+            <!-- 答えセクション -->
+            <div id="answer-section" class="answer-section hidden">
+              <div class="divider"></div>
+              <p id="answer-text" class="answer"></p>
+
+              <div class="rating-buttons">
+                <button class="rating-btn btn-again" data-quality="1">
+                  <span class="rating-icon">😰</span>
+                  <span class="label">忘れた</span>
+                  <span class="sub">12時間</span>
+                </button>
+                <button class="rating-btn btn-hard" data-quality="3">
+                  <span class="rating-icon">😓</span>
+                  <span class="label">難しい</span>
+                  <span class="sub">1日</span>
+                </button>
+                <button class="rating-btn btn-good" data-quality="4">
+                  <span class="rating-icon">😊</span>
+                  <span class="label">普通</span>
+                  <span class="sub">3日</span>
+                </button>
+                <button class="rating-btn btn-easy" data-quality="5">
+                  <span class="rating-icon">🎯</span>
+                  <span class="label">簡単</span>
+                  <span class="sub">7日+</span>
+                </button>
+              </div>
+            </div>
           </div>
         </div>
 
-        <button id="show-answer-btn" class="primary-btn">答えを見る (Space)</button>
-      </div>
-    </div>
-
-    <!-- 完了時のコンテナ -->
-    <div id="done-container" class="glass-card done-card hidden">
-      <div class="done-content">
-        <h1 class="done-title">🎉 All Done!</h1>
-        <p class="done-message">今のところ復習するカードはありません。<br>素晴らしい習慣です！</p>
-        <div class="done-links">
-          <a href="https://www.google.com" class="link-btn">Google 検索へ</a>
+        <!-- 完了画面 -->
+        <div id="done-container" class="glass-card done-card hidden">
+          <div class="done-icon">🎉</div>
+          <h1 class="done-title">All Done!</h1>
+          <p class="done-message">今日の復習は完了です。<br>また明日続けましょう！</p>
+          <div class="done-stats">
+            <div class="done-stat">
+              <span class="val" id="done-today">—</span>
+              <span class="lbl">今日の学習</span>
+            </div>
+            <div class="done-stat">
+              <span class="val" id="done-streak">—</span>
+              <span class="lbl">連続日数</span>
+            </div>
+          </div>
+          <div class="done-links">
+            <a href="options.html" class="link-btn">➕ 問題を追加</a>
+            <a href="dashboard.html" class="link-btn">📊 ダッシュボード</a>
+          </div>
         </div>
-      </div>
+
+      </main>
     </div>
-  </main>
   </div>
-</div>
 
   <script type="module" src="newtab.js"></script>
 </body>

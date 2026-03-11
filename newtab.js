@@ -7,16 +7,20 @@ let answerShown = false;
 const el = {
   cardContainer: document.getElementById('card-container'),
   doneContainer: document.getElementById('done-container'),
-  questionText: document.getElementById('question-text'),
+  questionText:  document.getElementById('question-text'),
   questionImages: document.getElementById('question-images'),
   answerSection: document.getElementById('answer-section'),
-  answerText: document.getElementById('answer-text'),
+  answerText:    document.getElementById('answer-text'),
   showAnswerBtn: document.getElementById('show-answer-btn'),
   ratingButtons: document.querySelectorAll('.rating-btn'),
-  skipBtn: document.getElementById('skip-btn'),
-  optionsBtn: document.getElementById('options-btn'),
-  todayCount: document.getElementById('today-count'),
-  streakCount: document.getElementById('streak-count')
+  skipBtn:       document.getElementById('skip-btn'),
+  optionsBtn:    document.getElementById('options-btn'),
+  todayCount:    document.getElementById('today-count'),
+  streakCount:   document.getElementById('streak-count'),
+  genreBadge:    document.getElementById('genre-badge'),
+  progressBar:   document.getElementById('progress-bar'),
+  doneToday:     document.getElementById('done-today'),
+  doneStreak:    document.getElementById('done-streak')
 };
 
 // 初期化
@@ -52,15 +56,26 @@ async function loadNextCard() {
   if (currentCard) {
     showQuestionMode();
     el.questionText.textContent = currentCard.question;
-    el.answerText.textContent = currentCard.answer;
+    el.answerText.textContent   = currentCard.answer;
     
+    // ジャンルバッジ
+    if (el.genreBadge) {
+      const genres = await StorageManager.getGenres();
+      const genreDef = genres.find(g => g.id === currentCard.genre);
+      if (genreDef) {
+        el.genreBadge.textContent = genreDef.name;
+        el.genreBadge.classList.remove('hidden');
+      } else {
+        el.genreBadge.classList.add('hidden');
+      }
+    }
+
     // アニメーションのリセット
     el.cardContainer.classList.remove('hidden', 'fade-out');
     el.doneContainer.classList.add('hidden');
-    // 少し遅延を入れてアニメーションを再トリガー（新しい問題が来た感触）
     el.cardContainer.style.animation = 'none';
     setTimeout(() => {
-      el.cardContainer.style.animation = 'popIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards';
+      el.cardContainer.style.animation = 'floatIn 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards';
     }, 10);
   } else {
     // 問題が0件（All Done画面）の場合も、これを表示した時刻を記録して
@@ -112,6 +127,9 @@ function showAnswerMode() {
 function showDoneMode() {
   el.cardContainer.classList.add('hidden');
   el.doneContainer.classList.remove('hidden');
+  // done画面に統計を表示
+  if (el.doneToday)  el.doneToday.textContent  = el.todayCount?.textContent  || '0';
+  if (el.doneStreak) el.doneStreak.textContent = el.streakCount?.textContent || '0';
 }
 
 // 評価を送信して終了（または次のカードがあれば表示するが、「1回1問」のコンセプトにより完了画面へ移行）

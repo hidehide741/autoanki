@@ -10,46 +10,46 @@ const DEFAULT_GENRES = [
   {
     id: 'language', name: '🌐 語学', isDefault: true,
     fields: [
-      { key: 'question', label: '単語・フレーズ', type: 'text', required: true },
-      { key: 'answer',   label: '意味（日本語）', type: 'text', required: true },
+      { key: 'question', label: '単語・フレーズ', type: 'textarea', required: true },
+      { key: 'answer',   label: '意味（日本語）', type: 'textarea', required: true },
       { key: 'example',  label: '例文',             type: 'textarea' },
       { key: 'note',     label: '補足（発音・品詞など）', type: 'text' },
-      { key: 'image',    label: '画像URL',           type: 'text' }
+      { key: 'image',    label: '画像',             type: 'image' }
     ]
   },
   {
     id: 'science', name: '🔬 理科', isDefault: true,
     fields: [
-      { key: 'question', label: '用語・概念名', type: 'text', required: true },
+      { key: 'question', label: '用語・概念名', type: 'textarea', required: true },
       { key: 'answer',   label: '定義・説明',   type: 'textarea', required: true },
-      { key: 'note',     label: '仕組み・機能',   type: 'textarea' },
-      { key: 'image',    label: '画像URL',           type: 'text' }
+      { key: 'note',     label: '仕組み・機能', type: 'textarea' },
+      { key: 'image',    label: '画像',         type: 'image' }
     ]
   },
   {
     id: 'math', name: '📐 数学', isDefault: true,
     fields: [
-      { key: 'question', label: '概念・定理名', type: 'text', required: true },
+      { key: 'question', label: '概念・定理名', type: 'textarea', required: true },
       { key: 'answer',   label: '公式・定義',   type: 'textarea', required: true },
-      { key: 'example',  label: '例題',             type: 'textarea' },
+      { key: 'example',  label: '例題',         type: 'textarea' },
       { key: 'note',     label: '注意点・記憶術', type: 'text' }
     ]
   },
   {
     id: 'history', name: '📅 歴史', isDefault: true,
     fields: [
-      { key: 'question', label: '出来事・人名', type: 'text', required: true },
+      { key: 'question', label: '出来事・人名', type: 'textarea', required: true },
       { key: 'answer',   label: '内容・説明',   type: 'textarea', required: true },
-      { key: 'note',     label: '年号・時代',     type: 'text' },
-      { key: 'image',    label: '画像URL',           type: 'text' }
+      { key: 'note',     label: '年号・時代',   type: 'text' },
+      { key: 'image',    label: '画像',         type: 'image' }
     ]
   },
   {
     id: 'other', name: '📝 その他', isDefault: true,
     fields: [
-      { key: 'question', label: '問題',               type: 'textarea', required: true },
-      { key: 'answer',   label: '答え',               type: 'textarea', required: true },
-      { key: 'image',    label: '画像URL',           type: 'text' }
+      { key: 'question', label: '問題', type: 'textarea', required: true },
+      { key: 'answer',   label: '答え', type: 'textarea', required: true },
+      { key: 'image',    label: '画像', type: 'image' }
     ]
   }
 ];
@@ -124,7 +124,12 @@ const StorageManager = {
       await LocalStore.set('genres', DEFAULT_GENRES);
       return DEFAULT_GENRES;
     }
-    return saved;
+    // デフォルトジャンルは常に最新のコード定義で上書き（フィールドタイプ修正に対応）
+    const defaultIds = new Set(DEFAULT_GENRES.map(g => g.id));
+    const customs = saved.filter(g => !defaultIds.has(g.id));
+    const merged = [...DEFAULT_GENRES, ...customs];
+    await LocalStore.set('genres', merged);
+    return merged;
   },
 
   async saveGenres(genres) {

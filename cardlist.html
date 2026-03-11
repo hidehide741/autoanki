@@ -2,21 +2,267 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>Card List - AutoAnki</title>
+  <title>AutoAnki - 問題DB</title>
   <link rel="stylesheet" href="options.css">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    /* ===== ツールバー ===== */
+    .toolbar {
+      display: flex;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      align-items: center;
+      margin-bottom: 1.25rem;
+    }
+    .search-input {
+      flex: 1;
+      min-width: 180px;
+      background: rgba(0,0,0,0.25);
+      border: 1px solid var(--glass-border);
+      border-radius: 8px;
+      padding: 0.55rem 1rem;
+      color: var(--text-primary);
+      font-family: inherit;
+      font-size: 0.9rem;
+      transition: border-color 0.2s;
+    }
+    .search-input:focus { outline: none; border-color: var(--primary-accent); }
+    .filter-select, .sort-select {
+      background: rgba(0,0,0,0.25);
+      border: 1px solid var(--glass-border);
+      border-radius: 8px;
+      padding: 0.55rem 0.85rem;
+      color: var(--text-primary);
+      font-family: inherit;
+      font-size: 0.88rem;
+      cursor: pointer;
+    }
+    .count-badge {
+      font-size: 0.82rem;
+      color: var(--text-secondary);
+      white-space: nowrap;
+    }
+
+    /* ===== カードグリッド ===== */
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 1rem;
+    }
+    .db-card {
+      background: rgba(0,0,0,0.2);
+      border: 1px solid var(--glass-border);
+      border-radius: 14px;
+      padding: 1.1rem 1.2rem;
+      cursor: pointer;
+      transition: all 0.18s ease;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    .db-card:hover {
+      border-color: rgba(99,102,241,0.5);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+    }
+    .db-card-genre {
+      font-size: 0.72rem;
+      color: #a78bfa;
+      background: rgba(99,102,241,0.15);
+      padding: 0.1rem 0.5rem;
+      border-radius: 4px;
+      display: inline-block;
+      align-self: flex-start;
+    }
+    .db-card-question {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      line-height: 1.45;
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .db-card-answer {
+      font-size: 0.82rem;
+      color: var(--text-secondary);
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .db-card-thumb {
+      width: 100%;
+      max-height: 100px;
+      object-fit: cover;
+      border-radius: 6px;
+      margin-top: 0.25rem;
+    }
+    .db-card-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: auto;
+      padding-top: 0.5rem;
+      border-top: 1px solid rgba(255,255,255,0.06);
+    }
+    .db-card-due {
+      font-size: 0.75rem;
+    }
+    .db-card-due.due-now { color: #10b981; }
+    .db-card-due.due-later { color: var(--text-secondary); }
+    .db-card-actions {
+      display: flex;
+      gap: 0.4rem;
+    }
+    .icon-action-btn {
+      background: transparent;
+      border: 1px solid var(--glass-border);
+      color: var(--text-secondary);
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.8rem;
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.15s;
+    }
+    .icon-action-btn:hover { background: rgba(255,255,255,0.1); color: var(--text-primary); }
+    .icon-action-btn.del:hover { background: rgba(239,68,68,0.15); border-color: #ef4444; color: #ef4444; }
+
+    /* ===== ページネーション ===== */
+    .pagination {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 0.5rem;
+      margin-top: 1.5rem;
+      flex-wrap: wrap;
+    }
+    .page-btn {
+      background: rgba(0,0,0,0.2);
+      border: 1px solid var(--glass-border);
+      color: var(--text-secondary);
+      width: 34px;
+      height: 34px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 0.85rem;
+      transition: all 0.15s;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .page-btn:hover { background: rgba(255,255,255,0.08); color: var(--text-primary); }
+    .page-btn.active { background: var(--primary-accent); color: white; border-color: var(--primary-accent); }
+    .page-btn:disabled { opacity: 0.35; cursor: default; }
+
+    /* ===== モーダル ===== */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.6);
+      backdrop-filter: blur(4px);
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+    .modal-overlay.hidden { display: none; }
+    .modal-box {
+      background: #1e293b;
+      border: 1px solid var(--glass-border);
+      border-radius: 20px;
+      padding: 2rem;
+      max-width: 600px;
+      width: 100%;
+      max-height: 85vh;
+      overflow-y: auto;
+      position: relative;
+      animation: popIn 0.25s ease;
+    }
+    @keyframes popIn { from { opacity: 0; transform: scale(0.95) translateY(10px); } to { opacity: 1; transform: none; } }
+    .modal-close {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      background: rgba(255,255,255,0.08);
+      border: none;
+      color: var(--text-secondary);
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 1rem;
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.15s;
+    }
+    .modal-close:hover { background: rgba(239,68,68,0.2); color: #ef4444; }
+    .modal-genre-badge {
+      font-size: 0.75rem;
+      color: #a78bfa;
+      background: rgba(99,102,241,0.15);
+      padding: 0.15rem 0.6rem;
+      border-radius: 4px;
+      display: inline-block;
+      margin-bottom: 0.75rem;
+    }
+    .modal-question {
+      font-size: 1.3rem;
+      font-weight: 700;
+      margin-bottom: 1rem;
+      line-height: 1.45;
+    }
+    .modal-images {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      margin-bottom: 1rem;
+    }
+    .modal-images img {
+      max-height: 160px;
+      max-width: 100%;
+      border-radius: 8px;
+      object-fit: contain;
+      border: 1px solid var(--glass-border);
+    }
+    .modal-divider { height: 1px; background: var(--glass-border); margin: 1rem 0; }
+    .modal-answer {
+      color: #a78bfa;
+      font-size: 1.05rem;
+      line-height: 1.6;
+      white-space: pre-wrap;
+    }
+    .modal-meta {
+      margin-top: 1.25rem;
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+    }
+    .modal-footer {
+      margin-top: 1.5rem;
+      display: flex;
+      gap: 0.75rem;
+      justify-content: flex-end;
+    }
+
+    /* 空の状態 */
+    .empty-state { text-align: center; padding: 3rem; color: var(--text-secondary); }
+    .empty-state .empty-icon { font-size: 3rem; margin-bottom: 1rem; }
+  </style>
 </head>
 <body>
   <div class="background-animation"></div>
 
   <div class="layout">
-    <!-- Sidebar -->
+    <!-- サイドバー -->
     <aside class="sidebar glass-panel">
       <div class="logo">
         <h1>AutoAnki</h1>
         <p>Effortless Spaced Repetition</p>
       </div>
-
       <div class="nav-links" style="margin-top: 2rem;">
         <a href="dashboard.html" class="nav-btn">📊 ダッシュボード</a>
         <a href="index.html" class="nav-btn">▶️ 問題を解く</a>
@@ -24,39 +270,56 @@
         <a href="cardlist.html" class="nav-btn active">📋 問題DB</a>
         <a href="settings.html" class="nav-btn">⚙️ 設定</a>
       </div>
-
     </aside>
 
-    <!-- Main Content -->
+    <!-- メインコンテンツ -->
     <main class="main-content">
-      
+      <section class="section glass-panel">
+        <h2 class="section-title">📋 問題DB</h2>
 
+        <!-- ツールバー -->
+        <div class="toolbar">
+          <input type="text" id="search-input" class="search-input" placeholder="🔍 問題・答えを検索…">
+          <select id="genre-filter" class="filter-select">
+            <option value="">すべてのジャンル</option>
+          </select>
+          <select id="sort-select" class="sort-select">
+            <option value="due">次回レビュー順</option>
+            <option value="question">問題名順</option>
+            <option value="newest">新しい順</option>
+          </select>
+          <span class="count-badge" id="count-badge">読み込み中…</span>
+        </div>
 
-      <!-- Card List Section -->
-      <section id="card-list" class="section glass-panel mt">
-        <h2 class="section-title">登録済みのカード一覧 (Database)</h2>
-        <div class="table-container">
-          <table id="cards-table">
-            <thead>
-              <tr>
-                <th>問題</th>
-                <th>画像/パス</th>
-                <th>答え</th>
-                <th>次回レビュー</th>
-                <th>操作</th>
-              </tr>
-            </thead>
-            <tbody id="cards-tbody">
-              <!-- JSで動的に追加 -->
-            </tbody>
-          </table>
+        <!-- カードグリッド -->
+        <div class="card-grid" id="card-grid"></div>
+
+        <!-- 空の状態 -->
+        <div class="empty-state hidden" id="empty-state">
+          <div class="empty-icon">📭</div>
+          <p>カードが見つかりません</p>
         </div>
-        <div id="empty-state" class="empty-state hidden">
-          <p>カードが登録されていません。</p>
-        </div>
+
+        <!-- ページネーション -->
+        <div class="pagination" id="pagination"></div>
       </section>
-
     </main>
+  </div>
+
+  <!-- 閲覧モーダル -->
+  <div class="modal-overlay hidden" id="modal-overlay">
+    <div class="modal-box">
+      <button class="modal-close" id="modal-close">✕</button>
+      <div id="modal-genre-badge" class="modal-genre-badge"></div>
+      <div class="modal-question" id="modal-question"></div>
+      <div class="modal-images" id="modal-images"></div>
+      <div class="modal-divider"></div>
+      <div class="modal-answer" id="modal-answer"></div>
+      <div class="modal-meta" id="modal-meta"></div>
+      <div class="modal-footer">
+        <button class="danger-btn" id="modal-delete-btn">🗑️ 削除</button>
+      </div>
+    </div>
   </div>
 
   <script type="module" src="cardlist.js"></script>

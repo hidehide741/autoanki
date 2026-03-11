@@ -20,26 +20,31 @@
     .genre-item-info { flex: 1; }
     .genre-item-name { font-weight: 600; margin-bottom: 0.25rem; }
     .genre-fields-preview { font-size: 0.8rem; color: var(--text-secondary); }
-    .default-badge {
-      font-size: 0.7rem;
-      padding: 0.15rem 0.5rem;
-      background: rgba(99,102,241,0.2);
-      color: #a78bfa;
-      border-radius: 4px;
-      margin-left: 0.5rem;
-    }
     .genre-item-actions { display: flex; gap: 0.5rem; flex-shrink: 0; }
 
     /* 追加フォーム */
-    .add-genre-form { display: flex; flex-direction: column; gap: 1rem; }
-    .field-list { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 0.5rem; }
-    .field-row {
-      display: grid;
-      grid-template-columns: 1fr 1fr auto auto;
-      gap: 0.5rem;
-      align-items: center;
+    .add-genre-form { display: flex; flex-direction: column; gap: 1.2rem; }
+    .base-fields-hint {
+      background: rgba(99,102,241,0.1);
+      border: 1px solid rgba(99,102,241,0.3);
+      border-radius: 8px;
+      padding: 0.8rem 1rem;
+      font-size: 0.85rem;
+      color: var(--text-secondary);
     }
-    .field-row input, .field-row select {
+    .base-labels-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.75rem;
+    }
+    .base-label-item label {
+      display: block;
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      margin-bottom: 0.3rem;
+    }
+    .base-label-item input {
+      width: 100%;
       background: rgba(0,0,0,0.2);
       border: 1px solid var(--glass-border);
       border-radius: 6px;
@@ -48,8 +53,36 @@
       font-family: inherit;
       font-size: 0.9rem;
     }
+    .field-list { display: flex; flex-direction: column; gap: 0.6rem; margin-bottom: 0.5rem; }
+    .field-row {
+      display: grid;
+      grid-template-columns: 1fr 160px auto auto;
+      gap: 0.5rem;
+      align-items: center;
+      background: rgba(0,0,0,0.15);
+      border-radius: 8px;
+      padding: 0.5rem 0.75rem;
+    }
+    .field-row input, .field-row select {
+      background: rgba(0,0,0,0.3);
+      border: 1px solid var(--glass-border);
+      border-radius: 6px;
+      padding: 0.45rem 0.7rem;
+      color: var(--text-primary);
+      font-family: inherit;
+      font-size: 0.88rem;
+    }
+    .required-check-wrap {
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+      cursor: pointer;
+      color: var(--text-secondary);
+      font-size: 0.82rem;
+      white-space: nowrap;
+    }
     .small-btn {
-      padding: 0.4rem 0.7rem;
+      padding: 0.35rem 0.65rem;
       border-radius: 6px;
       border: 1px solid var(--glass-border);
       background: transparent;
@@ -62,16 +95,30 @@
       display: inline-flex;
       align-items: center;
       gap: 0.3rem;
-      padding: 0.4rem 0.8rem;
-      border-radius: 6px;
-      border: 1px dashed var(--glass-border);
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      border: 1px dashed rgba(99,102,241,0.5);
       background: transparent;
       color: var(--text-secondary);
       cursor: pointer;
-      font-size: 0.85rem;
+      font-size: 0.88rem;
       font-family: inherit;
+      transition: all 0.2s;
     }
-    .add-field-btn:hover { border-color: var(--primary-accent); color: var(--text-primary); }
+    .add-field-btn:hover { border-color: var(--primary-accent); color: var(--text-primary); background: rgba(99,102,241,0.1); }
+    .type-legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-top: 0.5rem;
+    }
+    .type-tag {
+      background: rgba(0,0,0,0.2);
+      border-radius: 6px;
+      padding: 0.25rem 0.6rem;
+      font-size: 0.78rem;
+      color: var(--text-secondary);
+    }
   </style>
 </head>
 <body>
@@ -105,16 +152,40 @@
       <section class="section glass-panel mt">
         <h2 class="section-title">➕ ジャンルを追加</h2>
         <div class="add-genre-form">
+
+          <!-- ジャンル名 -->
           <div class="form-group">
             <label>ジャンル名 <span style="color: var(--text-secondary); font-size: 0.8rem;">（絵文字も使えます: 例「🎵 音楽」）</span></label>
             <input type="text" id="new-genre-name" placeholder="例: 🎵 音楽" style="width: 100%; background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); border-radius: 8px; padding: 0.8rem 1rem; color: var(--text-primary); font-family: inherit; font-size: 0.95rem;">
           </div>
 
+          <!-- 問題・答えのラベルカスタマイズ -->
           <div class="form-group">
-            <label>入力フィールド定義 <span style="color: var(--text-secondary); font-size: 0.8rem;">（「問題」「答え」は自動追加）</span></label>
-            <div class="field-list" id="new-field-list">
-              <!-- 追加フィールドのみここに表示 -->
+            <label>「問題」「答え」のラベル名をカスタマイズ（省略可）</label>
+            <div class="base-labels-grid">
+              <div class="base-label-item">
+                <label>問題フィールドのラベル</label>
+                <input type="text" id="question-label-input" placeholder="例: 単語・フレーズ">
+              </div>
+              <div class="base-label-item">
+                <label>答えフィールドのラベル</label>
+                <input type="text" id="answer-label-input" placeholder="例: 意味（日本語）">
+              </div>
             </div>
+          </div>
+
+          <!-- 追加フィールド定義 -->
+          <div class="form-group">
+            <label>追加フィールド定義 <span style="color: var(--text-secondary); font-size: 0.8rem;">（問題・答え以外に追加したい項目）</span></label>
+            <div class="type-legend">
+              <span class="type-tag">📝 1行テキスト</span>
+              <span class="type-tag">📄 複数行テキスト</span>
+              <span class="type-tag">🔢 数値</span>
+              <span class="type-tag">🖼️ 画像(Ctrl+V)</span>
+              <span class="type-tag">🔗 URL</span>
+              <span class="type-tag">📅 日付</span>
+            </div>
+            <div class="field-list" id="new-field-list" style="margin-top: 0.75rem;"></div>
             <button type="button" class="add-field-btn" id="add-field-btn">＋ フィールドを追加</button>
           </div>
 

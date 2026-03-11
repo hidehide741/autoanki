@@ -238,51 +238,51 @@
         </div>
       </section>
 
-      <!-- ジャンル詳細エディタ -->
-      <section class="section glass-panel hidden" id="genre-editor">
-        <div class="genre-editor-grid">
-          <!-- 左カラム: 入力フォーム -->
-          <div class="editor-left">
-            <div class="section-header" style="border-bottom: 1px solid var(--glass-border); padding-bottom: 1rem; margin-bottom: 2rem;">
-              <h2 class="section-title" id="editor-title" style="margin:0; border:none; padding:0;">✏️ ジャンルを追加</h2>
-            </div>
-
-            <div style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.5rem;">1. ジャンル名</div>
-            <input type="text" id="genre-name" class="genre-name-input" placeholder="例: 英単語、プログラミング">
-
-            <!-- 2. 問題フィールド -->
-            <div class="field-section">
-              <div class="field-section-header">
-                <span class="field-section-label">2. 問題フィールド（おもて）</span>
-                <button type="button" class="btn btn-secondary btn-sm" id="add-q-field-btn">＋ 追加</button>
-              </div>
-              <div id="q-fields-container"></div>
-            </div>
-
-            <!-- 3. 回答フィールド -->
-            <div class="field-section">
-              <div class="field-section-header">
-                <span class="field-section-label">3. 回答フィールド（うら）</span>
-                <button type="button" class="btn btn-secondary btn-sm" id="add-a-field-btn">＋ 追加</button>
-              </div>
-              <div id="a-fields-container"></div>
-            </div>
-
-            <div class="editor-footer">
-              <button type="button" class="btn btn-secondary" id="cancel-btn">キャンセル</button>
-              <button type="button" class="primary-btn" id="save-genre-btn">保存する</button>
-            </div>
+      <!-- ジャンル詳細エディタ (2つの独立したパネル) -->
+      <div class="genre-editor-grid hidden" id="genre-editor">
+        <!-- 左カラム: 入力フォームパネル -->
+        <section class="section glass-panel editor-left" style="margin-bottom: 0; padding: 1.5rem 2rem;">
+          <div class="section-header" style="border-bottom: 1px solid var(--glass-border); padding-bottom: 1rem; margin-bottom: 2rem;">
+            <h2 class="section-title" id="editor-title" style="margin:0; border:none; padding:0;">✏️ ジャンルを追加</h2>
           </div>
 
-          <!-- 右カラム: プレビュー -->
-          <div class="editor-right" style="position: sticky; top: 2rem;">
-            <div class="field-section-label" style="margin-bottom: 1rem; color: var(--text-secondary);">プレビュー</div>
-            <div class="preview-box" id="preview-panel">
+          <div style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.5rem;">1. ジャンル名</div>
+          <input type="text" id="genre-name" class="genre-name-input" placeholder="例: 英単語、プログラミング">
+
+          <!-- 2. 問題フィールド -->
+          <div class="field-section">
+            <div class="field-section-header">
+              <span class="field-section-label">2. 問題フィールド（おもて）</span>
+              <button type="button" class="btn btn-secondary btn-sm" id="add-q-field-btn">＋ 追加</button>
+            </div>
+            <div id="q-fields-container"></div>
+          </div>
+
+          <!-- 3. 回答フィールド -->
+          <div class="field-section">
+            <div class="field-section-header">
+              <span class="field-section-label">3. 回答フィールド（うら）</span>
+              <button type="button" class="btn btn-secondary btn-sm" id="add-a-field-btn">＋ 追加</button>
+            </div>
+            <div id="a-fields-container"></div>
+          </div>
+
+          <div class="editor-footer">
+            <button type="button" class="btn btn-secondary" id="cancel-btn">キャンセル</button>
+            <button type="button" class="primary-btn" id="save-genre-btn">保存する</button>
+          </div>
+        </section>
+
+        <!-- 右カラム: プレビューパネル -->
+        <aside class="editor-right" style="position: sticky; top: 2rem;">
+          <section class="section glass-panel" style="margin-bottom: 0; padding: 1.5rem;">
+            <div class="field-section-label" style="margin-bottom: 1rem; color: var(--text-secondary);">リアルタイムプレビュー</div>
+            <div class="preview-box" id="preview-panel" style="background: rgba(0,0,0,0.25); border-color: rgba(255,255,255,0.05);">
               <p style="color: var(--text-secondary); font-size: 0.85rem; text-align: center;">フィールドを追加するとプレビューが表示されます</p>
             </div>
-          </div>
-        </div>
-      </section>
+          </section>
+        </aside>
+      </div>
     </main>
   </div>
 

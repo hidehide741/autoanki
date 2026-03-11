@@ -50,8 +50,10 @@ async function renderCardList() {
         <td style="max-width: 150px; font-size: 0.8rem; color: #a78bfa; word-break: break-all;">${card.image ? escapeHtml(card.image) : '-'}</td>
         <td style="max-width: 200px; white-space: pre-wrap;">${escapeHtml(card.answer)}</td>
         <td style="color: ${isDue ? '#10b981' : 'inherit'}">${isDue ? '🎯 Review Now!' : nextDate.toLocaleString()}</td>
-        <td>
-          <button class="danger-btn delete-btn" data-id="${card.id}">削除</button>
+        <td style="min-width: 200px; display: flex; gap: 0.5rem;">
+          <button class="nav-btn secondary outline action-btn view-btn" data-id="${card.id}" style="padding: 0.4rem 0.8rem; margin: 0; font-size: 0.85rem;" title="閲覧">👁️</button>
+          <button class="primary-btn action-btn edit-btn" data-id="${card.id}" style="padding: 0.4rem 0.8rem; font-size: 0.85rem;" title="編集">✏️</button>
+          <button class="danger-btn action-btn delete-btn" data-id="${card.id}" title="削除">🗑️</button>
         </td>
       `;
       el.cardsTbody.appendChild(tr);
@@ -60,7 +62,7 @@ async function renderCardList() {
     // 削除イベントのバインド
     document.querySelectorAll('.delete-btn').forEach(btn => {
       btn.addEventListener('click', async (e) => {
-        const id = e.target.getAttribute('data-id');
+        const id = e.target.closest('button').getAttribute('data-id');
         if (confirm('このカードを削除しますか？')) {
           await StorageManager.deleteCard(id);
           await renderStats();
@@ -68,21 +70,18 @@ async function renderCardList() {
         }
       });
     });
+
+    // アラート（閲覧・編集は今後の実装予定用）
+    document.querySelectorAll('.view-btn').forEach(btn => {
+      btn.addEventListener('click', () => alert('機能準備中：カードの詳細表示を予定しています'));
+    });
+    document.querySelectorAll('.edit-btn').forEach(btn => {
+      btn.addEventListener('click', () => alert('機能準備中：カードの編集画面（options.html）へ移動を予定しています'));
+    });
   }
 }
 
 function setupListeners() {
-  // デモデータ復元ボタン
-  el.resetDemoBtn.addEventListener('click', async () => {
-    if (confirm('現在のカードに追加して、デモデータを復元しますか？')) {
-      await chrome.storage.local.remove('cards');
-      await StorageManager.initDemoData();
-      await renderStats();
-      await renderCardList();
-      alert('デモデータを復元しました。');
-    }
-  });
-
   // サーバーシャットダウン
   const shutdownBtn = document.getElementById('shutdown-btn-list');
   if (shutdownBtn) {

@@ -16,7 +16,7 @@
     }
     .search-input {
       flex: 1;
-      min-width: 180px;
+      min-width: 200px;
       background: rgba(0,0,0,0.25);
       border: 1px solid var(--glass-border);
       border-radius: 8px;
@@ -41,82 +41,94 @@
       font-size: 0.82rem;
       color: var(--text-secondary);
       white-space: nowrap;
+      margin-left: auto;
     }
 
-    /* ===== カードグリッド ===== */
-    .card-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-      gap: 1rem;
-    }
-    .db-card {
-      background: rgba(0,0,0,0.2);
+    /* ===== テーブル ===== */
+    .db-table-wrap {
+      overflow-x: auto;
+      border-radius: 10px;
       border: 1px solid var(--glass-border);
-      border-radius: 14px;
-      padding: 1.1rem 1.2rem;
-      cursor: pointer;
-      transition: all 0.18s ease;
-      display: flex;
-      flex-direction: column;
-      gap: 0.5rem;
     }
-    .db-card:hover {
-      border-color: rgba(99,102,241,0.5);
-      transform: translateY(-2px);
-      box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+    .db-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.88rem;
     }
-    .db-card-genre {
-      font-size: 0.72rem;
-      color: #a78bfa;
-      background: rgba(99,102,241,0.15);
-      padding: 0.1rem 0.5rem;
-      border-radius: 4px;
-      display: inline-block;
-      align-self: flex-start;
+    .db-table thead {
+      background: rgba(0,0,0,0.3);
+      position: sticky;
+      top: 0;
+      z-index: 10;
     }
-    .db-card-question {
-      font-size: 0.95rem;
-      font-weight: 600;
-      color: var(--text-primary);
-      line-height: 1.45;
-      display: -webkit-box;
-      -webkit-line-clamp: 3;
-      -webkit-box-orient: vertical;
-      overflow: hidden;
-    }
-    .db-card-answer {
-      font-size: 0.82rem;
+    .db-table th {
+      padding: 0.75rem 1rem;
+      text-align: left;
       color: var(--text-secondary);
+      font-weight: 600;
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      white-space: nowrap;
+      cursor: pointer;
+      user-select: none;
+      border-bottom: 1px solid var(--glass-border);
+      transition: color 0.15s;
+    }
+    .db-table th:hover { color: var(--text-primary); }
+    .db-table th.sorted { color: #a78bfa; }
+    .sort-indicator { margin-left: 0.3rem; opacity: 0.5; font-size: 0.75rem; }
+    .db-table th.sorted .sort-indicator { opacity: 1; }
+    .db-table td {
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+      vertical-align: middle;
+      transition: background 0.1s;
+    }
+    .db-table tbody tr {
+      cursor: pointer;
+      transition: background 0.12s;
+    }
+    .db-table tbody tr:hover td {
+      background: rgba(99,102,241,0.07);
+    }
+    .db-table tbody tr:last-child td { border-bottom: none; }
+
+    .cell-question { max-width: 220px; }
+    .cell-answer   { max-width: 180px; }
+    .cell-text {
       display: -webkit-box;
       -webkit-line-clamp: 2;
       -webkit-box-orient: vertical;
       overflow: hidden;
+      line-height: 1.4;
     }
-    .db-card-thumb {
-      width: 100%;
-      max-height: 100px;
+    .genre-badge {
+      font-size: 0.72rem;
+      padding: 0.1rem 0.5rem;
+      background: rgba(99,102,241,0.15);
+      color: #a78bfa;
+      border-radius: 4px;
+      white-space: nowrap;
+    }
+    .due-badge {
+      font-size: 0.8rem;
+      white-space: nowrap;
+    }
+    .due-badge.now { color: #10b981; font-weight: 600; }
+    .due-badge.later { color: var(--text-secondary); }
+    .thumb-sm {
+      width: 42px;
+      height: 42px;
       object-fit: cover;
-      border-radius: 6px;
-      margin-top: 0.25rem;
+      border-radius: 4px;
+      border: 1px solid var(--glass-border);
     }
-    .db-card-footer {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-top: auto;
-      padding-top: 0.5rem;
-      border-top: 1px solid rgba(255,255,255,0.06);
+    .action-cell {
+      white-space: nowrap;
+      text-align: right;
     }
-    .db-card-due {
-      font-size: 0.75rem;
-    }
-    .db-card-due.due-now { color: #10b981; }
-    .db-card-due.due-later { color: var(--text-secondary); }
-    .db-card-actions {
-      display: flex;
-      gap: 0.4rem;
-    }
-    .icon-action-btn {
+    .icon-btn-sm {
       background: transparent;
       border: 1px solid var(--glass-border);
       color: var(--text-secondary);
@@ -125,43 +137,48 @@
       border-radius: 6px;
       cursor: pointer;
       font-size: 0.8rem;
-      display: flex; align-items: center; justify-content: center;
-      transition: all 0.15s;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.13s;
     }
-    .icon-action-btn:hover { background: rgba(255,255,255,0.1); color: var(--text-primary); }
-    .icon-action-btn.del:hover { background: rgba(239,68,68,0.15); border-color: #ef4444; color: #ef4444; }
+    .icon-btn-sm:hover { background: rgba(255,255,255,0.1); color: var(--text-primary); }
+    .icon-btn-sm.del:hover { background: rgba(239,68,68,0.15); border-color: #ef4444; color: #ef4444; }
 
     /* ===== ページネーション ===== */
     .pagination {
       display: flex;
-      justify-content: center;
+      justify-content: flex-end;
       align-items: center;
-      gap: 0.5rem;
-      margin-top: 1.5rem;
+      gap: 0.4rem;
+      margin-top: 1rem;
       flex-wrap: wrap;
     }
     .page-btn {
       background: rgba(0,0,0,0.2);
       border: 1px solid var(--glass-border);
       color: var(--text-secondary);
-      width: 34px;
-      height: 34px;
-      border-radius: 8px;
+      min-width: 32px;
+      height: 32px;
+      padding: 0 0.5rem;
+      border-radius: 6px;
       cursor: pointer;
       font-family: inherit;
-      font-size: 0.85rem;
-      transition: all 0.15s;
-      display: flex; align-items: center; justify-content: center;
+      font-size: 0.82rem;
+      transition: all 0.13s;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
     }
     .page-btn:hover { background: rgba(255,255,255,0.08); color: var(--text-primary); }
     .page-btn.active { background: var(--primary-accent); color: white; border-color: var(--primary-accent); }
     .page-btn:disabled { opacity: 0.35; cursor: default; }
 
-    /* ===== モーダル ===== */
+    /* ===== 詳細モーダル ===== */
     .modal-overlay {
       position: fixed;
       inset: 0;
-      background: rgba(0,0,0,0.6);
+      background: rgba(0,0,0,0.65);
       backdrop-filter: blur(4px);
       z-index: 1000;
       display: flex;
@@ -175,89 +192,59 @@
       border: 1px solid var(--glass-border);
       border-radius: 20px;
       padding: 2rem;
-      max-width: 600px;
+      max-width: 640px;
       width: 100%;
       max-height: 85vh;
       overflow-y: auto;
       position: relative;
-      animation: popIn 0.25s ease;
+      animation: popIn 0.22s ease;
     }
-    @keyframes popIn { from { opacity: 0; transform: scale(0.95) translateY(10px); } to { opacity: 1; transform: none; } }
+    @keyframes popIn { from { opacity: 0; transform: scale(0.95) translateY(8px); } to { opacity: 1; transform: none; } }
     .modal-close {
       position: absolute;
-      top: 1rem;
-      right: 1rem;
+      top: 1rem; right: 1rem;
       background: rgba(255,255,255,0.08);
       border: none;
       color: var(--text-secondary);
-      width: 32px; height: 32px;
+      width: 30px; height: 30px;
       border-radius: 50%;
       cursor: pointer;
-      font-size: 1rem;
+      font-size: 0.9rem;
       display: flex; align-items: center; justify-content: center;
       transition: all 0.15s;
     }
     .modal-close:hover { background: rgba(239,68,68,0.2); color: #ef4444; }
-    .modal-genre-badge {
-      font-size: 0.75rem;
-      color: #a78bfa;
-      background: rgba(99,102,241,0.15);
-      padding: 0.15rem 0.6rem;
-      border-radius: 4px;
-      display: inline-block;
-      margin-bottom: 0.75rem;
-    }
-    .modal-question {
-      font-size: 1.3rem;
-      font-weight: 700;
-      margin-bottom: 1rem;
-      line-height: 1.45;
-    }
-    .modal-images {
-      display: flex;
-      gap: 0.5rem;
-      flex-wrap: wrap;
-      margin-bottom: 1rem;
-    }
-    .modal-images img {
-      max-height: 160px;
-      max-width: 100%;
-      border-radius: 8px;
-      object-fit: contain;
-      border: 1px solid var(--glass-border);
-    }
-    .modal-divider { height: 1px; background: var(--glass-border); margin: 1rem 0; }
-    .modal-answer {
-      color: #a78bfa;
-      font-size: 1.05rem;
-      line-height: 1.6;
-      white-space: pre-wrap;
-    }
-    .modal-meta {
-      margin-top: 1.25rem;
-      display: flex;
-      gap: 1rem;
-      flex-wrap: wrap;
-      font-size: 0.8rem;
-      color: var(--text-secondary);
-    }
-    .modal-footer {
-      margin-top: 1.5rem;
-      display: flex;
+    .modal-label { font-size: 0.75rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.3rem; margin-top: 1.2rem; }
+    .modal-label:first-of-type { margin-top: 0; }
+    .modal-value { font-size: 0.98rem; line-height: 1.6; white-space: pre-wrap; color: var(--text-primary); }
+    .modal-answer-value { color: #a78bfa; }
+    .modal-images { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.5rem; }
+    .modal-images img { max-height: 140px; max-width: 100%; border-radius: 8px; object-fit: contain; border: 1px solid var(--glass-border); }
+    .modal-divider { height: 1px; background: var(--glass-border); margin: 1.2rem 0; }
+    .modal-stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
       gap: 0.75rem;
-      justify-content: flex-end;
+      margin-top: 1rem;
     }
+    .stat-cell {
+      background: rgba(0,0,0,0.2);
+      border-radius: 8px;
+      padding: 0.65rem 0.75rem;
+      text-align: center;
+    }
+    .stat-cell .stat-val { font-size: 1.1rem; font-weight: 700; color: #a78bfa; }
+    .stat-cell .stat-lbl { font-size: 0.72rem; color: var(--text-secondary); margin-top: 0.2rem; }
+    .modal-footer { margin-top: 1.5rem; display: flex; gap: 0.75rem; justify-content: flex-end; }
 
-    /* 空の状態 */
     .empty-state { text-align: center; padding: 3rem; color: var(--text-secondary); }
-    .empty-state .empty-icon { font-size: 3rem; margin-bottom: 1rem; }
+    .empty-icon { font-size: 2.5rem; margin-bottom: 0.75rem; }
   </style>
 </head>
 <body>
   <div class="background-animation"></div>
 
   <div class="layout">
-    <!-- サイドバー -->
     <aside class="sidebar glass-panel">
       <div class="logo">
         <h1>AutoAnki</h1>
@@ -272,7 +259,6 @@
       </div>
     </aside>
 
-    <!-- メインコンテンツ -->
     <main class="main-content">
       <section class="section glass-panel">
         <h2 class="section-title">📋 問題DB</h2>
@@ -283,39 +269,69 @@
           <select id="genre-filter" class="filter-select">
             <option value="">すべてのジャンル</option>
           </select>
-          <select id="sort-select" class="sort-select">
-            <option value="due">次回レビュー順</option>
-            <option value="question">問題名順</option>
-            <option value="newest">新しい順</option>
-          </select>
           <span class="count-badge" id="count-badge">読み込み中…</span>
         </div>
 
-        <!-- カードグリッド -->
-        <div class="card-grid" id="card-grid"></div>
+        <!-- テーブル -->
+        <div class="db-table-wrap" id="table-wrap">
+          <table class="db-table" id="db-table">
+            <thead>
+              <tr>
+                <th data-col="thumb" style="width:56px;cursor:default;"></th>
+                <th data-col="question">問題 <span class="sort-indicator">↕</span></th>
+                <th data-col="answer">答え <span class="sort-indicator">↕</span></th>
+                <th data-col="genre">ジャンル <span class="sort-indicator">↕</span></th>
+                <th data-col="nextReviewDate">次回復習 <span class="sort-indicator">↕</span></th>
+                <th data-col="interval">間隔 <span class="sort-indicator">↕</span></th>
+                <th style="cursor:default;text-align:right;">操作</th>
+              </tr>
+            </thead>
+            <tbody id="table-body"></tbody>
+          </table>
+        </div>
 
-        <!-- 空の状態 -->
         <div class="empty-state hidden" id="empty-state">
           <div class="empty-icon">📭</div>
           <p>カードが見つかりません</p>
         </div>
 
-        <!-- ページネーション -->
         <div class="pagination" id="pagination"></div>
       </section>
     </main>
   </div>
 
-  <!-- 閲覧モーダル -->
+  <!-- 詳細モーダル -->
   <div class="modal-overlay hidden" id="modal-overlay">
     <div class="modal-box">
       <button class="modal-close" id="modal-close">✕</button>
-      <div id="modal-genre-badge" class="modal-genre-badge"></div>
-      <div class="modal-question" id="modal-question"></div>
+
+      <div id="modal-genre-badge" style="font-size:0.75rem;color:#a78bfa;background:rgba(99,102,241,0.15);padding:0.1rem 0.6rem;border-radius:4px;display:inline-block;margin-bottom:0.75rem;"></div>
+
+      <p class="modal-label">問題</p>
+      <div class="modal-value" id="modal-question"></div>
+
       <div class="modal-images" id="modal-images"></div>
+
       <div class="modal-divider"></div>
-      <div class="modal-answer" id="modal-answer"></div>
-      <div class="modal-meta" id="modal-meta"></div>
+
+      <p class="modal-label">答え</p>
+      <div class="modal-value modal-answer-value" id="modal-answer"></div>
+
+      <div class="modal-stats">
+        <div class="stat-cell">
+          <div class="stat-val" id="stat-next">—</div>
+          <div class="stat-lbl">次回復習</div>
+        </div>
+        <div class="stat-cell">
+          <div class="stat-val" id="stat-interval">—</div>
+          <div class="stat-lbl">インターバル（日）</div>
+        </div>
+        <div class="stat-cell">
+          <div class="stat-val" id="stat-ease">—</div>
+          <div class="stat-lbl">難易度係数</div>
+        </div>
+      </div>
+
       <div class="modal-footer">
         <button class="danger-btn" id="modal-delete-btn">🗑️ 削除</button>
       </div>

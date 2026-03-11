@@ -160,7 +160,6 @@ function renderTable() {
     tr.innerHTML = `
       ${thumbHtml}
       <td class="cell-question"><div class="cell-text">${esc(card.question || '')}</div></td>
-      <td class="cell-answer"><div class="cell-text" style="color:var(--text-secondary);">${esc(card.answer || '')}</div></td>
       <td><span class="genre-badge">${esc(genreName(card.genre))}</span></td>
       <td><span class="due-badge ${isDue ? 'now' : 'later'}">${dueStr}</span></td>
       <td style="color:var(--text-secondary);">${card.interval ?? '—'} 日</td>

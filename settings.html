@@ -133,11 +133,14 @@
     /* ===== エディタ ===== */
     .genre-editor-grid {
       display: grid;
-      grid-template-columns: 1fr 260px;
+      grid-template-columns: 1fr 320px;
       gap: 2rem;
       align-items: start;
     }
-    @media (max-width: 640px) { .genre-editor-grid { grid-template-columns: 1fr; } }
+    @media (max-width: 800px) {
+      .genre-editor-grid { grid-template-columns: 1fr; }
+      .editor-right { position: static !important; }
+    }
 
     .field-section {
       background: rgba(0,0,0,0.2);
@@ -319,16 +322,17 @@
 
     <!-- ジャンル編集エディタ -->
     <div class="card hidden" id="genre-editor">
-      <div class="card-header" style="margin-bottom: 1rem;">
-        <div class="card-title" id="editor-title">✏️ ジャンルを追加</div>
-      </div>
-
-      <!-- 1. ジャンル名 -->
-      <div class="field-label-form">1. ジャンル名</div>
-      <input type="text" id="genre-name" class="genre-name-input" placeholder="例: 英単語、プログラミング">
-
       <div class="genre-editor-grid">
-        <div>
+        <!-- 左カラム: 入力フォーム -->
+        <div class="editor-left">
+          <div class="card-header" style="margin-bottom: 1.5rem; padding: 0; border: none;">
+            <div class="card-title" id="editor-title">✏️ ジャンルを追加</div>
+          </div>
+
+          <!-- 1. ジャンル名 -->
+          <div class="field-label-form">1. ジャンル名</div>
+          <input type="text" id="genre-name" class="genre-name-input" placeholder="例: 英単語、プログラミング">
+
           <!-- 2. 問題フィールド -->
           <div class="field-section">
             <div class="field-section-header">
@@ -346,20 +350,20 @@
             </div>
             <div id="a-fields-container"></div>
           </div>
+
+          <div class="editor-footer">
+            <button type="button" class="btn btn-secondary" id="cancel-btn">キャンセル</button>
+            <button type="button" class="btn btn-primary" id="save-genre-btn">保存する</button>
+          </div>
         </div>
 
-        <!-- プレビュー -->
-        <div>
+        <!-- 右カラム: プレビュー -->
+        <div class="editor-right" style="position: sticky; top: 1.5rem;">
           <div class="field-section-label" style="margin-bottom: 0.75rem;">プレビュー</div>
           <div class="preview-box" id="preview-panel">
             <p style="color: var(--text-secondary); font-size: 0.8rem; text-align: center;">フィールドを追加するとプレビューが表示されます</p>
           </div>
         </div>
-      </div>
-
-      <div class="editor-footer">
-        <button type="button" class="btn btn-secondary" id="cancel-btn">キャンセル</button>
-        <button type="button" class="btn btn-primary" id="save-genre-btn">保存する</button>
       </div>
     </div>
   </div>

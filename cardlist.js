@@ -9,7 +9,7 @@ let currentPage = 1;
 let sortCol   = 'nextReviewDate';
 let sortAsc   = true;
 let activeCardId = null;
-let pendingEditImages = []; // { file, previewUrl } or { url } ※既存画像
+let pendingEditImages = {}; // { [fieldKey]: [] } の形式
 const MAX_EDIT_IMAGES = 3;
 
 const el = {
@@ -280,7 +280,7 @@ function openEditModal(id) {
   const card = allCards.find(c => c.id === id);
   if (!card) return;
   activeCardId = id;
-  pendingEditImages = [];
+  pendingEditImages = {};
 
   const genreDef = genres.find(g => g.id === card.genre);
   const fields = genreDef?.fields || [
@@ -291,9 +291,34 @@ function openEditModal(id) {
   el.editFields.innerHTML = '';
 
   fields.forEach(field => {
-    // 画像フィールド → options.js と同じ paste UI
+    // image タイプは専用UI
     if (field.type === 'image') {
-      el.editFields.appendChild(buildEditImageUI(field.label, card.image));
+      if (!pendingEditImages[field.key]) pendingEditImages[field.key] = [];
+      
+      // 初回のみ既存画像をセット（もしあれば）
+      // 現在のDBは一括保存なので、便宜上最初の画像フィールドにすべて入れる
+      if (card.image && Object.keys(pendingEditImages).length === 1) {
+        try {
+          const urls = JSON.parse(card.image);
+          if (Array.isArray(urls)) {
+            urls.forEach(url => {
+              if (pendingEditImages[field.key].length < MAX_EDIT_IMAGES) {
+                pendingEditImages[field.key].push({ url });
+              }
+            });
+          } else { // 単一URLの場合
+            if (pendingEditImages[field.key].length < MAX_EDIT_IMAGES) {
+              pendingEditImages[field.key].push({ url: card.image });
+            }
+          }
+        } catch { // JSONパース失敗 (単一URLとみなす)
+          if (pendingEditImages[field.key].length < MAX_EDIT_IMAGES) {
+            pendingEditImages[field.key].push({ url: card.image });
+          }
+        }
+      }
+
+      el.editFields.appendChild(buildEditImagePasteUI(field));
       return;
     }
 
@@ -357,79 +382,79 @@ function openEditModal(id) {
   document.body.style.overflow = 'hidden';
 }
 
-function buildEditImageUI(labelText, existingImageJson) {
-  // 既存画像を pendingEditImages に読み込む
-  if (existingImageJson) {
-    try {
-      const parsed = JSON.parse(existingImageJson);
-      const urls = Array.isArray(parsed) ? parsed : [existingImageJson];
-      urls.forEach(url => pendingEditImages.push({ url }));
-    } catch {
-      pendingEditImages.push({ url: existingImageJson });
-    }
-  }
-
+function buildEditImagePasteUI(field) {
   const wrapper = document.createElement('div');
-  wrapper.className = 'form-group';
-  wrapper.id = 'edit-image-upload-area';
+  wrapper.className = 'form-group image-field-group';
+  wrapper.dataset.fieldKey = field.key;
+
   wrapper.innerHTML = `
-    <label>${labelText}（任意・最大3枚）<span style="color:var(--text-secondary);font-size:0.8rem;margin-left:0.5rem;">Ctrl+V でペースト</span></label>
-    <div id="edit-paste-zone" style="
+    <label>${field.label}（任意・最大3枚）<span style="color:var(--text-secondary);font-size:0.8rem;margin-left:0.5rem;">Ctrl+V でペースト</span></label>
+    <div class="edit-paste-zone" data-field-key="${field.key}" tabindex="0" style="
       border:2px dashed rgba(99,102,241,0.4);
       border-radius:12px;
       padding:1.5rem;
       text-align:center;
       color:var(--text-secondary);
       background:rgba(0,0,0,0.15);
+      outline:none;
+      cursor:pointer;
     ">
       <div style="font-size:2rem;margin-bottom:0.5rem;">🖼️</div>
       <div style="font-size:0.9rem;">Ctrl+V でスクリーンショットを貼り付け（最大3枚）</div>
     </div>
-    <div id="edit-image-previews" style="display:flex;gap:0.75rem;flex-wrap:wrap;margin-top:0.75rem;"></div>
+    <div class="edit-image-previews" data-field-key="${field.key}" style="display:flex;gap:0.75rem;flex-wrap:wrap;margin-top:0.75rem;"></div>
   `;
 
+  const pasteZone = wrapper.querySelector('.edit-paste-zone');
+  pasteZone.addEventListener('click', () => pasteZone.focus());
+
   // 一度描画した後に表示を更新
-  setTimeout(() => renderEditPreviews(), 0);
+  setTimeout(() => renderEditPreviews(field.key), 0);
   return wrapper;
 }
 
-function addEditImage(file) {
-  if (pendingEditImages.length >= MAX_EDIT_IMAGES) return;
+function addEditImage(fieldKey, file) {
+  if (!pendingEditImages[fieldKey]) pendingEditImages[fieldKey] = [];
+  if (pendingEditImages[fieldKey].length >= MAX_EDIT_IMAGES) return;
+  
   const url = URL.createObjectURL(file);
-  pendingEditImages.push({ file, previewUrl: url });
-  renderEditPreviews();
+  pendingEditImages[fieldKey].push({ file, previewUrl: url });
+  renderEditPreviews(fieldKey);
 }
 
-function renderEditPreviews() {
-  const container = document.getElementById('edit-image-previews');
+function renderEditPreviews(fieldKey) {
+  const container = document.querySelector(`.edit-image-previews[data-field-key="${fieldKey}"]`);
   if (!container) return;
   container.innerHTML = '';
 
-  pendingEditImages.forEach((img, i) => {
+  const list = pendingEditImages[fieldKey] || [];
+  list.forEach((img, i) => {
     const src = img.previewUrl || img.url || '';
     const wrap = document.createElement('div');
     wrap.style.cssText = 'position:relative;display:inline-block;';
     wrap.innerHTML = `
       <img src="${esc(src)}" style="max-height:120px;max-width:180px;border-radius:8px;border:1px solid rgba(255,255,255,0.2);object-fit:cover;display:block;">
-      <button type="button" data-idx="${i}" style="position:absolute;top:-8px;right:-8px;background:#ef4444;color:white;border:none;border-radius:50%;width:22px;height:22px;cursor:pointer;font-size:0.75rem;display:flex;align-items:center;justify-content:center;font-weight:bold;">✕</button>
+      <button type="button" class="remove-edit-img-btn" data-field-key="${fieldKey}" data-idx="${i}" style="position:absolute;top:-8px;right:-8px;background:#ef4444;color:white;border:none;border-radius:50%;width:22px;height:22px;cursor:pointer;font-size:0.75rem;display:flex;align-items:center;justify-content:center;font-weight:bold;">✕</button>
     `;
-    wrap.querySelector('button').addEventListener('click', e => {
-      pendingEditImages.splice(parseInt(e.target.dataset.idx, 10), 1);
-      renderEditPreviews();
+    wrap.querySelector('.remove-edit-img-btn').addEventListener('click', e => {
+      const fKey = e.target.dataset.fieldKey;
+      const idx = parseInt(e.target.dataset.idx, 10);
+      pendingEditImages[fKey].splice(idx, 1);
+      renderEditPreviews(fKey);
     });
     container.appendChild(wrap);
   });
 
   const count = document.createElement('div');
   count.style.cssText = 'font-size:0.8rem;color:var(--text-secondary);align-self:center;';
-  count.textContent = `${pendingEditImages.length} / ${MAX_EDIT_IMAGES} 枚`;
+  count.textContent = `${list.length} / ${MAX_EDIT_IMAGES} 枚`;
   container.appendChild(count);
 }
 
 function closeEditModal() {
   el.editOverlay.classList.add('hidden');
   document.body.style.overflow = '';
-  pendingEditImages = [];
+  pendingEditImages = {};
 }
 
 async function saveCardEdit() {
@@ -458,17 +483,24 @@ async function saveCardEdit() {
     ? baseAnswer + '\n\n---\n' + extraParts.join('\n\n')
     : baseAnswer;
 
-  // 画像アップロード（新規追加のみ）
-  let imageValue = card.image || null;
-  const newFiles = pendingEditImages.filter(img => img.file);
-  const existingUrls = pendingEditImages.filter(img => img.url && !img.file).map(img => img.url);
-  let uploadedUrls = [];
-  if (newFiles.length > 0) {
-    uploadedUrls = await Promise.all(newFiles.map(img => uploadImageToSupabase(img.file)));
+  // 画像アップロード（新規追加分を統合してアップロード）
+  let imageValue = null;
+  const allUrls = [];
+
+  for (const fieldKey in pendingEditImages) {
+    const imagesForField = pendingEditImages[fieldKey];
+    const newFiles = imagesForField.filter(img => img.file);
+    const existingUrls = imagesForField.filter(img => img.url && !img.file).map(img => img.url);
+    
+    let uploadedUrls = [];
+    if (newFiles.length > 0) {
+      uploadedUrls = await Promise.all(newFiles.map(img => uploadImageToSupabase(img.file)));
+    }
+    allUrls.push(...existingUrls, ...uploadedUrls);
   }
-  const allUrls = [...existingUrls, ...uploadedUrls];
+  
   if (allUrls.length > 0) imageValue = JSON.stringify(allUrls);
-  else if (pendingEditImages.length === 0) imageValue = null; // 全削除された
+  else imageValue = null; // 全削除された
 
   const updated = { ...card, question, answer: fullAnswer, image: imageValue };
   await StorageManager.saveCardUpdate(updated);
@@ -503,15 +535,26 @@ function setupListeners() {
   el.editClose.addEventListener('click', closeEditModal);
   el.editOverlay.addEventListener('click', e => { if (e.target === el.editOverlay) closeEditModal(); });
   el.editSaveBtn.addEventListener('click', saveCardEdit);
-  // Ctrl+V 画像ペースト → 編集モーダルが開いている時のみ反応
+  // Ctrl+V ペースト
   document.addEventListener('paste', e => {
     if (el.editOverlay.classList.contains('hidden')) return;
+    
+    const activeZone = document.activeElement.closest('.edit-paste-zone');
+    if (!activeZone) return;
+
+    const fieldKey = activeZone.dataset.fieldKey;
+    if (!fieldKey) return;
+
     const items = e.clipboardData?.items;
     if (!items) return;
     for (const item of items) {
       if (item.type.startsWith('image/')) {
         const file = item.getAsFile();
-        if (file) { e.preventDefault(); addEditImage(file); break; }
+        if (file) {
+          e.preventDefault();
+          addEditImage(fieldKey, file);
+          break;
+        }
       }
     }
   });

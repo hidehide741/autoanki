@@ -4,7 +4,7 @@ const MAX_IMAGES = 3;
 
 let selectedGenreId = 'other';
 let genres = [];
-let pendingImages = []; // { file, previewUrl } の配列（最大3枚）
+let pendingImages = {}; // { [fieldKey]: [{file, previewUrl}] } の形式
 
 const el = {
   genreTabs: document.getElementById('genre-tabs'),
@@ -40,7 +40,7 @@ function renderTabs() {
 
 function renderForm() {
   el.formFields.innerHTML = '';
-  pendingImages = [];
+  pendingImages = {};
 
   const genre = genres.find(g => g.id === selectedGenreId);
   if (!genre) return;
@@ -48,7 +48,8 @@ function renderForm() {
   genre.fields.forEach(field => {
     // image タイプはペーストUIを使う
     if (field.type === 'image') {
-      el.formFields.appendChild(buildImagePasteUI(field.label));
+      pendingImages[field.key] = [];
+      el.formFields.appendChild(buildImagePasteUI(field));
       return;
     }
 
@@ -80,54 +81,62 @@ function renderForm() {
   });
 }
 
-function buildImagePasteUI() {
+function buildImagePasteUI(field) {
   const wrapper = document.createElement('div');
-  wrapper.className = 'form-group';
-  wrapper.id = 'image-upload-area';
+  wrapper.className = 'form-group image-field-group';
+  wrapper.dataset.fieldKey = field.key;
 
   wrapper.innerHTML = `
-    <label>画像（任意・最大3枚）<span style="color: var(--text-secondary); font-size: 0.8rem; margin-left: 0.5rem;">Ctrl+V でベースト</span></label>
-    <div id="paste-zone" style="
+    <label>${field.label}（任意・最大3枚）<span style="color: var(--text-secondary); font-size: 0.8rem; margin-left: 0.5rem;">Ctrl+V でベースト</span></label>
+    <div class="paste-zone" data-field-key="${field.key}" tabindex="0" style="
       border: 2px dashed rgba(99,102,241,0.4);
       border-radius: 12px;
       padding: 1.5rem;
       text-align: center;
       color: var(--text-secondary);
       background: rgba(0,0,0,0.15);
+      outline: none;
+      cursor: pointer;
     ">
       <div style="font-size: 2rem; margin-bottom: 0.5rem;">🖼️</div>
       <div style="font-size: 0.9rem;">Ctrl+V でスクリーンショットを貼り付け（最大3枚）</div>
     </div>
-    <div id="image-previews" style="display: flex; gap: 0.75rem; flex-wrap: wrap; margin-top: 0.75rem;"></div>
+    <div class="image-previews" data-field-key="${field.key}" style="display: flex; gap: 0.75rem; flex-wrap: wrap; margin-top: 0.75rem;"></div>
   `;
+
+  // ペーストゾーンをクリックでフォーカス（Ctrl+Vしやすくするため）
+  const pasteZone = wrapper.querySelector('.paste-zone');
+  pasteZone.addEventListener('click', () => pasteZone.focus());
 
   return wrapper;
 }
 
-function addImage(file) {
-  if (pendingImages.length >= MAX_IMAGES) return;
+function addImage(fieldKey, file) {
+  if (!pendingImages[fieldKey]) pendingImages[fieldKey] = [];
+  if (pendingImages[fieldKey].length >= MAX_IMAGES) return;
+  
   const url = URL.createObjectURL(file);
-  const idx = pendingImages.length;
-  pendingImages.push({ file, previewUrl: url });
-  renderPreviews();
+  pendingImages[fieldKey].push({ file, previewUrl: url });
+  renderPreviews(fieldKey);
 }
 
-function renderPreviews() {
-  const container = document.getElementById('image-previews');
+function renderPreviews(fieldKey) {
+  const container = document.querySelector(`.image-previews[data-field-key="${fieldKey}"]`);
   if (!container) return;
   container.innerHTML = '';
 
-  pendingImages.forEach((img, i) => {
+  pendingImages[fieldKey].forEach((img, i) => {
     const wrap = document.createElement('div');
     wrap.style.cssText = 'position: relative; display: inline-block;';
     wrap.innerHTML = `
       <img src="${img.previewUrl}" alt="preview" style="max-height: 120px; max-width: 180px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); object-fit: cover; display: block;">
-      <button type="button" class="remove-img-btn" data-idx="${i}" style="position: absolute; top: -8px; right: -8px; background: #ef4444; color: white; border: none; border-radius: 50%; width: 22px; height: 22px; cursor: pointer; font-size: 0.75rem; display: flex; align-items: center; justify-content: center; font-weight: bold;">✕</button>
+      <button type="button" class="remove-img-btn" data-field-key="${fieldKey}" data-idx="${i}" style="position: absolute; top: -8px; right: -8px; background: #ef4444; color: white; border: none; border-radius: 50%; width: 22px; height: 22px; cursor: pointer; font-size: 0.75rem; display: flex; align-items: center; justify-content: center; font-weight: bold;">✕</button>
     `;
     wrap.querySelector('.remove-img-btn').addEventListener('click', (e) => {
+      const fKey = e.target.dataset.fieldKey;
       const idx = parseInt(e.target.dataset.idx, 10);
-      pendingImages.splice(idx, 1);
-      renderPreviews();
+      pendingImages[fKey].splice(idx, 1);
+      renderPreviews(fKey);
     });
     container.appendChild(wrap);
   });
@@ -135,13 +144,20 @@ function renderPreviews() {
   // アップロード上限表示
   const countEl = document.createElement('div');
   countEl.style.cssText = 'font-size: 0.8rem; color: var(--text-secondary); align-self: center;';
-  countEl.textContent = `${pendingImages.length} / ${MAX_IMAGES} 枚`;
+  countEl.textContent = `${pendingImages[fieldKey].length} / ${MAX_IMAGES} 枚`;
   container.appendChild(countEl);
 }
 
 function setupListeners() {
   // Ctrl+V でクリップボードから画像を取得
   document.addEventListener('paste', (e) => {
+    // アクティブな要素が paste-zone かどうかを確認
+    const activeZone = document.activeElement.closest('.paste-zone');
+    if (!activeZone) return;
+
+    const fieldKey = activeZone.dataset.fieldKey;
+    if (!fieldKey) return;
+
     const items = e.clipboardData?.items;
     if (!items) return;
     for (const item of items) {
@@ -149,7 +165,7 @@ function setupListeners() {
         const file = item.getAsFile();
         if (file) {
           e.preventDefault();
-          addImage(file);
+          addImage(fieldKey, file);
           break;
         }
       }
@@ -189,18 +205,29 @@ function setupListeners() {
       const fullAnswer = extraParts.length > 0 ? answer + '\n\n---\n' + extraParts.join('\n\n') : answer;
 
       // 画像をSupabaseにアップロード
+      // 全フィールドの画像を1つのJSON配列に集約
       let imageValue = null;
-      if (pendingImages.length > 0) {
-        const urls = await Promise.all(pendingImages.map(img => uploadImageToSupabase(img.file)));
-        imageValue = JSON.stringify(urls); // 配列をJSON文字列として保存
+      const allFiles = [];
+      const imageFieldKeys = Object.keys(pendingImages);
+      
+      for (const key of imageFieldKeys) {
+        pendingImages[key].forEach(img => {
+          allFiles.push(img.file);
+        });
+      }
+
+      if (allFiles.length > 0) {
+        const urls = await Promise.all(allFiles.map(file => uploadImageToSupabase(file)));
+        imageValue = JSON.stringify(urls);
       }
 
       await StorageManager.addCard(question, fullAnswer, imageValue, selectedGenreId);
 
       // フォームリセット
       el.addForm.querySelectorAll('input:not([type="file"]), textarea').forEach(i => i.value = '');
-      pendingImages = [];
-      renderPreviews();
+      pendingImages = {};
+      Object.keys(pendingImages).forEach(key => renderPreviews(key)); // 念のため初期化
+      renderForm(); // フォームを再生成してリセット
 
       el.successMsg.classList.remove('hidden');
       setTimeout(() => el.successMsg.classList.add('hidden'), 3000);

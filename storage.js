@@ -298,34 +298,56 @@ const StorageManager = {
   },
 
   // 今日復習すべきカードを1件取得（なければnull）
-  // 状態（クールダウン中か、単にカードがないか）を付与して返す
   async getDueCardOrStatus() {
-    const cards = await this.getAllCards();
-    if (cards.length === 0) return { status: 'empty', card: null };
+    const now = Date.now();
 
-    // ======= WEBアプリ版（URLからのアクセス）の場合 =======
-    // 忘却曲線の時間制限や15分クールダウンを完全に無視し、常に問題を出す（ランダム出題）
+    // ======= WEBアプリ版（URLからのアクセス）の場合：ランダム出題 =======
     if (!this.isExtension) {
-      const randomCard = cards[Math.floor(Math.random() * cards.length)];
-      return { status: 'due', card: randomCard };
+      try {
+        // 全件からランダムに1件取得するのはクエリで書くと複雑（かつ重い）ため、
+        // Web版では以前の「一旦全て取って計算」を許容するか、あるいは「最近追加されたものからランダム」などで妥協する。
+        // ここでは、直近に追加された100件からランダムに選ぶことで負荷を抑える。
+        const res = await fetch(`${API_BASE}?select=*&limit=100&order=id.desc`, { headers: HEADERS });
+        if (!res.ok) throw new Error('Fetch Error');
+        const cards = await res.json();
+        if (cards.length === 0) return { status: 'empty', card: null };
+        const mapped = cards.map(c => ({
+          id: c.id, question: c.question, answer: c.answer, image: c.image, genre: c.genre,
+          nextReviewDate: parseInt(c.next_review_date, 10), interval: parseInt(c.interval, 10),
+          repetition: c.repetition, easiness: c.easiness
+        }));
+        const randomCard = mapped[Math.floor(Math.random() * mapped.length)];
+        return { status: 'due', card: randomCard };
+      } catch (e) {
+        console.error(e);
+        return { status: 'empty', card: null };
+      }
     }
 
-    // ======= Chrome拡張機能（新しいタブ）の場合 =======
-    // 従来の厳しい制限（15分クールダウン ＆ Spaced Repetition）を適用する
+    // ======= Chrome拡張機能（Spaced Repetition）の場合 =======
     const lastAnswerTime = await LocalStore.get('lastAnswerTime');
-    const now = Date.now();
-    
-    // 15分（15 * 60 * 1000 ミリ秒）経過しているかチェック
     if (lastAnswerTime && (now - lastAnswerTime < 15 * 60 * 1000)) {
       return { status: 'cooldown', card: null };
     }
 
-    const dueCards = cards.filter(c => c.nextReviewDate <= now);
-    if (dueCards.length === 0) return { status: 'empty', card: null };
+    try {
+      // 期限切れ(next_review_date <= now) のものを1つだけ取得
+      const res = await fetch(`${API_BASE}?select=*&next_review_date=lte.${now}&order=next_review_date.asc&limit=1`, { headers: HEADERS });
+      if (!res.ok) throw new Error('Fetch Error');
+      const cards = await res.json();
+      if (cards.length === 0) return { status: 'empty', card: null };
 
-    // 最も古い（期限が過ぎている）ものを1つ返す
-    dueCards.sort((a, b) => a.nextReviewDate - b.nextReviewDate);
-    return { status: 'due', card: dueCards[0] };
+      const c = cards[0];
+      const card = {
+        id: c.id, question: c.question, answer: c.answer, image: c.image, genre: c.genre,
+        nextReviewDate: parseInt(c.next_review_date, 10), interval: parseInt(c.interval, 10),
+        repetition: c.repetition, easiness: c.easiness
+      };
+      return { status: 'due', card: card };
+    } catch (e) {
+      console.error(e);
+      return { status: 'empty', card: null };
+    }
   },
 
   // カードの学習結果を記録し、次の復習日時を計算 (SM-2類似アルゴリズム)

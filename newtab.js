@@ -2,15 +2,13 @@ import StorageManager from './storage.js';
 
 let currentCard = null;
 let answerShown = false;
+let isProcessing = false; // 二重送信防止用
 
 // DOM要素
 const el = {
   cardContainer: document.getElementById('card-container'),
   doneContainer: document.getElementById('done-container'),
-  questionText:  document.getElementById('question-text'),
-  questionImages: document.getElementById('question-images'),
   answerSection: document.getElementById('answer-section'),
-  answerText:    document.getElementById('answer-text'),
   showAnswerBtn: document.getElementById('show-answer-btn'),
   ratingButtons: document.querySelectorAll('.rating-btn'),
   skipBtn:       document.getElementById('skip-btn'),
@@ -21,8 +19,8 @@ const el = {
   progressBar:   document.getElementById('progress-bar'),
   doneToday:     document.getElementById('done-today'),
   doneStreak:    document.getElementById('done-streak'),
-  questionArea:  document.getElementById('question-area'), // 追加
-  answerArea:    document.getElementById('answer-area'),   // 追加
+  questionArea:  document.getElementById('question-area'),
+  answerArea:    document.getElementById('answer-area'),
 };
 
 // 初期化
@@ -34,57 +32,59 @@ async function init() {
 
 async function updateStats() {
   const stats = await StorageManager.getStats();
-  el.todayCount.textContent = stats.todayReviews;
-  el.streakCount.textContent = stats.streak;
+  if (el.todayCount)  el.todayCount.textContent = stats.todayReviews;
+  if (el.streakCount) el.streakCount.textContent = stats.streak;
 }
 
 // カードの読み込み
 async function loadNextCard() {
-  const result = await StorageManager.getDueCardOrStatus();
-  
-  if (result.status === 'cooldown') {
-    if (StorageManager.isExtension) {
-      // Chrome拡張として「新しいタブ」を開いた時だけ、無限ループ避けのためGoogleに安全退避
-      window.location.replace('https://www.google.com/');
-    } else {
-      // WEBアプリ版（URLから直接アクセス）の場合は、単にAll Done画面を見せるだけにする
-      showDoneMode();
-    }
-    return;
-  }
-
-  currentCard = result.card;
-  
-  if (currentCard) {
-    const genres = await StorageManager.getGenres();
-    const genreDef = genres.find(g => g.id === currentCard.genre);
+  try {
+    const result = await StorageManager.getDueCardOrStatus();
     
-    showQuestionMode(genreDef);
-    
-    // ジャンルバッジ
-    if (el.genreBadge) {
-      const genres = await StorageManager.getGenres();
-      const genreDef = genres.find(g => g.id === currentCard.genre);
-      if (genreDef) {
-        el.genreBadge.textContent = genreDef.name;
-        el.genreBadge.classList.remove('hidden');
+    if (result.status === 'cooldown') {
+      if (StorageManager.isExtension) {
+        window.location.replace('https://www.google.com/');
+        return;
       } else {
-        el.genreBadge.classList.add('hidden');
+        showDoneMode();
+        return;
       }
     }
 
-    // アニメーションのリセット
-    el.cardContainer.classList.remove('hidden', 'fade-out');
-    el.doneContainer.classList.add('hidden');
-    el.cardContainer.style.animation = 'none';
-    setTimeout(() => {
-      el.cardContainer.style.animation = 'floatIn 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards';
-    }, 10);
-  } else {
-    // 問題が0件（All Done画面）の場合も、これを表示した時刻を記録して
-    // 15分間は新しいタブを開いてもGoogleに行くように（クールダウン）設定する
-    await StorageManager.updateLastAnswerTime();
-    showDoneMode();
+    currentCard = result.card;
+    
+    if (currentCard) {
+      const genres = await StorageManager.getGenres();
+      const genreDef = genres.find(g => g.id === currentCard.genre);
+      
+      showQuestionMode(genreDef);
+      
+      // ジャンルバッジ
+      if (el.genreBadge) {
+        if (genreDef) {
+          el.genreBadge.textContent = genreDef.name;
+          el.genreBadge.classList.remove('hidden');
+        } else {
+          el.genreBadge.classList.add('hidden');
+        }
+      }
+
+      // アニメーションのリセット
+      el.cardContainer.classList.remove('hidden', 'fade-out');
+      el.doneContainer.classList.add('hidden');
+      el.cardContainer.style.animation = 'none';
+      setTimeout(() => {
+        el.cardContainer.style.animation = 'floatIn 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards';
+        isProcessing = false;
+      }, 10);
+    } else {
+      await StorageManager.updateLastAnswerTime();
+      showDoneMode();
+      isProcessing = false;
+    }
+  } catch (err) {
+    console.error('loadNextCard Failed:', err);
+    isProcessing = false;
   }
 }
 
@@ -107,7 +107,6 @@ function showQuestionMode(genreDef) {
     try {
       const parsed = JSON.parse(currentCard.image);
       images = Array.isArray(parsed) ? parsed : [{ url: currentCard.image, role: 'question' }];
-      // 古い形式（URL配列）のフォールバック
       if (images.length > 0 && typeof images[0] === 'string') {
         images = images.map(url => ({ url, role: 'question' }));
       }
@@ -135,7 +134,6 @@ function showQuestionMode(genreDef) {
         container.appendChild(grid);
       }
     } else {
-      // テキスト抽出
       let val = '';
       const searchStr = `[${field.label}]\n`;
       const startIdx = rawContent.indexOf(searchStr);
@@ -156,65 +154,56 @@ function showQuestionMode(genreDef) {
       }
     }
   });
-
-  // 進捗バーは questionText ではなく全体のアニメーションに合わせるため、ここでは操作しない
 }
 
 function showAnswerMode() {
+  if (isProcessing) return;
   answerShown = true;
   el.showAnswerBtn.classList.add('hidden');
   el.answerSection.classList.remove('hidden');
-  
-  // Ratingボタンのインターバル表示を更新 (擬似的にSM-2の次期間を表示)
-  // 今回は簡易的に静的表示でも良いが、より高品質にするならここで表示を上書きできる
 }
 
 function showDoneMode() {
   el.cardContainer.classList.add('hidden');
   el.doneContainer.classList.remove('hidden');
-  // done画面に統計を表示
   if (el.doneToday)  el.doneToday.textContent  = el.todayCount?.textContent  || '0';
   if (el.doneStreak) el.doneStreak.textContent = el.streakCount?.textContent || '0';
 }
 
-// 評価を送信して終了（または次のカードがあれば表示するが、「1回1問」のコンセプトにより完了画面へ移行）
 async function handleRating(quality) {
-  if (!currentCard) return;
+  if (!currentCard || isProcessing) return;
+  isProcessing = true;
 
-  // アニメーションでカードを退出させる
   el.cardContainer.classList.add('fade-out');
   
-  // データの更新
-  await StorageManager.updateCard(currentCard.id, parseInt(quality, 10));
-  await updateStats();
-  
-  // 1回1問で終わらせるため、アニメーション後に完了画面へ
-  // 逃げ道を作るため、次回開いたときのためにすぐ完了画面にしておく
-  setTimeout(() => {
-    showDoneMode();
-  }, 300);
+  try {
+    await StorageManager.updateCard(currentCard.id, parseInt(quality, 10));
+    await updateStats();
+    setTimeout(() => {
+      showDoneMode();
+    }, 300);
+  } catch (err) {
+    console.error('handleRating Failed:', err);
+    isProcessing = false;
+  }
 }
 
 function setupEventListeners() {
-  // 答えを見る
   el.showAnswerBtn.addEventListener('click', showAnswerMode);
 
-  // 評価ボタン
   el.ratingButtons.forEach(btn => {
     btn.addEventListener('click', (e) => {
-      const quality = btn.getAttribute('data-quality');
-      handleRating(quality);
+      handleRating(btn.getAttribute('data-quality'));
     });
   });
 
-  // スキップボタン（完了画面に移行し、15分出題制限をかける）
   el.skipBtn.addEventListener('click', async () => {
+    if (isProcessing) return;
+    isProcessing = true;
+    
     if(!el.cardContainer.classList.contains('hidden')) {
       el.cardContainer.classList.add('fade-out');
-      
-      // スキップ時もlastAnswerTimeを更新し、15分間出題しないようにする
       await StorageManager.updateLastAnswerTime();
-
       setTimeout(() => {
         showDoneMode();
       }, 300);
@@ -223,7 +212,6 @@ function setupEventListeners() {
     }
   });
 
-  // 設定ボタン
   el.optionsBtn.addEventListener('click', () => {
     if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.openOptionsPage) {
       chrome.runtime.openOptionsPage();
@@ -232,39 +220,30 @@ function setupEventListeners() {
     }
   });
 
-
-
-  // キーボードショートカット
-  document.addEventListener('keydown', async (e) => {
-    if (el.cardContainer.classList.contains('hidden')) return;
+  document.addEventListener('keydown', (e) => {
+    if (el.cardContainer.classList.contains('hidden') || isProcessing) return;
     
-    // スキップ
     if (e.key === 'Escape') {
-      // ※クリックイベント内でlastAnswerTimeは更新されるのでここではクリックのみトリガーする
       el.skipBtn.click();
       return;
     }
 
     if (!answerShown) {
-      // 答えを見る
       if (e.code === 'Space' || e.key === 'Enter') {
         e.preventDefault();
         showAnswerMode();
       }
     } else {
-      // キーボードで評価 (1, 2, 3, 4)
       if (['1', '2', '3', '4'].includes(e.key)) {
         e.preventDefault();
-        const mapping = { '1': '1', '2': '3', '3': '4', '4': '5' }; // 1:忘れた 2:難しい 3:普通 4:簡単
+        const mapping = { '1': '1', '2': '3', '3': '4', '4': '5' };
         handleRating(mapping[e.key]);
       } else if (e.code === 'Space' || e.key === 'Enter') {
-        // スペースキー連打の人は「普通(3)」で進める機能を付けると便利
         e.preventDefault();
-        handleRating('4'); // Good
+        handleRating('4');
       }
     }
   });
 }
 
-// 起動
 document.addEventListener('DOMContentLoaded', init);

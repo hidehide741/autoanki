@@ -175,7 +175,9 @@ function setupListeners() {
 
       const question = values['question'] || '';
       const answer = values['answer'] || '';
-      if (!question || !answer) return;
+      if (!question || !answer) {
+        throw new Error('問題と答えは必須です。');
+      }
 
       // 補足フィールドを answer に結合
       const extraParts = [];
@@ -203,6 +205,9 @@ function setupListeners() {
       el.successMsg.classList.remove('hidden');
       setTimeout(() => el.successMsg.classList.add('hidden'), 3000);
 
+    } catch (err) {
+      console.error(err);
+      alert('エラーが発生しました: ' + err.message);
     } finally {
       submitBtn.disabled = false;
       submitBtn.textContent = '追加する';

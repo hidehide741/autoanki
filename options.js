@@ -184,25 +184,30 @@ function setupListeners() {
 
       const values = {};
       genre.fields.forEach(field => {
-        if (field.key === 'image') return; // 画像は別処理
         const input = document.getElementById(`field-${field.key}`);
         if (input) values[field.key] = input.value.trim();
       });
 
-      const question = values['question'] || '';
-      const answer = values['answer'] || '';
-      if (!question || !answer) {
-        throw new Error('問題と答えは必須です。');
+      // 役割ごとに結合
+      const qParts = [];
+      const aParts = [];
+      
+      genre.fields.forEach(f => {
+        const val = values[f.key];
+        if (!val) return;
+        if (f.role === 'question') {
+          qParts.push(`[${f.label}]\n${val}`);
+        } else if (f.role === 'answer') {
+          aParts.push(`[${f.label}]\n${val}`);
+        }
+      });
+
+      if (qParts.length === 0 || aParts.length === 0) {
+        throw new Error('問題と答えをそれぞれ1つ以上入力してください。');
       }
 
-      // 補足フィールドを answer に結合
-      const extraParts = [];
-      genre.fields
-        .filter(f => !['question', 'answer', 'image'].includes(f.key))
-        .forEach(f => {
-          if (values[f.key]) extraParts.push(`[${f.label}]\n${values[f.key]}`);
-        });
-      const fullAnswer = extraParts.length > 0 ? answer + '\n\n---\n' + extraParts.join('\n\n') : answer;
+      const question = qParts.join('\n\n');
+      const fullAnswer = aParts.join('\n\n');
 
       // 画像をSupabaseにアップロード
       // 全フィールドの画像を1つのJSON配列に集約

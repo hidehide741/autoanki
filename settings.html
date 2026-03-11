@@ -6,260 +6,210 @@
   <link rel="stylesheet" href="options.css">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
-    .genre-list { 
-      display: grid; 
+    .main-container {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2rem;
+    }
+    .nav-links { display: flex; gap: 1.5rem; }
+    .nav-links a {
+      color: var(--text-secondary);
+      text-decoration: none;
+      font-weight: 500;
+      transition: color 0.2s;
+    }
+    .nav-links a:hover, .nav-links a.active { color: var(--primary-accent); }
+
+    .genre-list {
+      display: grid;
       grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-      gap: 1rem; 
+      gap: 1rem;
+      margin-top: 1rem;
     }
     .genre-item {
-      background: rgba(15, 23, 42, 0.4);
+      background: rgba(30, 41, 59, 0.4);
       border: 1px solid var(--glass-border);
       border-radius: 12px;
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-      height: fit-content;
+      padding: 1rem;
+      transition: all 0.2s;
+      cursor: default;
     }
-    .genre-item.expanded {
-      grid-column: 1 / -1;
-      background: rgba(15, 23, 42, 0.8);
-      border-color: rgba(99,102,241,0.5);
-      box-shadow: 0 8px 32px rgba(0,0,0,0.4);
-    }
+    .genre-item:hover { border-color: rgba(99, 102, 241, 0.4); }
+    .genre-item.default { border-left: 4px solid var(--primary-accent); }
     .genre-item-header {
-      padding: 1rem 1.2rem;
       display: flex;
-      align-items: center;
       justify-content: space-between;
-      cursor: pointer;
+      align-items: center;
+      margin-bottom: 0.5rem;
     }
-    .genre-item-header:hover {
-      background: rgba(255,255,255,0.05);
+    .genre-name { font-weight: 600; font-size: 1.1rem; }
+    .genre-fields-preview {
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      margin-bottom: 1rem;
     }
-    .genre-item-info { flex: 1; }
-    .genre-item-name { font-weight: 600; font-size: 1.05rem; display: flex; align-items: center; justify-content: space-between; }
-    .genre-item-name .toggle-icon { font-size: 0.8rem; color: var(--text-secondary); transition: transform 0.2s; }
-    .genre-item.expanded .toggle-icon { transform: rotate(180deg); }
-    
-    .genre-item-content {
-      padding: 0 1.2rem;
-      max-height: 0;
-      opacity: 0;
-      overflow: hidden;
-      transition: all 0.3s ease-in-out;
-      border-top: 1px solid transparent;
-    }
-    .genre-item.expanded .genre-item-content {
-      padding: 1rem 1.2rem;
-      max-height: 500px; /* 十分な高さを確保 */
-      opacity: 1;
-      border-top-color: var(--glass-border);
+    .genre-item-actions {
+      display: flex;
+      gap: 0.5rem;
+      justify-content: flex-end;
     }
 
-    .genre-fields-preview { font-size: 0.85rem; color: var(--text-secondary); line-height: 1.5; margin-bottom: 1rem; }
-    .genre-item-actions { display: flex; gap: 0.5rem; justify-content: flex-end; }
-
-    /* 追加フォーム */
-    .add-genre-form { display: flex; flex-direction: column; gap: 1.2rem; }
-    .base-fields-hint {
-      background: rgba(99,102,241,0.1);
-      border: 1px solid rgba(99,102,241,0.3);
-      border-radius: 8px;
-      padding: 0.8rem 1rem;
-      font-size: 0.85rem;
-      color: var(--text-secondary);
-    }
-    .base-labels-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 0.75rem;
-    }
-    .base-label-item label {
-      display: block;
-      font-size: 0.8rem;
-      color: var(--text-secondary);
-      margin-bottom: 0.3rem;
-    }
-    .base-label-item input {
-      width: 100%;
-      background: rgba(0,0,0,0.2);
+    /* エディタ */
+    .field-section {
+      background: rgba(0,0,0,0.15);
       border: 1px solid var(--glass-border);
-      border-radius: 6px;
-      padding: 0.5rem 0.75rem;
-      color: var(--text-primary);
-      font-family: inherit;
-      font-size: 0.9rem;
+      border-radius: 8px;
+      padding: 1.25rem;
+      margin-bottom: 1.5rem;
     }
-    .field-list { display: flex; flex-direction: column; gap: 0.6rem; margin-bottom: 0.5rem; }
+    .field-section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+    .field-section-title { font-weight: 600; color: #a78bfa; }
+    
     .field-row {
       display: grid;
-      grid-template-columns: 1fr 140px 100px auto auto;
-      gap: 0.4rem;
+      grid-template-columns: 1fr 140px 60px 40px;
+      gap: 0.75rem;
       align-items: center;
-      background: rgba(0,0,0,0.15);
-      border-radius: 8px;
-      padding: 0.5rem 0.75rem;
+      margin-bottom: 0.75rem;
+      background: rgba(255,255,255,0.03);
+      padding: 0.5rem;
+      border-radius: 6px;
     }
     .field-row input, .field-row select {
-      background: rgba(0,0,0,0.3);
-      border: 1px solid var(--glass-border);
-      border-radius: 6px;
-      padding: 0.45rem 0.7rem;
-      color: var(--text-primary);
-      font-family: inherit;
-      font-size: 0.88rem;
-    }
-    .required-check-wrap {
-      display: flex;
-      align-items: center;
-      gap: 0.3rem;
-      cursor: pointer;
-      color: var(--text-secondary);
-      font-size: 0.82rem;
-      white-space: nowrap;
-    }
-    .small-btn {
-      padding: 0.35rem 0.65rem;
-      border-radius: 6px;
-      border: 1px solid var(--glass-border);
-      background: transparent;
-      color: var(--text-secondary);
-      cursor: pointer;
-      font-size: 0.8rem;
-    }
-    .small-btn:hover { background: rgba(255,255,255,0.1); color: var(--text-primary); }
-    .add-field-btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.3rem;
-      padding: 0.5rem 1rem;
-      border-radius: 8px;
-      border: 1px dashed rgba(99,102,241,0.5);
-      background: transparent;
-      color: var(--text-secondary);
-      cursor: pointer;
-      font-size: 0.88rem;
-      font-family: inherit;
-      transition: all 0.2s;
-    }
-    .add-field-btn:hover { border-color: var(--primary-accent); color: var(--text-primary); background: rgba(99,102,241,0.1); }
-    .type-legend {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.5rem;
-      margin-top: 0.5rem;
-    }
-    .type-tag {
       background: rgba(0,0,0,0.2);
-      border-radius: 6px;
-      padding: 0.25rem 0.6rem;
-      font-size: 0.78rem;
-      color: var(--text-secondary);
+      border: 1px solid var(--glass-border);
+      color: white;
+      padding: 0.4rem 0.6rem;
+      border-radius: 4px;
+      font-family: inherit;
     }
+    .required-toggle {
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+      cursor: pointer;
+    }
+    .btn-remove {
+      background: transparent;
+      border: none;
+      color: #ef4444;
+      font-size: 1.25rem;
+      cursor: pointer;
+      opacity: 0.6;
+    }
+    .btn-remove:hover { opacity: 1; }
+
+    .editor-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 1rem;
+      margin-top: 2rem;
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 2rem;
+      left: 50%;
+      transform: translateX(-50%) translateY(100px);
+      background: #10b981;
+      color: white;
+      padding: 0.75rem 1.5rem;
+      border-radius: 30px;
+      box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3);
+      z-index: 1000;
+      transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+    .toast.show { transform: translateX(-50%) translateY(0); }
+    .toast.error { background: #ef4444; }
+
+    .mt { margin-top: 2rem; }
+    .hidden { display: none; }
   </style>
 </head>
 <body>
-  <div class="background-animation"></div>
-
-  <div class="layout">
-    <aside class="sidebar" id="app-sidebar">
-      <div class="logo">
-        <h1>AutoAnki</h1>
-        <p>Effortless Spaced Repetition</p>
-      </div>
-      <div class="nav-links">
-        <a href="dashboard.html" class="nav-btn">📊 ダッシュボード</a>
-        <a href="index.html"     class="nav-btn">▶️ 問題を解く</a>
-        <a href="options.html"   class="nav-btn">➕ 問題作成</a>
-        <a href="cardlist.html"  class="nav-btn">📋 問題DB</a>
-        <a href="settings.html"  class="nav-btn active">⚙️ 設定</a>
-      </div>
-    </aside>
+  <div class="main-container">
+    <header class="header">
+      <h1 class="logo-text">Auto<span>Anki</span></h1>
+      <nav class="nav-links">
+        <a href="cardlist.html">問題DB</a>
+        <a href="options.html">カード作成</a>
+        <a href="settings.html" class="active">設定</a>
+      </nav>
+    </header>
 
     <main class="main-content">
       <!-- ジャンル一覧 -->
-      <section class="section glass-panel">
-        <h2 class="section-title">⚙️ ジャンル管理</h2>
+      <section class="section glass-panel" id="genre-list-section">
+        <div class="header" style="margin-bottom: 1rem;">
+          <h2 class="section-title">⚙️ ジャンル管理</h2>
+          <button class="btn btn-primary" id="add-genre-btn">+ 新規ジャンル</button>
+        </div>
         <div class="genre-list" id="genre-list">
           <!-- JSで動的生成 -->
         </div>
       </section>
 
-      <!-- ジャンル追加/編集フォーム -->
-      <section class="section glass-panel mt" id="add-genre-section">
-        <h2 class="section-title" id="form-section-title">➕ ジャンルを追加</h2>
-        <div class="add-genre-form">
+      <!-- ジャンル詳細エディタ -->
+      <section class="section glass-panel hidden" id="genre-editor">
+        <h2 class="section-title">✏️ ジャンルの編集</h2>
+        
+        <div class="input-group" style="margin-bottom: 2rem;">
+          <label for="genre-name" style="display: block; margin-bottom: 0.5rem; color: var(--text-secondary);">1. ジャンル名</label>
+          <input type="text" id="genre-name" placeholder="例: 英単語、プログラミング" style="width: 100%; max-width: 400px; background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); border-radius: 8px; padding: 0.8rem 1rem; color: var(--text-primary); font-family: inherit; font-size: 1rem;">
+        </div>
 
-          <!-- ジャンル名 -->
-          <div class="form-group">
-            <label>ジャンル名 <span style="color: var(--text-secondary); font-size: 0.8rem;">（絵文字も使えます: 例「🎵 音楽」）</span></label>
-            <input type="text" id="new-genre-name" placeholder="例: 🎵 音楽" style="width: 100%; background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); border-radius: 8px; padding: 0.8rem 1rem; color: var(--text-primary); font-family: inherit; font-size: 0.95rem;">
-          </div>
-
-          <!-- フィールド定義 -->
-          <div class="form-group">
-            <label>フィールド定義 <span style="color: var(--text-secondary); font-size: 0.8rem;">（カードの表・裏に表示する内容）</span></label>
-            <div class="type-legend">
-              <span class="type-tag">📝 1行テキスト</span>
-              <span class="type-tag">📄 複数行テキスト</span>
-              <span class="type-tag">🔢 数値</span>
-              <span class="type-tag">🖼️ 画像(Ctrl+V)</span>
-              <span class="type-tag">🔗 URL</span>
-              <span class="type-tag">📅 日付</span>
+        <div style="display: grid; grid-template-columns: 1fr 300px; gap: 2rem;">
+          <div>
+            <!-- 問題フィールド群 -->
+            <div class="field-section">
+              <div class="field-section-header">
+                <span class="field-section-title">2. 問題フィールド定義 (おもて)</span>
+                <button type="button" class="btn btn-secondary btn-sm" id="add-q-field-btn">+ 追加</button>
+              </div>
+              <div class="fields-list" id="q-fields-container"></div>
             </div>
-            <div class="field-list" id="new-field-list" style="margin-top: 0.75rem;"></div>
-            <button type="button" class="add-field-btn" id="add-field-btn">＋ フィールドを追加</button>
-          </div>
 
-          <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
-            <button id="save-genre-btn" class="primary-btn">保存する</button>
-            <button id="cancel-edit-btn" class="hidden" style="
-              background: transparent;
-              border: 1px solid var(--glass-border);
-              color: var(--text-secondary);
-              padding: 0.8rem 1.5rem;
-              border-radius: 8px;
-              font-size: 1rem;
-              cursor: pointer;
-              transition: all 0.2s;
-            ">キャンセル</button>
-            <span id="save-msg" class="success-msg hidden">✅ 保存しました！</span>
-          </div>
-
-          <!-- リアルタイムプレビュー -->
-          <div id="preview-section" style="
-            margin-top: 1rem;
-            border-top: 1px solid var(--glass-border);
-            padding-top: 1.2rem;
-          ">
-            <div style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem;">
-              👁️ <span>フォームプレビュー</span>
-              <span id="preview-genre-name-badge" style="
-                background: rgba(99,102,241,0.2);
-                color: #a78bfa;
-                font-size: 0.75rem;
-                padding: 0.1rem 0.5rem;
-                border-radius: 4px;
-                display: none;
-              "></span>
-            </div>
-            <div id="preview-form" style="
-              background: rgba(0,0,0,0.25);
-              border: 1px solid var(--glass-border);
-              border-radius: 12px;
-              padding: 1.25rem 1.5rem;
-              display: flex;
-              flex-direction: column;
-              gap: 1rem;
-            ">
-              <p style="color: var(--text-secondary); font-size: 0.88rem; text-align: center;">ジャンル名やフィールドを入力するとここにプレビューが表示されます</p>
+            <!-- 答えフィールド群 -->
+            <div class="field-section">
+              <div class="field-section-header">
+                <span class="field-section-title">3. 答えフィールド定義 (うら)</span>
+                <button type="button" class="btn btn-secondary btn-sm" id="add-a-field-btn">+ 追加</button>
+              </div>
+              <div class="fields-list" id="a-fields-container"></div>
             </div>
           </div>
 
+          <!-- プレビュー -->
+          <div id="preview-section">
+            <div id="preview-panel"></div>
+          </div>
+        </div>
+
+        <div class="editor-actions">
+          <button type="button" class="btn btn-secondary" id="cancel-btn">キャンセル</button>
+          <button type="button" class="btn btn-primary" id="save-genre-btn">保存する</button>
+        </div>
+      </section>
     </main>
   </div>
 
-  <script type="module" src="settings.js"></script>
+  <div id="toast" class="toast">
+    <span id="toast-msg">保存しました</span>
+  </div>
+
+  <script src="settings.js" type="module"></script>
 </body>
 </html>

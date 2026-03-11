@@ -7,114 +7,148 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     /* ===== ツールバー ===== */
-    /* ===== カードグリッド ===== */
-    .card-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-      gap: 1.25rem;
-      margin-bottom: 2rem;
-    }
-    .card-item {
-      background: rgba(30, 41, 59, 0.5);
-      backdrop-filter: blur(10px);
-      border: 1px solid var(--glass-border);
-      border-radius: 16px;
-      padding: 1.25rem;
-      cursor: pointer;
-      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    .toolbar {
       display: flex;
-      flex-direction: column;
-      position: relative;
-      overflow: hidden;
-    }
-    .card-item:hover {
-      transform: translateY(-4px);
-      background: rgba(30, 41, 59, 0.8);
-      border-color: rgba(99, 102, 241, 0.4);
-      box-shadow: 0 12px 20px -8px rgba(0, 0, 0, 0.5);
-    }
-    .card-thumb {
-      width: 100%;
-      height: 140px;
-      object-fit: cover;
-      border-radius: 8px;
-      margin-bottom: 1rem;
-      background: rgba(0,0,0,0.2);
-    }
-    .card-genre {
-      font-size: 0.7rem;
-      font-weight: 600;
-      color: #a78bfa;
-      background: rgba(99, 102, 241, 0.15);
-      padding: 0.2rem 0.6rem;
-      border-radius: 20px;
-      align-self: flex-start;
-      margin-bottom: 0.75rem;
-    }
-    .card-question {
-      font-size: 1rem;
-      font-weight: 600;
-      line-height: 1.5;
-      margin-bottom: 0.75rem;
-      display: -webkit-box;
-      -webkit-line-clamp: 2;
-      -webkit-box-orient: vertical;
-      overflow: hidden;
-      color: var(--text-primary);
-    }
-    .card-answer-preview {
-      font-size: 0.88rem;
-      color: var(--text-secondary);
-      line-height: 1.4;
-      margin-bottom: 1rem;
-      display: -webkit-box;
-      -webkit-line-clamp: 2;
-      -webkit-box-orient: vertical;
-      overflow: hidden;
-    }
-    .card-footer {
-      margin-top: auto;
-      display: flex;
-      justify-content: space-between;
+      gap: 0.75rem;
+      flex-wrap: wrap;
       align-items: center;
-      padding-top: 0.75rem;
-      border-top: 1px solid rgba(255,255,255,0.05);
+      margin-bottom: 1.25rem;
     }
-    .card-due {
-      font-size: 0.75rem;
+    .search-input {
+      flex: 1;
+      min-width: 200px;
+      background: rgba(0,0,0,0.25);
+      border: 1px solid var(--glass-border);
+      border-radius: 8px;
+      padding: 0.55rem 1rem;
+      color: var(--text-primary);
+      font-family: inherit;
+      font-size: 0.9rem;
+      transition: border-color 0.2s;
+    }
+    .search-input:focus { outline: none; border-color: var(--primary-accent); }
+    .filter-select {
+      background: rgba(0,0,0,0.25);
+      border: 1px solid var(--glass-border);
+      border-radius: 8px;
+      padding: 0.55rem 0.85rem;
+      color: var(--text-primary);
+      font-family: inherit;
+      font-size: 0.88rem;
+      cursor: pointer;
+    }
+    .count-badge {
+      font-size: 0.82rem;
       color: var(--text-secondary);
+      white-space: nowrap;
+      margin-left: auto;
     }
-    .card-due.urgent { color: #10b981; font-weight: 600; }
-    
-    .card-actions {
-      display: flex;
-      gap: 0.5rem;
-      opacity: 0;
-      transition: opacity 0.2s;
-    }
-    .card-item:hover .card-actions { opacity: 1; }
 
+    /* ===== テーブル ===== */
+    .db-table-wrap {
+      overflow-x: auto;
+      border-radius: 10px;
+      border: 1px solid var(--glass-border);
+    }
+    .db-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.88rem;
+    }
+    .db-table thead {
+      background: rgba(0,0,0,0.3);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    .db-table th {
+      padding: 0.75rem 1rem;
+      text-align: left;
+      color: var(--text-secondary);
+      font-weight: 600;
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      white-space: nowrap;
+      cursor: pointer;
+      user-select: none;
+      border-bottom: 1px solid var(--glass-border);
+      transition: color 0.15s;
+    }
+    .db-table th:hover { color: var(--text-primary); }
+    .db-table th.sorted { color: #a78bfa; }
+    .sort-indicator { margin-left: 0.3rem; opacity: 0.5; font-size: 0.75rem; }
+    .db-table th.sorted .sort-indicator { opacity: 1; }
+    .db-table td {
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+      vertical-align: middle;
+      transition: background 0.1s;
+    }
+    .db-table tbody tr {
+      cursor: pointer;
+      transition: background 0.12s;
+    }
+    .db-table tbody tr:hover td {
+      background: rgba(99,102,241,0.07);
+    }
+    .db-table tbody tr:last-child td { border-bottom: none; }
+
+    .cell-question { max-width: 220px; }
+    .cell-answer   { max-width: 180px; }
+    .cell-text {
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      line-height: 1.4;
+    }
+    .genre-badge {
+      font-size: 0.72rem;
+      padding: 0.1rem 0.5rem;
+      background: rgba(99,102,241,0.15);
+      color: #a78bfa;
+      border-radius: 4px;
+      white-space: nowrap;
+    }
+    .due-badge {
+      font-size: 0.8rem;
+      white-space: nowrap;
+    }
+    .due-badge.now { color: #10b981; font-weight: 600; }
+    .due-badge.later { color: var(--text-secondary); }
+    .thumb-sm {
+      width: 42px;
+      height: 42px;
+      object-fit: cover;
+      border-radius: 4px;
+      border: 1px solid var(--glass-border);
+    }
+    .action-cell {
+      white-space: nowrap;
+      text-align: right;
+    }
     .icon-btn-sm {
-      background: rgba(255,255,255,0.05);
+      background: transparent;
       border: 1px solid var(--glass-border);
       color: var(--text-secondary);
-      width: 32px;
-      height: 32px;
-      border-radius: 8px;
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
       cursor: pointer;
-      display: flex;
+      font-size: 0.8rem;
+      display: inline-flex;
       align-items: center;
       justify-content: center;
-      transition: all 0.2s;
+      transition: all 0.13s;
     }
-    .icon-btn-sm:hover {
-      background: var(--primary-accent);
-      color: white;
-      border-color: var(--primary-accent);
-    }
+    .icon-btn-sm:hover { background: rgba(255,255,255,0.1); color: var(--text-primary); }
+    .icon-btn-sm.del:hover { background: rgba(239,68,68,0.15); border-color: #ef4444; color: #ef4444; }
     .icon-btn-sm.del:hover {
-      background: #ef4444;
+      background: rgba(239,68,68,0.15);
       border-color: #ef4444;
+      color: #ef4444;
     }
 
     /* ===== ページネーション ===== */
@@ -235,34 +269,35 @@
       <section class="section glass-panel">
         <h2 class="section-title">📋 問題DB</h2>
 
+        <!-- ツールバー -->
         <div class="toolbar">
-          <div style="flex: 1; display: flex; gap: 0.75rem;">
-            <input type="text" id="search-input" class="search-input" style="flex: 1;" placeholder="🔍 問題・答えを検索…">
-            <select id="genre-filter" class="filter-select">
-              <option value="">すべてのジャンル</option>
-            </select>
-          </div>
-          <div style="display: flex; gap: 0.75rem; align-items: center; margin-left: auto;">
-            <select id="sort-select" class="sort-select">
-              <option value="nextReviewDate-asc">復習が近い順</option>
-              <option value="nextReviewDate-desc">復習が遠い順</option>
-              <option value="created_at-desc">追加日が新しい順</option>
-              <option value="created_at-asc">追加日が古い順</option>
-              <option value="question-asc">五十音 (あ→ん)</option>
-            </select>
-            <span class="count-badge" id="count-badge">読み込み中…</span>
-          </div>
+          <input type="text" id="search-input" class="search-input" placeholder="🔍 問題・答えを検索…">
+          <select id="genre-filter" class="filter-select">
+            <option value="">すべてのジャンル</option>
+          </select>
+          <span class="count-badge" id="count-badge">読み込み中…</span>
         </div>
 
-        <!-- ツールバー下部：件数など（必要に応じて） -->
-
-        <!-- カードグリッド -->
-        <div id="card-grid" class="card-grid"></div>
+        <!-- テーブル -->
+        <div class="db-table-wrap" id="table-wrap">
+          <table class="db-table" id="db-table">
+            <thead>
+              <tr>
+                <th data-col="thumb" style="width:56px;cursor:default;"></th>
+                <th data-col="question">問題 <span class="sort-indicator">↕</span></th>
+                <th data-col="genre">ジャンル <span class="sort-indicator">↕</span></th>
+                <th data-col="nextReviewDate">次回復習 <span class="sort-indicator">↕</span></th>
+                <th data-col="interval">間隔 <span class="sort-indicator">↕</span></th>
+                <th style="cursor:default;text-align:right;">操作</th>
+              </tr>
+            </thead>
+            <tbody id="table-body"></tbody>
+          </table>
+        </div>
 
         <div class="empty-state hidden" id="empty-state">
           <div class="empty-icon">📭</div>
-          <p>条件に合うカードが見つかりませんでした</p>
-          <p style="font-size: 0.85rem; margin-top: 0.5rem; opacity: 0.7;">検索キーワードやフィルターを変えてみてください</p>
+          <p>カードが見つかりません</p>
         </div>
 
         <div class="pagination" id="pagination"></div>

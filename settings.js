@@ -1,36 +1,85 @@
 import StorageManager from './storage.js';
 
 let genres = [];
-let editingIndex = null; // null = 新規追加, number = 編集中のインデックス
+let editingGenreId = null; // null = 新規追加, string = 編集中のジャンルID
 
 const el = {
-  genreList: document.getElementById('genre-list'),
-  newGenreName: document.getElementById('new-genre-name'),
-  newFieldList: document.getElementById('new-field-list'),
-  addFieldBtn: document.getElementById('add-field-btn'),
+  genreList:    document.getElementById('genre-list'),
+  addGenreBtn:  document.getElementById('add-genre-btn'),
+  genreEditor:  document.getElementById('genre-editor'),
+  genreName:    document.getElementById('genre-name'),
+  qContainer:   document.getElementById('q-fields-container'),
+  aContainer:   document.getElementById('a-fields-container'),
+  addQBtn:      document.getElementById('add-q-field-btn'),
+  addABtn:      document.getElementById('add-a-field-btn'),
+  cancelBtn:    document.getElementById('cancel-btn'),
   saveGenreBtn: document.getElementById('save-genre-btn'),
-  saveMsg: document.getElementById('save-msg'),
-  formTitle: document.getElementById('form-section-title'),
-  cancelEditBtn: document.getElementById('cancel-edit-btn')
+  previewPanel: document.getElementById('preview-panel'),
+  toast:        document.getElementById('toast'),
+  toastMsg:     document.getElementById('toast-msg')
 };
 
 async function init() {
   genres = await StorageManager.getGenres();
   renderGenreList();
 
-  el.addFieldBtn.addEventListener('click', () => { addFieldRow(); renderPreview(); });
+  el.addGenreBtn.addEventListener('click', () => {
+    editingGenreId = null;
+    el.genreName.value = '';
+    el.qContainer.innerHTML = '';
+    el.aContainer.innerHTML = '';
+    addFieldRow(el.qContainer, '問題', 'textarea', true);
+    addFieldRow(el.aContainer, '答え', 'textarea', true);
+    openEditor();
+  });
+  el.addQBtn.addEventListener('click', () => addFieldRow(el.qContainer));
+  el.addABtn.addEventListener('click', () => addFieldRow(el.aContainer));
   el.saveGenreBtn.addEventListener('click', saveGenre);
-  el.cancelEditBtn?.addEventListener('click', cancelEdit);
+  el.cancelBtn.addEventListener('click', closeEditor);
 
-  el.newGenreName.addEventListener('input', renderPreview);
-  
-  addDefaultFields();
+  el.genreName.addEventListener('input', renderPreview);
+  el.qContainer.addEventListener('input', renderPreview);
+  el.qContainer.addEventListener('change', renderPreview);
+  el.aContainer.addEventListener('input', renderPreview);
+  el.aContainer.addEventListener('change', renderPreview);
 }
 
-function addDefaultFields() {
-  el.newFieldList.innerHTML = '';
-  addFieldRow('問題', 'textarea', true, 'question');
-  addFieldRow('答え', 'textarea', true, 'answer');
+function esc(str) {
+  return String(str).replace(/[&<>"'`]/g, function (s) {
+    return {
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#39;',
+      '`': '&#x60;'
+    }[s];
+  });
+}
+
+function showToast(message, isError = false) {
+  el.toastMsg.textContent = message;
+  el.toast.className = `toast ${isError ? 'error' : ''}`;
+  el.toast.classList.add('show');
+  setTimeout(() => {
+    el.toast.classList.remove('show');
+  }, 3000);
+}
+
+function openEditor() {
+  el.genreEditor.classList.remove('hidden');
+  el.addGenreBtn.classList.add('hidden');
+  document.getElementById('genre-list-section').classList.add('hidden');
+  renderPreview();
+  el.genreEditor.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function closeEditor() {
+  editingGenreId = null;
+  el.genreEditor.classList.add('hidden');
+  el.addGenreBtn.classList.remove('hidden');
+  document.getElementById('genre-list-section').classList.remove('hidden');
+  renderGenreList();
 }
 
 function renderGenreList() {
@@ -43,7 +92,7 @@ function renderGenreList() {
   genres.forEach((genre, index) => {
     const item = document.createElement('div');
     item.className = 'genre-item';
-    if (editingIndex === index) item.style.border = '1px solid rgba(99,102,241,0.6)';
+    if (editingGenreId === genre.id) item.style.border = '1px solid rgba(99,102,241,0.6)';
 
     const typeIcon = { text: '📝', textarea: '📄', number: '🔢', image: '🖼️', url: '🔗', date: '📅' };
     const fieldsPreview = genre.fields.map(f => `${typeIcon[f.type] || '📝'} ${f.label}`).join('  ');
@@ -60,7 +109,7 @@ function renderGenreList() {
       <div class="genre-item-content">
         <div class="genre-fields-preview">${fieldsPreview}</div>
         <div class="genre-item-actions">
-          <button class="edit-genre-btn" data-index="${index}" style="
+          <button class="edit-genre-btn" data-id="${genre.id}" style="
             background: rgba(99,102,241,0.15);
             border: 1px solid rgba(99,102,241,0.4);
             color: #a78bfa;
@@ -70,7 +119,7 @@ function renderGenreList() {
             cursor: pointer;
             transition: all 0.2s;
           ">✏️ 編集</button>
-          <button class="danger-btn delete-genre-btn" data-index="${index}">🗑️ 削除</button>
+          <button class="danger-btn delete-genre-btn" data-id="${genre.id}">🗑️ 削除</button>
         </div>
       </div>
     `;
@@ -93,8 +142,8 @@ function renderGenreList() {
   document.querySelectorAll('.edit-genre-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation(); // アコーディオンの開閉を防止
-      const index = parseInt(e.target.closest('button').dataset.index, 10);
-      loadGenreIntoForm(index);
+      const id = e.target.closest('button').dataset.id;
+      loadGenreIntoForm(id);
     });
   });
 
@@ -102,12 +151,12 @@ function renderGenreList() {
   document.querySelectorAll('.delete-genre-btn').forEach(btn => {
     btn.addEventListener('click', async (e) => {
       e.stopPropagation(); // アコーディオンの開閉を防止
-      const index = parseInt(e.target.closest('button').dataset.index, 10);
-      if (confirm(`「${genres[index].name}」を削除しますか？\nカードは削除されませんが、ジャンル表示は「その他」になります。`)) {
-        if (editingIndex === index) cancelEdit();
-        const genreId = genres[index].id;
-        genres.splice(index, 1);
-        await StorageManager.deleteGenre(genreId);
+      const id = e.target.closest('button').dataset.id;
+      const genreToDelete = genres.find(g => g.id === id);
+      if (genreToDelete && confirm(`「${genreToDelete.name}」を削除しますか？\nカードは削除されませんが、ジャンル表示は「その他」になります。`)) {
+        if (editingGenreId === id) closeEditor();
+        genres = genres.filter(g => g.id !== id);
+        await StorageManager.deleteGenre(id);
         await StorageManager.saveGenres(genres);
         renderGenreList();
       }
@@ -116,194 +165,154 @@ function renderGenreList() {
 }
 
 // 既存ジャンルをフォームに読み込む
-function loadGenreIntoForm(index) {
-  const genre = genres[index];
-  editingIndex = index;
+function loadGenreIntoForm(id) {
+  const genre = genres.find(g => g.id === id);
+  if (!genre) return;
 
-  // フォームタイトル変更
-  if (el.formTitle) {
-    el.formTitle.textContent = `✏️ ジャンルを編集：${genre.name}`;
-  }
+  editingGenreId = id;
 
   // ジャンル名
-  el.newGenreName.value = genre.name;
+  el.genreName.value = genre.name;
 
   // フィールドをクリアして再構築
-  el.newFieldList.innerHTML = '';
-  genre.fields.forEach(field => {
-    addFieldRow(field.label, field.type, field.required, field.key);
+  el.qContainer.innerHTML = '';
+  el.aContainer.innerHTML = '';
+
+  genre.fields.forEach(f => {
+    const container = f.role === 'question' ? el.qContainer : el.aContainer;
+    addFieldRow(container, f.label, f.type, f.required);
   });
 
   // 保存ボタン・キャンセルボタンの切り替え
   el.saveGenreBtn.textContent = '更新する';
-  el.cancelEditBtn?.classList.remove('hidden');
-
-  // フォームまでスクロール
-  document.getElementById('add-genre-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-
-  renderGenreList(); // ハイライト更新
-  renderPreview();
-}
-
-function cancelEdit() {
-  editingIndex = null;
-  el.newGenreName.value = '';
-  addDefaultFields();
-  el.saveGenreBtn.textContent = '保存する';
-  el.cancelEditBtn?.classList.add('hidden');
-  if (el.formTitle) el.formTitle.textContent = '➕ ジャンルを追加';
-  renderGenreList();
-  renderPreview();
+  openEditor(); // エディタを開く
 }
 
 // フィールドタイプの選択肢
 const FIELD_TYPES = [
-  { value: 'text',     label: '📝 1行テキスト' },
-  { value: 'textarea', label: '📄 複数行テキスト' },
-  { value: 'number',   label: '🔢 数値' },
-  { value: 'image',    label: '🖼️ 画像（Ctrl+V）' },
-  { value: 'url',      label: '🔗 URL' },
-  { value: 'date',     label: '📅 日付' }
+  { val: 'text',     label: '📝 1行テキスト' },
+  { val: 'textarea', label: '📄 複数行テキスト' },
+  { val: 'number',   label: '🔢 数値' },
+  { val: 'image',    label: '🖼️ 画像（Ctrl+V）' },
+  { val: 'url',      label: '🔗 URL' },
+  { val: 'date',     label: '📅 日付' }
 ];
 
-const FIELD_ROLES = [
-  { value: 'normal',   label: '通常' },
-  { value: 'question', label: '✅ 問題' },
-  { value: 'answer',   label: '💡 答え' }
-];
-
-function addFieldRow(defaultLabel = '', defaultType = 'text', defaultRequired = false, fieldKey = null, defaultRole = 'normal') {
+function addFieldRow(container, label = '', type = 'textarea', required = false) {
   const row = document.createElement('div');
   row.className = 'field-row';
-  const id = fieldKey || ('custom_' + Date.now() + Math.random().toString(36).substring(2));
-  row.dataset.key = id;
-
-  const typeOptions = FIELD_TYPES.map(t =>
-    `<option value="${t.value}" ${t.value === defaultType ? 'selected' : ''}>${t.label}</option>`
-  ).join('');
-
-  const roleOptions = FIELD_ROLES.map(r =>
-    `<option value="${r.value}" ${r.value === (fieldKey === 'question' ? 'question' : fieldKey === 'answer' ? 'answer' : defaultRole) ? 'selected' : ''}>${r.label}</option>`
-  ).join('');
-
   row.innerHTML = `
-    <input type="text" value="${defaultLabel}" placeholder="フィールド名" class="field-label-input" data-id="${id}">
-    <select class="field-type-select" data-id="${id}" title="フィールドの種類">
-      ${typeOptions}
+    <input type="text" class="field-label" value="${esc(label)}" placeholder="ラベル名 (例: 例文)">
+    <select class="field-type">
+      ${FIELD_TYPES.map(t => `<option value="${t.val}" ${t.val === type ? 'selected' : ''}>${t.label}</option>`).join('')}
     </select>
-    <select class="field-role-select" data-id="${id}" title="役割（問題/答えなど）">
-      ${roleOptions}
-    </select>
-    <label class="required-check-wrap" title="必須フィールドにする">
-      <input type="checkbox" class="field-required-check" data-id="${id}" ${defaultRequired ? 'checked' : ''}>
-      <span style="font-size: 0.8rem; white-space: nowrap;">必須</span>
-    </label>
-    <button type="button" class="small-btn remove-field-btn" data-id="${id}">✕</button>
+    <label class="required-toggle"><input type="checkbox" class="field-required" ${required ? 'checked' : ''}>必須</label>
+    <button type="button" class="btn-remove" title="削除">×</button>
   `;
-  el.newFieldList.appendChild(row);
 
-  row.querySelector('.remove-field-btn').addEventListener('click', () => { row.remove(); renderPreview(); });
-  row.querySelector('.field-label-input').addEventListener('input', renderPreview);
-  row.querySelector('.field-type-select').addEventListener('change', renderPreview);
-  row.querySelector('.field-role-select').addEventListener('change', renderPreview);
-  row.querySelector('.field-required-check').addEventListener('change', renderPreview);
+  row.querySelector('.btn-remove').addEventListener('click', () => {
+    row.remove();
+    renderPreview();
+  });
+  row.querySelectorAll('input, select').forEach(input => {
+    input.addEventListener('change', renderPreview);
+    if (input.tagName === 'INPUT') input.addEventListener('input', renderPreview);
+  });
+
+  container.appendChild(row);
+  renderPreview();
 }
 
 async function saveGenre() {
-  const name = el.newGenreName.value.trim();
-  if (!name) { alert('ジャンル名を入力してください'); return; }
+  const name = el.genreName.value.trim();
+  if (!name) { showToast('ジャンル名を入力してください', true); return; }
 
   const fields = [];
-  let foundQuestion = false;
-  let foundAnswer = false;
 
-  el.newFieldList.querySelectorAll('.field-row').forEach((row, i) => {
-    const label    = row.querySelector('.field-label-input')?.value.trim();
-    const type     = row.querySelector('.field-type-select')?.value || 'text';
-    const required = row.querySelector('.field-required-check')?.checked || false;
-    const role     = row.querySelector('.field-role-select')?.value || 'normal';
-    let key = row.dataset.key;
+  let qIdx = 0;
+  let aIdx = 0;
+  const collectFields = (container, role) => {
+    container.querySelectorAll('.field-row').forEach(row => {
+      const label = row.querySelector('.field-label').value.trim();
+      const type  = row.querySelector('.field-type').value;
+      const req   = row.querySelector('.field-required').checked;
+      if (!label) return;
+      const key = (role === 'question' ? `q_${qIdx++}` : `a_${aIdx++}`);
+      fields.push({ key, label, type, required: req, role });
+    });
+  };
 
-    // 役割に基づいてキーを上書き
-    if (role === 'question') {
-      key = 'question';
-      foundQuestion = true;
-    } else if (role === 'answer') {
-      key = 'answer';
-      foundAnswer = true;
-    }
+  collectFields(el.qContainer, 'question');
+  collectFields(el.aContainer, 'answer');
 
-    if (label) fields.push({ key, label, type, required, role });
-  });
-
-  if (!foundQuestion || !foundAnswer) {
-    alert('「問題」と「答え」の役割を持つフィールドを、それぞれ少なくとも1つ設定してください。');
+  if (fields.filter(f => f.role === 'question').length === 0) {
+    showToast('問題フィールドを1つ以上追加してください', true);
+    return;
+  }
+  if (fields.filter(f => f.role === 'answer').length === 0) {
+    showToast('答えフィールドを1つ以上追加してください', true);
     return;
   }
 
-  // question / answer のキーを持つフィールドが消されていたら、先頭の2つを強制設定
-  if (!foundQuestion && fields.length > 0) fields[0].key = 'question';
-  if (!foundAnswer && fields.length > 1) {
-    const possibleAnswers = fields.filter(f => f.key !== 'question');
-    if (possibleAnswers.length > 0) possibleAnswers[0].key = 'answer';
-  }
-
-  if (editingIndex !== null) {
+  if (editingGenreId) {
     // 編集モード：既存ジャンルを上書き（id・isDefault は保持）
-    genres[editingIndex] = {
-      ...genres[editingIndex],
-      name,
-      fields
-    };
+    const index = genres.findIndex(g => g.id === editingGenreId);
+    if (index !== -1) {
+      genres[index] = {
+        ...genres[index],
+        name,
+        fields
+      };
+    }
   } else {
     // 新規追加
     genres.push({ id: 'custom_' + Date.now(), name, isDefault: false, fields });
   }
 
   await StorageManager.saveGenres(genres);
-  cancelEdit(); // フォームリセット
-
-  el.saveMsg.classList.remove('hidden');
-  setTimeout(() => el.saveMsg.classList.add('hidden'), 3000);
+  closeEditor(); // フォームリセット
+  showToast('ジャンルを保存しました！');
 }
 
 // リアルタイムプレビュー
 function renderPreview() {
-  const previewForm = document.getElementById('preview-form');
-  const badge = document.getElementById('preview-genre-name-badge');
-  if (!previewForm) return;
+  const collectPreviewData = (container) => {
+    const data = [];
+    container.querySelectorAll('.field-row').forEach(row => {
+      const label = row.querySelector('.field-label').value.trim() || 'ラベル';
+      const type  = row.querySelector('.field-type').value;
+      data.push({ label, type });
+    });
+    return data;
+  };
 
-  const name = el.newGenreName.value.trim();
-  const allFields = [];
-  el.newFieldList.querySelectorAll('.field-row').forEach(row => {
-    const label    = row.querySelector('.field-label-input')?.value.trim();
-    const type     = row.querySelector('.field-type-select')?.value || 'text';
-    const required = row.querySelector('.field-required-check')?.checked || false;
-    if (label) allFields.push({ label, type, required });
-  });
+  const qData = collectPreviewData(el.qContainer);
+  const aData = collectPreviewData(el.aContainer);
 
-  if (allFields.length === 0) {
-    previewForm.innerHTML = '<p style="color: var(--text-secondary); font-size: 0.88rem; text-align: center;">ジャンル名やフィールドを入力するとここにプレビューが表示されます</p>';
-    return;
-  }
-
-  const typeIcon = { text: '📝', textarea: '📄', number: '🔢', image: '🖼️', url: '🔗', date: '📅' };
-  const inputStyle = `width:100%;background:rgba(0,0,0,0.2);border:1px solid rgba(255,255,255,0.1);border-radius:6px;padding:0.5rem 0.75rem;color:rgba(255,255,255,0.4);font-family:inherit;font-size:0.88rem;pointer-events:none;`;
-
-  previewForm.innerHTML = allFields.map(field => `
-    <div>
-      <div style="font-size:0.82rem;color:var(--text-secondary);margin-bottom:0.3rem;">
-        ${typeIcon[field.type] || '📝'} ${field.label}
-        ${field.required ? '<span style="background:rgba(99,102,241,0.3);color:#a78bfa;font-size:0.7rem;padding:0.1rem 0.4rem;border-radius:3px;margin-left:0.3rem;">必須</span>' : ''}
+  const renderSection = (title, data) => {
+    if (data.length === 0) return '';
+    return `
+      <div style="margin-bottom: 1rem;">
+        <div style="font-size: 0.75rem; color: #a78bfa; font-weight: 600; margin-bottom: 0.5rem; text-transform: uppercase; border-bottom: 1px solid rgba(167,139,250,0.2);">${title}</div>
+        ${data.map(f => `
+          <div style="margin-bottom: 0.75rem;">
+            <p style="font-size: 0.7rem; color: var(--text-secondary); margin-bottom: 0.25rem;">${esc(f.label)}</p>
+            ${f.type === 'textarea' ? `<div style="height: 48px; background: rgba(0,0,0,0.2); border: 1px dashed var(--glass-border); border-radius: 4px;"></div>` : 
+              f.type === 'image' ? `<div style="height: 80px; background: rgba(0,0,0,0.2); border: 1px dashed var(--glass-border); border-radius: 4px; display: flex; align-items: center; justify-content: center; color: var(--text-secondary); font-size: 0.8rem;">🖼️ 画像エリア</div>` :
+              `<div style="height: 32px; background: rgba(0,0,0,0.2); border: 1px dashed var(--glass-border); border-radius: 4px;"></div>`}
+          </div>
+        `).join('')}
       </div>
-      ${field.type === 'textarea'
-        ? `<textarea rows="2" disabled placeholder="${field.label}を入力…" style="${inputStyle}"></textarea>`
-        : field.type === 'image'
-        ? `<div style="${inputStyle}border:2px dashed rgba(99,102,241,0.3);border-radius:8px;padding:1rem;text-align:center;color:rgba(255,255,255,0.3);">🖼️ Ctrl+V で画像を貼り付け（最大3枚）</div>`
-        : `<input type="${field.type === 'url' ? 'url' : field.type === 'number' ? 'number' : field.type === 'date' ? 'date' : 'text'}" disabled placeholder="${field.label}を入力…" style="${inputStyle}">`
-      }
+    `;
+  };
+
+  el.previewPanel.innerHTML = `
+    <div style="color: var(--text-secondary); font-size: 0.75rem; margin-bottom: 0.75rem; font-weight: 500;">カードプレビュー</div>
+    <div style="background: rgba(15,23,42,0.6); padding: 1.25rem; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1);">
+      ${renderSection('FRONT (問題)', qData)}
+      ${renderSection('BACK (回答)', aData)}
     </div>
-  `).join('');
+  `;
 }
 
 document.addEventListener('DOMContentLoaded', init);

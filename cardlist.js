@@ -15,9 +15,9 @@ const MAX_EDIT_IMAGES = 3;
 const el = {
   searchInput:  document.getElementById('search-input'),
   genreFilter:  document.getElementById('genre-filter'),
-  sortSelect:   document.getElementById('sort-select'),
   countBadge:   document.getElementById('count-badge'),
-  cardGrid:     document.getElementById('card-grid'),
+  tableWrap:    document.getElementById('table-wrap'),
+  tableBody:    document.getElementById('table-body'),
   emptyState:   document.getElementById('empty-state'),
   pagination:   document.getElementById('pagination'),
 
@@ -48,6 +48,7 @@ async function init() {
     StorageManager.getGenres()
   ]);
   buildGenreFilter();
+  setupHeaderSort();
   setupListeners();
   applyAndRender();
 }
@@ -63,7 +64,37 @@ function buildGenreFilter() {
   });
 }
 
-// ヘッダーソートは廃止（グリッド化したため）
+// ===== カラムヘッダーのソートクリック =====
+function setupHeaderSort() {
+  document.querySelectorAll('.db-table th[data-col]').forEach(th => {
+    const col = th.dataset.col;
+    if (!col || col === 'thumb') return;
+    th.addEventListener('click', () => {
+      if (sortCol === col) {
+        sortAsc = !sortAsc;
+      } else {
+        sortCol = col;
+        sortAsc = true;
+      }
+      updateSortUI();
+      applyAndRender();
+    });
+  });
+}
+
+function updateSortUI() {
+  document.querySelectorAll('.db-table th[data-col]').forEach(th => {
+    th.classList.remove('sorted');
+    const ind = th.querySelector('.sort-indicator');
+    if (ind) ind.textContent = '↕';
+  });
+  const active = document.querySelector(`.db-table th[data-col="${sortCol}"]`);
+  if (active) {
+    active.classList.add('sorted');
+    const ind = active.querySelector('.sort-indicator');
+    if (ind) ind.textContent = sortAsc ? '↑' : '↓';
+  }
+}
 
 // ===== フィルター → ソート → 描画 =====
 function applyAndRender() {
@@ -77,101 +108,98 @@ function applyAndRender() {
   });
 
   // ソート
-  const [col, dir] = (el.sortSelect.value || 'nextReviewDate-asc').split('-');
-  const asc = dir === 'asc';
-
   filtered.sort((a, b) => {
-    let av = a[col], bv = b[col];
-    if (col === 'nextReviewDate') { av = av || Infinity; bv = bv || Infinity; }
-    if (col === 'question' || col === 'answer') {
+    let av = a[sortCol], bv = b[sortCol];
+    if (sortCol === 'nextReviewDate') { av = av || Infinity; bv = bv || Infinity; }
+    if (sortCol === 'question' || sortCol === 'answer') {
       av = (av || '').toLowerCase();
       bv = (bv || '').toLowerCase();
     }
-    if (col === 'genre') {
+    if (sortCol === 'genre') {
       av = genreName(a.genre); bv = genreName(b.genre);
     }
-    if (col === 'created_at') {
-      av = a.created_at || 0; bv = b.created_at || 0;
-    }
-    if (av < bv) return asc ? -1 : 1;
-    if (av > bv) return asc ?  1 : -1;
+    if (av < bv) return sortAsc ? -1 : 1;
+    if (av > bv) return sortAsc ?  1 : -1;
     return 0;
   });
 
   currentPage = 1;
-  renderGrid();
+  renderTable();
   renderPagination();
 
   const totalLabel = query || genre ? `検索結果: ${filtered.length} 件 / 全 ${allCards.length} 件` : `全 ${allCards.length} 件`;
   el.countBadge.textContent = totalLabel;
 }
 
-// ===== カードグリッド描画 =====
-function renderGrid() {
-  el.cardGrid.innerHTML = '';
+// ===== テーブル描画 =====
+function renderTable() {
+  el.tableBody.innerHTML = '';
   const start = (currentPage - 1) * PAGE_SIZE;
   const page  = filtered.slice(start, start + PAGE_SIZE);
 
   if (page.length === 0) {
-    el.cardGrid.classList.add('hidden');
+    el.tableWrap.classList.add('hidden');
     el.emptyState.classList.remove('hidden');
     return;
   }
   el.emptyState.classList.add('hidden');
-  el.cardGrid.classList.remove('hidden');
+  el.tableWrap.classList.remove('hidden');
 
   page.forEach(card => {
     const isDue = card.nextReviewDate && card.nextReviewDate <= Date.now();
     const dueStr = card.nextReviewDate
       ? (isDue ? '🎯 今すぐ' : fmtDate(card.nextReviewDate))
-      : '未設定';
+      : '—';
 
-    // サムネイルURL抽出
-    let thumbUrl = '';
+    // サムネイル
+    let thumbHtml = '<td><span style="color:var(--text-secondary);font-size:0.75rem;">—</span></td>';
     if (card.image) {
       try {
         const imgs = JSON.parse(card.image);
-        thumbUrl = Array.isArray(imgs) ? imgs[0] : card.image;
+        const url = Array.isArray(imgs) ? imgs[0] : card.image;
+        if (url) thumbHtml = `<td><img src="${esc(url)}" class="thumb-sm" alt="img" loading="lazy"></td>`;
       } catch {
-        if (card.image.startsWith('http')) thumbUrl = card.image;
+        if (card.image.startsWith('http')) {
+          thumbHtml = `<td><img src="${esc(card.image)}" class="thumb-sm" alt="img" loading="lazy"></td>`;
+        }
       }
     }
 
-    const item = document.createElement('div');
-    item.className = 'card-item';
-    item.dataset.id = card.id;
-
-    // 回答プレビュー（改行コードをスペースに）
-    const answerPreview = (card.answer || '').split('\n---')[0].replace(/\n/g, ' ').trim();
-
-    item.innerHTML = `
-      ${thumbUrl ? `<img src="${esc(thumbUrl)}" class="card-thumb" alt="thumbnail" loading="lazy">` : ''}
-      <div class="card-genre">${esc(genreName(card.genre))}</div>
-      <div class="card-question">${esc(card.question || '無題の問題')}</div>
-      <div class="card-answer-preview">${esc(answerPreview || '（回答なし）')}</div>
-      <div class="card-footer">
-        <div class="card-due ${isDue ? 'urgent' : ''}">復習: ${dueStr}</div>
-        <div class="card-actions">
-          <button class="icon-btn-sm edit-btn" data-id="${card.id}" title="編集">✏️</button>
-          <button class="icon-btn-sm del delete-btn" data-id="${card.id}" title="削除">🗑️</button>
-        </div>
-      </div>
+    const tr = document.createElement('tr');
+    tr.dataset.id = card.id;
+    // テーブル用にはラベルを除去して最初の1行程度を表示
+    const displayQ = (card.question || '').replace(/^\[.*?\]\n/, '').split('\n')[0];
+    tr.innerHTML = `
+      ${thumbHtml}
+      <td class="cell-question"><div class="cell-text" title="${esc(card.question)}">${esc(displayQ || '無題')}</div></td>
+      <td><span class="genre-badge">${esc(genreName(card.genre))}</span></td>
+      <td><span class="due-badge ${isDue ? 'now' : 'later'}">${dueStr}</span></td>
+      <td style="color:var(--text-secondary);">${fmtInterval(card.interval)}</td>
+      <td class="action-cell">
+        <button class="icon-btn-sm view-btn" data-id="${card.id}" title="閲覧">👁️</button>
+        <button class="icon-btn-sm edit-btn" data-id="${card.id}" title="編集">✏️</button>
+        <button class="icon-btn-sm del delete-btn" data-id="${card.id}" title="削除">🗑️</button>
+      </td>
     `;
 
-    item.addEventListener('click', (e) => {
-      if (e.target.closest('.delete-btn') || e.target.closest('.edit-btn')) return;
+    tr.addEventListener('click', (e) => {
+      if (e.target.closest('.delete-btn') || e.target.closest('.edit-btn') || e.target.closest('.view-btn')) return;
       openModal(card.id);
     });
-    item.querySelector('.edit-btn').addEventListener('click', (e) => {
+    tr.querySelector('.view-btn').addEventListener('click', (e) => {
+      e.stopPropagation();
+      openModal(card.id);
+    });
+    tr.querySelector('.edit-btn').addEventListener('click', (e) => {
       e.stopPropagation();
       openEditModal(card.id);
     });
-    item.querySelector('.delete-btn').addEventListener('click', (e) => {
+    tr.querySelector('.delete-btn').addEventListener('click', (e) => {
       e.stopPropagation();
       confirmDelete(card.id);
     });
 
-    el.cardGrid.appendChild(item);
+    el.tableBody.appendChild(tr);
   });
 }
 
@@ -188,9 +216,9 @@ function renderPagination() {
     btn.disabled = disabled;
     btn.addEventListener('click', () => {
       currentPage = page;
-      renderGrid();
+      renderTable();
       renderPagination();
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      document.querySelector('.db-table')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
     el.pagination.appendChild(btn);
   };
@@ -230,27 +258,21 @@ function openModal(id) {
 
   fields.forEach(field => {
     let val = '';
-    if (field.key === 'question') {
-      val = card.question || '';
-    } else if (field.key === 'answer') {
-      val = (card.answer || '').split('\n\n---\n')[0];
-    } else {
-      // 予備フィールドから抽出
-      const raw = card.answer || '';
-      const parts = raw.split('\n\n---\n');
-      if (parts.length > 1) {
-        const extraStr = parts.slice(1).join('\n\n---\n');
-        const searchStr = `[${field.label}]\n`;
-        const startIdx = extraStr.indexOf(searchStr);
-        if (startIdx !== -1) {
-          const contentStart = startIdx + searchStr.length;
-          const nextIdx = extraStr.indexOf('\n\n[', contentStart);
-          val = (nextIdx !== -1 ? extraStr.substring(contentStart, nextIdx) : extraStr.substring(contentStart)).trim();
-        }
-      }
+    const rawContent = (field.role === 'question' ? card.question : card.answer) || '';
+    
+    // "[ラベル]\n内容" 形式から抽出
+    const searchStr = `[${field.label}]\n`;
+    const startIdx = rawContent.indexOf(searchStr);
+    if (startIdx !== -1) {
+      const contentStart = startIdx + searchStr.length;
+      const nextIdx = rawContent.indexOf('\n\n[', contentStart);
+      val = (nextIdx !== -1 ? rawContent.substring(contentStart, nextIdx) : rawContent.substring(contentStart)).trim();
+    } else if (field.key === 'question' || field.key === 'answer') {
+      // 互換性のため、ラベルがない場合は全体を表示
+      val = rawContent;
     }
 
-    if (!val) return;
+    if (!val && !field.required) return;
 
     if (field.type === 'image') {
       // 画像は一括管理されているものを表示（便宜上、最初の画像フィールドにすべて表示）
@@ -368,31 +390,19 @@ function openEditModal(id) {
     if (field.required) input.required = true;
     input.placeholder = `${field.label}を入力…`;
 
-    // 既存値をスマートにセット
-    if (field.key === 'question') {
-      input.value = card.question || '';
-    } else if (field.key === 'answer') {
-      const raw = card.answer || '';
-      input.value = raw.split('\n\n---\n')[0];
+    // 既存値をセット（[ラベル]\n内容 形式から抽出）
+    const rawContent = (field.role === 'question' ? card.question : card.answer) || '';
+    const searchStr = `[${field.label}]\n`;
+    const startIdx = rawContent.indexOf(searchStr);
+    if (startIdx !== -1) {
+      const contentStart = startIdx + searchStr.length;
+      const nextIdx = rawContent.indexOf('\n\n[', contentStart);
+      input.value = (nextIdx !== -1 ? rawContent.substring(contentStart, nextIdx) : rawContent.substring(contentStart)).trim();
+    } else if (!rawContent.includes('[') && (field.key === 'question' || field.key === 'answer')) {
+      // 古い形式（ラベルなし）への互換性
+      input.value = rawContent;
     } else {
-      const raw = card.answer || '';
-      const parts = raw.split('\n\n---\n');
       input.value = '';
-      if (parts.length > 1) {
-        const extraStr = parts.slice(1).join('\n\n---\n');
-        // "[ラベル]\n内容" を簡易抽出（次の"\n\n[" または末尾まで）
-        const searchStr = `[${field.label}]\n`;
-        const startIdx = extraStr.indexOf(searchStr);
-        if (startIdx !== -1) {
-          const contentStart = startIdx + searchStr.length;
-          const nextIdx = extraStr.indexOf('\n\n[', contentStart);
-          if (nextIdx !== -1) {
-            input.value = extraStr.substring(contentStart, nextIdx).trim();
-          } else {
-            input.value = extraStr.substring(contentStart).trim();
-          }
-        }
-      }
     }
 
     div.appendChild(label);
@@ -494,17 +504,27 @@ async function saveCardEdit() {
     if (key) values[key] = input.value.trim();
   });
 
-  const question = values['question'] || card.question || '';
-  const baseAnswer = values['answer'] || '';
+  // 役割ごとに結合（options.js と同じロジック）
+  const qParts = [];
+  const aParts = [];
+  
+  fields.forEach(f => {
+    const val = values[f.key];
+    if (!val) return;
+    if (f.role === 'question') {
+      qParts.push(`[${f.label}]\n${val}`);
+    } else if (f.role === 'answer') {
+      aParts.push(`[${f.label}]\n${val}`);
+    }
+  });
 
-  // extra フィールドを answer に結合（options.js と同じロジック）
-  const extraParts = [];
-  fields
-    .filter(f => !['question', 'answer', 'image'].includes(f.key))
-    .forEach(f => { if (values[f.key]) extraParts.push(`[${f.label}]\n${values[f.key]}`); });
-  const fullAnswer = extraParts.length > 0
-    ? baseAnswer + '\n\n---\n' + extraParts.join('\n\n')
-    : baseAnswer;
+  if (qParts.length === 0 || aParts.length === 0) {
+    alert('問題と答えをそれぞれ1つ以上入力してください。');
+    return;
+  }
+
+  const newQuestion = qParts.join('\n\n');
+  const newFullAnswer = aParts.join('\n\n');
 
   // 画像アップロード（新規追加分を統合してアップロード）
   let imageValue = null;
@@ -525,7 +545,7 @@ async function saveCardEdit() {
   if (allUrls.length > 0) imageValue = JSON.stringify(allUrls);
   else imageValue = null; // 全削除された
 
-  const updated = { ...card, question, answer: fullAnswer, image: imageValue };
+  const updated = { ...card, question: newQuestion, answer: newFullAnswer, image: imageValue };
   await StorageManager.saveCardUpdate(updated);
 
   const idx = allCards.findIndex(c => c.id === activeCardId);
@@ -551,7 +571,6 @@ async function confirmDelete(id) {
 function setupListeners() {
   el.searchInput.addEventListener('input', applyAndRender);
   el.genreFilter.addEventListener('change', applyAndRender);
-  el.sortSelect.addEventListener('change', applyAndRender);
   el.modalClose.addEventListener('click', closeModal);
   el.modalOverlay.addEventListener('click', e => { if (e.target === el.modalOverlay) closeModal(); });
   el.modalDelete.addEventListener('click', () => { if (activeCardId) confirmDelete(activeCardId); });

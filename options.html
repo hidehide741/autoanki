@@ -2,57 +2,115 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>AutoAnki Settings</title>
+  <title>AutoAnki - 問題作成</title>
   <link rel="stylesheet" href="options.css">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    .genre-tabs {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      margin-bottom: 1.5rem;
+    }
+    .genre-tab {
+      padding: 0.5rem 1rem;
+      border-radius: 20px;
+      border: 1px solid var(--glass-border);
+      background: rgba(255,255,255,0.05);
+      color: var(--text-secondary);
+      cursor: pointer;
+      font-size: 0.85rem;
+      transition: all 0.2s;
+      font-family: 'Inter', sans-serif;
+    }
+    .genre-tab:hover { background: rgba(255,255,255,0.1); color: var(--text-primary); }
+    .genre-tab.active {
+      background: rgba(99,102,241,0.3);
+      border-color: var(--primary-accent);
+      color: #a78bfa;
+      font-weight: 600;
+    }
+    .dynamic-form .form-group { margin-bottom: 1.5rem; }
+    .dynamic-form label {
+      display: block;
+      margin-bottom: 0.5rem;
+      font-weight: 500;
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+    }
+    .required-badge {
+      background: rgba(99,102,241,0.3);
+      color: #a78bfa;
+      font-size: 0.7rem;
+      padding: 0.1rem 0.4rem;
+      border-radius: 4px;
+      margin-left: 0.4rem;
+      vertical-align: middle;
+    }
+    .dynamic-form input[type="text"],
+    .dynamic-form textarea {
+      width: 100%;
+      background: rgba(0,0,0,0.2);
+      border: 1px solid var(--glass-border);
+      border-radius: 8px;
+      padding: 0.8rem 1rem;
+      color: var(--text-primary);
+      font-family: inherit;
+      font-size: 0.95rem;
+      resize: vertical;
+      transition: border-color 0.2s;
+    }
+    .dynamic-form input:focus,
+    .dynamic-form textarea:focus {
+      outline: none;
+      border-color: var(--primary-accent);
+    }
+    .form-actions {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-top: 1.5rem;
+    }
+  </style>
 </head>
 <body>
   <div class="background-animation"></div>
 
   <div class="layout">
-    <!-- Sidebar -->
     <aside class="sidebar glass-panel">
       <div class="logo">
         <h1>AutoAnki</h1>
         <p>Effortless Spaced Repetition</p>
       </div>
-
       <div class="nav-links" style="margin-top: 2rem;">
-        <a href="index.html" class="nav-btn">▶️ 問題を解く</a>
         <a href="dashboard.html" class="nav-btn">📊 ダッシュボード</a>
+        <a href="index.html" class="nav-btn">▶️ 問題を解く</a>
         <a href="options.html" class="nav-btn active">➕ 問題作成</a>
         <a href="cardlist.html" class="nav-btn">📋 問題一覧 (DB)</a>
+        <a href="settings.html" class="nav-btn">⚙️ 設定</a>
       </div>
-
     </aside>
 
-    <!-- Main Content -->
     <main class="main-content">
-      
-
-      <!-- Add Card Section -->
-      <section id="add-card" class="section glass-panel">
+      <section class="section glass-panel">
         <h2 class="section-title">新しいカードを追加</h2>
-        <form id="add-card-form" class="form-container">
-          <div class="form-group">
-            <label for="question-input">問題 (Question)</label>
-            <textarea id="question-input" rows="3" placeholder="例: ミトコンドリアの役割は？" required></textarea>
+
+        <!-- ジャンルタブ -->
+        <div class="genre-tabs" id="genre-tabs">
+          <!-- JSで動的生成 -->
+        </div>
+
+        <!-- 動的フォーム -->
+        <form id="add-card-form" class="dynamic-form">
+          <div id="form-fields">
+            <!-- JSで動的生成 -->
           </div>
-          <div class="form-group">
-            <label for="answer-input">答え (Answer)</label>
-            <textarea id="answer-input" rows="2" placeholder="例: ATPを作る" required></textarea>
+          <div class="form-actions">
+            <button type="submit" class="primary-btn">追加する</button>
+            <div id="add-success-msg" class="success-msg hidden">✅ カードを追加しました！</div>
           </div>
-          <div class="form-group">
-            <label for="image-input">画像 (任意)</label>
-            <input type="text" id="image-input" placeholder="例: images/sample.png" style="width: 100%; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 1rem; color: #f8fafc; font-family: inherit; font-size: 1rem;">
-          </div>
-          <button type="submit" class="primary-btn">追加する</button>
-          <div id="add-success-msg" class="success-msg hidden">カードを追加しました！</div>
         </form>
       </section>
-
-      </section>
-
     </main>
   </div>
 

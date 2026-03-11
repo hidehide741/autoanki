@@ -5,6 +5,56 @@ const SUPABASE_URL = 'https://qahkvamgssedhjvtlika.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_g3U08ZrJjKyXaeaEuPeuaQ_SNoUxyVg';
 const API_BASE = `${SUPABASE_URL}/rest/v1/cards`;
 
+// デフォルトジャンル定義
+const DEFAULT_GENRES = [
+  {
+    id: 'language', name: '🌐 語学', isDefault: true,
+    fields: [
+      { key: 'question', label: '単語・フレーズ', type: 'text', required: true },
+      { key: 'answer',   label: '意味（日本語）', type: 'text', required: true },
+      { key: 'example',  label: '例文',             type: 'textarea' },
+      { key: 'note',     label: '補足（発音・品詞など）', type: 'text' },
+      { key: 'image',    label: '画像URL',           type: 'text' }
+    ]
+  },
+  {
+    id: 'science', name: '🔬 理科', isDefault: true,
+    fields: [
+      { key: 'question', label: '用語・概念名', type: 'text', required: true },
+      { key: 'answer',   label: '定義・説明',   type: 'textarea', required: true },
+      { key: 'note',     label: '仕組み・機能',   type: 'textarea' },
+      { key: 'image',    label: '画像URL',           type: 'text' }
+    ]
+  },
+  {
+    id: 'math', name: '📐 数学', isDefault: true,
+    fields: [
+      { key: 'question', label: '概念・定理名', type: 'text', required: true },
+      { key: 'answer',   label: '公式・定義',   type: 'textarea', required: true },
+      { key: 'example',  label: '例題',             type: 'textarea' },
+      { key: 'note',     label: '注意点・記憶術', type: 'text' }
+    ]
+  },
+  {
+    id: 'history', name: '📅 歴史', isDefault: true,
+    fields: [
+      { key: 'question', label: '出来事・人名', type: 'text', required: true },
+      { key: 'answer',   label: '内容・説明',   type: 'textarea', required: true },
+      { key: 'note',     label: '年号・時代',     type: 'text' },
+      { key: 'image',    label: '画像URL',           type: 'text' }
+    ]
+  },
+  {
+    id: 'other', name: '📝 その他', isDefault: true,
+    fields: [
+      { key: 'question', label: '問題',               type: 'textarea', required: true },
+      { key: 'answer',   label: '答え',               type: 'textarea', required: true },
+      { key: 'image',    label: '画像URL',           type: 'text' }
+    ]
+  }
+];
+
+
 const isExtension = typeof chrome !== 'undefined' && chrome.runtime && !!chrome.runtime.id && window.location.protocol.startsWith('chrome-extension');
 const HEADERS = {
   'Content-Type': 'application/json',
@@ -40,6 +90,21 @@ const StorageManager = {
     // 画像がURL形式ならそのまま、相対パスならSupabaseなどを考慮（今回は一旦そのまま）
     return '';
   },
+
+  // ========== ジャンル管理 ==========
+  async getGenres() {
+    const saved = await LocalStore.get('genres');
+    if (!saved || saved.length === 0) {
+      await LocalStore.set('genres', DEFAULT_GENRES);
+      return DEFAULT_GENRES;
+    }
+    return saved;
+  },
+
+  async saveGenres(genres) {
+    await LocalStore.set('genres', genres);
+  },
+  // ==================================
 
   // サーバーから全カードを取得
   async getAllCards() {
@@ -216,9 +281,8 @@ const StorageManager = {
     return stats || { todayReviews: 0, streak: 0 };
   },
 
-  // カード管理用メソッド（追加・削除）-> Dドライブのサーバーへ
-  async addCard(question, answer, imagePath = null) {
-    const cards = await this.getAllCards();
+  // カード管理用メソッド（追加・削除）-> Supabaseへ
+  async addCard(question, answer, imagePath = null, genre = 'その他', extraFields = {}) {
     const newCard = {
       id: 'card-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9),
       question,
@@ -226,14 +290,15 @@ const StorageManager = {
       nextReviewDate: Date.now(),
       interval: 0,
       repetition: 0,
-      easiness: 2.5
+      easiness: 2.5,
+      genre
     };
     
     if (imagePath) {
       newCard.image = imagePath;
     }
 
-    // Supabaseヘ挿入
+    // Supabaseへ挿入
     try {
       await fetch(API_BASE, {
         method: 'POST',
@@ -249,7 +314,8 @@ const StorageManager = {
           next_review_date: newCard.nextReviewDate,
           interval: newCard.interval,
           repetition: newCard.repetition,
-          easiness: newCard.easiness
+          easiness: newCard.easiness,
+          genre: newCard.genre
         })
       });
     } catch (e) {

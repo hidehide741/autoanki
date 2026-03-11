@@ -1,0 +1,218 @@
+/* memo.css */
+:root {
+  --primary: #6366f1;
+  --primary-hover: #4f46e5;
+  --bg-dark: #020617;
+  --glass-bg: rgba(15, 23, 42, 0.6);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --text-primary: #f8fafc;
+  --text-secondary: #94a3b8;
+  --accent: #a78bfa;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  background: var(--bg-dark);
+  color: var(--text-primary);
+  overflow: hidden;
+  height: 100vh;
+}
+
+.layout {
+  display: flex;
+  height: 100vh;
+}
+
+/* サイドバーは newtab.css 等と共通の想定（簡略化して記述） */
+.sidebar {
+  width: 260px;
+  background: rgba(15, 23, 42, 0.8);
+  border-right: 1px solid var(--glass-border);
+  display: flex;
+  flex-direction: column;
+  padding: 1.5rem;
+}
+
+.logo h1 { font-size: 1.5rem; font-weight: 800; background: linear-gradient(135deg, #fff, var(--primary)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 0.5rem; }
+.logo p { font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 2rem; }
+
+.nav-links { display: flex; flex-direction: column; gap: 0.5rem; }
+.nav-btn {
+  text-decoration: none;
+  color: var(--text-secondary);
+  padding: 0.75rem 1rem;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.nav-btn:hover { background: rgba(255, 255, 255, 0.05); color: #fff; }
+.nav-btn.active { background: rgba(99, 102, 241, 0.15); color: var(--primary); border-left: 3px solid var(--primary); }
+
+.main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: radial-gradient(circle at top right, rgba(99, 102, 241, 0.05), transparent);
+}
+
+/* メモ帳専用レイアウト */
+.memo-container {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  height: 100%;
+}
+
+/* メモリスト */
+.memo-list-area {
+  border-right: 1px solid var(--glass-border);
+  display: flex;
+  flex-direction: column;
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.list-header {
+  padding: 1.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.btn-new {
+  background: var(--primary);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 0.5rem 1rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.btn-new:hover { background: var(--primary-hover); }
+
+.memo-items {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1rem;
+}
+
+.memo-item {
+  padding: 1rem;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 1px solid transparent;
+  margin-bottom: 0.75rem;
+}
+.memo-item:hover { background: rgba(255, 255, 255, 0.03); }
+.memo-item.active {
+  background: rgba(99, 102, 241, 0.08);
+  border-color: rgba(99, 102, 241, 0.3);
+}
+
+.memo-item-title {
+  font-weight: 600;
+  font-size: 0.95rem;
+  margin-bottom: 0.4rem;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.memo-item-date {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+/* エディタエリア */
+.editor-area {
+  display: flex;
+  flex-direction: column;
+  padding: 2rem 3rem;
+  position: relative;
+}
+
+.editor-header {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.btn-icon {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--glass-border);
+  color: var(--text-secondary);
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.btn-icon:hover { background: rgba(255, 255, 255, 0.1); color: #fff; border-color: rgba(255, 255, 255, 0.2); }
+.btn-delete:hover { border-color: #ef4444; color: #ef4444; }
+
+.memo-title-input {
+  background: none;
+  border: none;
+  font-size: 2.2rem;
+  font-weight: 800;
+  color: #fff;
+  width: 100%;
+  margin-bottom: 1.5rem;
+  outline: none;
+}
+.memo-title-input::placeholder { color: rgba(255, 255, 255, 0.1); }
+
+.memo-content-textarea {
+  background: none;
+  border: none;
+  font-size: 1.1rem;
+  line-height: 1.8;
+  color: var(--text-primary);
+  width: 100%;
+  flex: 1;
+  resize: none;
+  outline: none;
+  font-family: inherit;
+}
+.memo-content-textarea::placeholder { color: rgba(255, 255, 255, 0.1); }
+
+/* スクロールバー */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.2); }
+
+.hidden { display: none !important; }
+
+/* 通知メッセージ */
+.toast {
+  position: fixed;
+  bottom: 2rem;
+  right: 2rem;
+  background: #10b981;
+  color: white;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+  transform: translateY(100px);
+  transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+.toast.show { transform: translateY(0); }

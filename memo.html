@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AutoAnki - メモ帳</title>
+  <link rel="stylesheet" href="memo.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="layout">
+    <!-- サイドバー -->
+    <aside class="sidebar" id="app-sidebar">
+      <div class="logo">
+        <h1>AutoAnki</h1>
+        <p>Effortless Spaced Repetition</p>
+      </div>
+      <div class="nav-links">
+        <a href="dashboard.html" class="nav-btn">📊 ダッシュボード</a>
+        <a href="newtab.html"    class="nav-btn">▶️ 問題を解く</a>
+        <a href="options.html"   class="nav-btn">➕ 問題作成</a>
+        <a href="cardlist.html"  class="nav-btn">📋 問題DB</a>
+        <a href="settings.html"  class="nav-btn">⚙️ 設定</a>
+        <a href="memo.html"      class="nav-btn active">🗒️ メモ</a>
+      </div>
+    </aside>
+
+    <!-- メイン -->
+    <main class="main-content">
+      <div class="memo-container">
+        <!-- メモリストエリア -->
+        <div class="memo-list-area">
+          <div class="list-header">
+            <h2 style="font-size: 1.1rem; font-weight: 700;">メモ一覧</h2>
+            <button id="new-memo-btn" class="btn-new">+ 新規作成</button>
+          </div>
+          <div id="memo-list" class="memo-items">
+            <!-- JSで動的に追加 -->
+            <div class="memo-item-loading" style="padding: 1rem; color: var(--text-secondary); font-size: 0.85rem;">取得中...</div>
+          </div>
+        </div>
+
+        <!-- 編集エリア -->
+        <div class="editor-area">
+          <div id="no-memo-selected" class="no-selection" style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: var(--text-secondary);">
+            <div style="font-size: 4rem; opacity: 0.2; margin-bottom: 1rem;">🗒️</div>
+            <p>メモを選択するか、新しく作成してください</p>
+          </div>
+
+          <div id="memo-editor" class="hidden" style="display: flex; flex-direction: column; height: 100%;">
+            <div class="editor-header">
+              <button id="delete-memo-btn" class="btn-icon btn-delete" title="削除">🗑️</button>
+              <button id="save-status" class="btn-icon" style="width: auto; padding: 0 1rem; font-size: 0.8rem; cursor: default; border: none; background: none; opacity: 0.6;">保存完了</button>
+            </div>
+            <input type="text" id="memo-title" class="memo-title-input" placeholder="無題のメモ">
+            <textarea id="memo-content" class="memo-content-textarea" placeholder="ここに入力..."></textarea>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <div id="toast" class="toast">保存しました</div>
+
+  <script type="module" src="memo.js"></script>
+</body>
+</html>

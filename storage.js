@@ -5,6 +5,7 @@ const SUPABASE_URL = 'https://qahkvamgssedhjvtlika.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_g3U08ZrJjKyXaeaEuPeuaQ_SNoUxyVg';
 const API_BASE = `${SUPABASE_URL}/rest/v1/cards`;
 const GENRE_API_BASE = `${SUPABASE_URL}/rest/v1/genres`;
+const MEMO_API_BASE = `${SUPABASE_URL}/rest/v1/memos`;
 
 // デフォルトジャンル定義
 const DEFAULT_GENRES = [
@@ -480,6 +481,62 @@ const StorageManager = {
       });
     } catch (e) {
       console.error("カードの削除に失敗しました。", e);
+    }
+  },
+
+  // ========== メモ管理 (Supabase 同期) ==========
+  async getMemos() {
+    try {
+      const res = await fetch(`${MEMO_API_BASE}?select=*&order=updated_at.desc`, { headers: HEADERS });
+      if (!res.ok) throw new Error('Supabase Fetch Error');
+      const memos = await res.json();
+      return memos.map(m => ({
+        id: m.id,
+        title: m.title,
+        content: m.content,
+        createdAt: m.created_at,
+        updatedAt: m.updated_at
+      }));
+    } catch (err) {
+      console.error('getMemos failed:', err);
+      return [];
+    }
+  },
+
+  async saveMemo(memo) {
+    try {
+      const payload = {
+        id: memo.id,
+        title: memo.title,
+        content: memo.content,
+        updated_at: new Date().toISOString()
+      };
+      
+      const res = await fetch(MEMO_API_BASE, {
+        method: 'POST',
+        headers: {
+          ...HEADERS,
+          'Prefer': 'resolution=merge-duplicates'
+        },
+        body: JSON.stringify(payload)
+      });
+      if (!res.ok) throw new Error('Supabase Upsert Error');
+    } catch (err) {
+      console.error('saveMemo failed:', err);
+      throw err;
+    }
+  },
+
+  async deleteMemo(memoId) {
+    try {
+      const res = await fetch(`${MEMO_API_BASE}?id=eq.${memoId}`, {
+        method: 'DELETE',
+        headers: HEADERS
+      });
+      if (!res.ok) throw new Error('Supabase Delete Error');
+    } catch (err) {
+      console.error('deleteMemo failed:', err);
+      throw err;
     }
   }
 };

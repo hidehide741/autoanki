@@ -332,7 +332,28 @@
       </div>
 
       <div class="modal-footer">
+        <button class="primary-btn" id="modal-edit-btn">✏️ 編集</button>
         <button class="danger-btn" id="modal-delete-btn">🗑️ 削除</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 編集モーダル -->
+  <div class="modal-overlay hidden" id="edit-modal-overlay">
+    <div class="modal-box">
+      <button class="modal-close" id="edit-modal-close">✕</button>
+      <h3 style="margin-bottom:1.25rem;font-size:1.1rem;">✏️ カードを編集</h3>
+
+      <div id="edit-fields" style="display:flex;flex-direction:column;gap:1rem;">
+        <!-- JSで動的に生成 -->
+      </div>
+
+      <!-- 画像プレビュー -->
+      <div id="edit-image-preview" style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-top:0.5rem;"></div>
+
+      <div style="margin-top:1.5rem;display:flex;gap:0.75rem;justify-content:flex-end;align-items:center;">
+        <span id="edit-save-msg" class="success-msg hidden">✅ 保存しました！</span>
+        <button class="primary-btn" id="edit-save-btn">保存する</button>
       </div>
     </div>
   </div>
@@ -340,3 +361,4 @@
   <script type="module" src="cardlist.js"></script>
 </body>
 </html>
+

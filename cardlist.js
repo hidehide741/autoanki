@@ -28,7 +28,15 @@ const el = {
   statNext:     document.getElementById('stat-next'),
   statInterval: document.getElementById('stat-interval'),
   statEase:     document.getElementById('stat-ease'),
-  modalDelete:  document.getElementById('modal-delete-btn')
+  modalDelete:  document.getElementById('modal-delete-btn'),
+  modalEdit:    document.getElementById('modal-edit-btn'),
+
+  editOverlay:  document.getElementById('edit-modal-overlay'),
+  editClose:    document.getElementById('edit-modal-close'),
+  editFields:   document.getElementById('edit-fields'),
+  editImgPrev:  document.getElementById('edit-image-preview'),
+  editSaveBtn:  document.getElementById('edit-save-btn'),
+  editSaveMsg:  document.getElementById('edit-save-msg')
 };
 
 // ===== 初期化 =====
@@ -164,13 +172,23 @@ function renderTable() {
       <td><span class="due-badge ${isDue ? 'now' : 'later'}">${dueStr}</span></td>
       <td style="color:var(--text-secondary);">${fmtInterval(card.interval)}</td>
       <td class="action-cell">
+        <button class="icon-btn-sm view-btn" data-id="${card.id}" title="閲覧">👁️</button>
+        <button class="icon-btn-sm edit-btn" data-id="${card.id}" title="編集">✏️</button>
         <button class="icon-btn-sm del delete-btn" data-id="${card.id}" title="削除">🗑️</button>
       </td>
     `;
 
     tr.addEventListener('click', (e) => {
-      if (e.target.closest('.delete-btn')) return;
+      if (e.target.closest('.delete-btn') || e.target.closest('.edit-btn') || e.target.closest('.view-btn')) return;
       openModal(card.id);
+    });
+    tr.querySelector('.view-btn').addEventListener('click', (e) => {
+      e.stopPropagation();
+      openModal(card.id);
+    });
+    tr.querySelector('.edit-btn').addEventListener('click', (e) => {
+      e.stopPropagation();
+      openEditModal(card.id);
     });
     tr.querySelector('.delete-btn').addEventListener('click', (e) => {
       e.stopPropagation();
@@ -255,6 +273,105 @@ function closeModal() {
   activeCardId = null;
 }
 
+// ===== 編集モーダル =====
+function openEditModal(id) {
+  const card = allCards.find(c => c.id === id);
+  if (!card) return;
+  activeCardId = id;
+
+  const genreDef = genres.find(g => g.id === card.genre);
+  const fields = genreDef?.fields || [
+    { key: 'question', label: '問題', type: 'textarea', required: true },
+    { key: 'answer',   label: '答え', type: 'textarea', required: false }
+  ];
+
+  const inputStyle = `
+    width:100%;background:rgba(0,0,0,0.2);border:1px solid var(--glass-border);
+    border-radius:6px;padding:0.55rem 0.75rem;color:var(--text-primary);
+    font-family:inherit;font-size:0.9rem;box-sizing:border-box;
+    transition:border-color 0.2s;
+  `;
+
+  el.editFields.innerHTML = '';
+  el.editImgPrev.innerHTML = '';
+
+  fields.forEach(field => {
+    if (field.type === 'image') return; // 画像は別途処理
+
+    const wrapper = document.createElement('div');
+    const labelEl = document.createElement('label');
+    labelEl.style.cssText = 'display:block;font-size:0.8rem;color:var(--text-secondary);margin-bottom:0.3rem;';
+    labelEl.textContent = field.label + (field.required ? ' *' : '');
+
+    let inputEl;
+    if (field.type === 'textarea') {
+      inputEl = document.createElement('textarea');
+      inputEl.rows = 3;
+    } else {
+      inputEl = document.createElement('input');
+      inputEl.type = ['number','date','url'].includes(field.type) ? field.type : 'text';
+    }
+    inputEl.dataset.key = field.key;
+    inputEl.style.cssText = inputStyle;
+    inputEl.value = card[field.key] || '';
+    inputEl.addEventListener('focus', () => inputEl.style.borderColor = 'var(--primary-accent)');
+    inputEl.addEventListener('blur',  () => inputEl.style.borderColor = 'var(--glass-border)');
+
+    wrapper.appendChild(labelEl);
+    wrapper.appendChild(inputEl);
+    el.editFields.appendChild(wrapper);
+  });
+
+  // 画像プレビュー
+  if (card.image) {
+    let urls = [];
+    try { const p = JSON.parse(card.image); urls = Array.isArray(p) ? p : [card.image]; }
+    catch { urls = [card.image]; }
+    urls.forEach(url => {
+      const wrap = document.createElement('div');
+      wrap.style.cssText = 'position:relative;display:inline-block;';
+      wrap.innerHTML = `
+        <img src="${esc(url)}" style="max-height:100px;border-radius:6px;border:1px solid var(--glass-border);">
+        <span style="position:absolute;top:2px;right:2px;background:rgba(0,0,0,0.7);color:#fff;font-size:0.7rem;padding:0.1rem 0.3rem;border-radius:3px;pointer-events:none;">現在の画像</span>
+      `;
+      el.editImgPrev.appendChild(wrap);
+    });
+  }
+
+  el.editSaveMsg.classList.add('hidden');
+  el.editOverlay.classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeEditModal() {
+  el.editOverlay.classList.add('hidden');
+  document.body.style.overflow = '';
+}
+
+async function saveCardEdit() {
+  const card = allCards.find(c => c.id === activeCardId);
+  if (!card) return;
+
+  // フィールド値を収集
+  const inputs = el.editFields.querySelectorAll('[data-key]');
+  inputs.forEach(input => {
+    const key = input.dataset.key;
+    card[key] = input.value.trim();
+  });
+
+  // SupabaseにPATCH送信
+  await StorageManager.saveCardUpdate(card);
+
+  // ローカルデータも更新
+  const idx = allCards.findIndex(c => c.id === activeCardId);
+  if (idx !== -1) allCards[idx] = { ...allCards[idx], ...card };
+
+  el.editSaveMsg.classList.remove('hidden');
+  setTimeout(() => el.editSaveMsg.classList.add('hidden'), 2500);
+
+  applyAndRender(); // テーブル更新
+}
+
 // ===== 削除 =====
 async function confirmDelete(id) {
   const card = allCards.find(c => c.id === id);
@@ -273,7 +390,11 @@ function setupListeners() {
   el.modalClose.addEventListener('click', closeModal);
   el.modalOverlay.addEventListener('click', e => { if (e.target === el.modalOverlay) closeModal(); });
   el.modalDelete.addEventListener('click', () => { if (activeCardId) confirmDelete(activeCardId); });
-  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+  el.modalEdit?.addEventListener('click', () => { if (activeCardId) { closeModal(); openEditModal(activeCardId); } });
+  el.editClose.addEventListener('click', closeEditModal);
+  el.editOverlay.addEventListener('click', e => { if (e.target === el.editOverlay) closeEditModal(); });
+  el.editSaveBtn.addEventListener('click', saveCardEdit);
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeModal(); closeEditModal(); } });
 }
 
 // ===== ユーティリティ =====

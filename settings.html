@@ -6,67 +6,145 @@
   <link rel="stylesheet" href="options.css">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
-    .main-container {
-      max-width: 900px;
+    /* ===== ページ固有スタイル ===== */
+    body { background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%); }
+
+    .page-wrap {
+      max-width: 860px;
       margin: 0 auto;
-      padding: 2rem;
+      padding: 2rem 1.5rem;
     }
-    .header {
+
+    .page-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
       margin-bottom: 2rem;
     }
-    .nav-links { display: flex; gap: 1.5rem; }
-    .nav-links a {
+    .logo-text {
+      font-size: 1.6rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, #a78bfa, #818cf8);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .logo-text span { color: #818cf8; }
+
+    .top-nav { display: flex; gap: 1.5rem; }
+    .top-nav a {
       color: var(--text-secondary);
       text-decoration: none;
       font-weight: 500;
-      transition: color 0.2s;
-    }
-    .nav-links a:hover, .nav-links a.active { color: var(--primary-accent); }
-
-    .genre-list {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-      gap: 1rem;
-      margin-top: 1rem;
-    }
-    .genre-item {
-      background: rgba(30, 41, 59, 0.4);
-      border: 1px solid var(--glass-border);
-      border-radius: 12px;
-      padding: 1rem;
+      padding: 0.3rem 0;
+      border-bottom: 2px solid transparent;
       transition: all 0.2s;
-      cursor: default;
     }
-    .genre-item:hover { border-color: rgba(99, 102, 241, 0.4); }
-    .genre-item.default { border-left: 4px solid var(--primary-accent); }
-    .genre-item-header {
+    .top-nav a:hover { color: var(--text-primary); }
+    .top-nav a.active {
+      color: #a78bfa;
+      border-bottom-color: #a78bfa;
+    }
+
+    /* ===== カード ===== */
+    .card {
+      background: rgba(30, 41, 59, 0.6);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 16px;
+      padding: 2rem;
+      margin-bottom: 1.5rem;
+    }
+    .card-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
+      margin-bottom: 1.5rem;
+    }
+    .card-title {
+      font-size: 1.25rem;
+      font-weight: 600;
+    }
+
+    /* ===== ジャンルリスト ===== */
+    .genre-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
+      gap: 1rem;
+    }
+    .genre-card {
+      background: rgba(15,23,42,0.5);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 12px;
+      padding: 1.25rem;
+      transition: border-color 0.2s;
+    }
+    .genre-card:hover { border-color: rgba(99,102,241,0.4); }
+    .genre-card-name {
+      font-weight: 600;
+      font-size: 1rem;
       margin-bottom: 0.5rem;
     }
-    .genre-name { font-weight: 600; font-size: 1.1rem; }
-    .genre-fields-preview {
+    .genre-card-fields {
       font-size: 0.75rem;
       color: var(--text-secondary);
       margin-bottom: 1rem;
+      line-height: 1.6;
     }
-    .genre-item-actions {
+    .genre-card-actions {
       display: flex;
       gap: 0.5rem;
       justify-content: flex-end;
     }
 
-    /* エディタ */
-    .field-section {
-      background: rgba(0,0,0,0.15);
-      border: 1px solid var(--glass-border);
+    /* ===== ボタン共通 ===== */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.55rem 1.1rem;
       border-radius: 8px;
+      font-size: 0.9rem;
+      font-weight: 500;
+      font-family: inherit;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s;
+    }
+    .btn-primary {
+      background: var(--primary-accent);
+      color: white;
+    }
+    .btn-primary:hover { background: var(--primary-accent-hover); }
+    .btn-secondary {
+      background: rgba(99,102,241,0.15);
+      border: 1px solid rgba(99,102,241,0.4);
+      color: #a78bfa;
+    }
+    .btn-secondary:hover { background: rgba(99,102,241,0.3); }
+    .btn-danger {
+      background: transparent;
+      border: 1px solid var(--danger);
+      color: var(--danger);
+    }
+    .btn-danger:hover { background: var(--danger); color: white; }
+    .btn-sm { padding: 0.35rem 0.75rem; font-size: 0.8rem; }
+
+    /* ===== エディタ ===== */
+    .genre-editor-grid {
+      display: grid;
+      grid-template-columns: 1fr 260px;
+      gap: 2rem;
+      align-items: start;
+    }
+    @media (max-width: 640px) { .genre-editor-grid { grid-template-columns: 1fr; } }
+
+    .field-section {
+      background: rgba(0,0,0,0.2);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 10px;
       padding: 1.25rem;
-      margin-bottom: 1.5rem;
+      margin-bottom: 1.25rem;
     }
     .field-section-header {
       display: flex;
@@ -74,136 +152,216 @@
       align-items: center;
       margin-bottom: 1rem;
     }
-    .field-section-title { font-weight: 600; color: #a78bfa; }
-    
+    .field-section-label {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #a78bfa;
+    }
+
     .field-row {
       display: grid;
-      grid-template-columns: 1fr 140px 60px 40px;
-      gap: 0.75rem;
+      grid-template-columns: 1fr 130px auto auto;
+      gap: 0.5rem;
       align-items: center;
-      margin-bottom: 0.75rem;
-      background: rgba(255,255,255,0.03);
-      padding: 0.5rem;
-      border-radius: 6px;
+      margin-bottom: 0.6rem;
     }
     .field-row input, .field-row select {
-      background: rgba(0,0,0,0.2);
-      border: 1px solid var(--glass-border);
-      color: white;
+      background: rgba(0,0,0,0.25);
+      border: 1px solid rgba(255,255,255,0.1);
+      color: var(--text-primary);
       padding: 0.4rem 0.6rem;
-      border-radius: 4px;
+      border-radius: 6px;
       font-family: inherit;
+      font-size: 0.85rem;
+    }
+    .field-row input:focus, .field-row select:focus {
+      outline: none;
+      border-color: var(--primary-accent);
     }
     .required-toggle {
-      font-size: 0.75rem;
-      color: var(--text-secondary);
       display: flex;
       align-items: center;
-      gap: 0.3rem;
+      gap: 0.25rem;
+      font-size: 0.75rem;
+      color: var(--text-secondary);
       cursor: pointer;
+      white-space: nowrap;
     }
     .btn-remove {
-      background: transparent;
+      background: none;
       border: none;
-      color: #ef4444;
-      font-size: 1.25rem;
+      color: #f87171;
+      font-size: 1.1rem;
       cursor: pointer;
       opacity: 0.6;
+      padding: 0 0.2rem;
+      line-height: 1;
     }
     .btn-remove:hover { opacity: 1; }
 
-    .editor-actions {
+    /* ===== 名前入力 ===== */
+    .genre-name-input {
+      width: 100%;
+      background: rgba(0,0,0,0.25);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+      color: var(--text-primary);
+      font-family: inherit;
+      font-size: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    .genre-name-input:focus {
+      outline: none;
+      border-color: var(--primary-accent);
+    }
+
+    .field-label-form {
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      margin-bottom: 0.5rem;
+    }
+
+    /* ===== プレビュー ===== */
+    .preview-box {
+      background: rgba(15,23,42,0.7);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 10px;
+      padding: 1.25rem;
+      font-size: 0.82rem;
+    }
+    .preview-section-label {
+      font-size: 0.7rem;
+      color: #a78bfa;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      border-bottom: 1px solid rgba(167,139,250,0.2);
+      padding-bottom: 0.4rem;
+      margin-bottom: 0.75rem;
+    }
+    .preview-field {
+      margin-bottom: 0.75rem;
+    }
+    .preview-field-label {
+      font-size: 0.7rem;
+      color: var(--text-secondary);
+      margin-bottom: 0.3rem;
+    }
+    .preview-field-dummy {
+      border: 1px dashed rgba(255,255,255,0.1);
+      border-radius: 4px;
+      background: rgba(0,0,0,0.2);
+    }
+    .preview-field-dummy.text { height: 28px; }
+    .preview-field-dummy.textarea { height: 48px; }
+    .preview-field-dummy.image {
+      height: 72px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-secondary);
+      font-size: 0.8rem;
+    }
+
+    .editor-footer {
       display: flex;
       justify-content: flex-end;
       gap: 1rem;
-      margin-top: 2rem;
+      margin-top: 1.5rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid rgba(255,255,255,0.07);
     }
 
+    /* ===== トースト ===== */
     .toast {
       position: fixed;
       bottom: 2rem;
       left: 50%;
-      transform: translateX(-50%) translateY(100px);
+      transform: translateX(-50%) translateY(120px);
       background: #10b981;
       color: white;
-      padding: 0.75rem 1.5rem;
+      padding: 0.7rem 1.5rem;
       border-radius: 30px;
-      box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3);
+      box-shadow: 0 8px 20px rgba(0,0,0,0.4);
       z-index: 1000;
-      transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      transition: transform 0.3s cubic-bezier(0.175,0.885,0.32,1.275);
+      font-weight: 500;
     }
     .toast.show { transform: translateX(-50%) translateY(0); }
     .toast.error { background: #ef4444; }
 
-    .mt { margin-top: 2rem; }
-    .hidden { display: none; }
+    .hidden { display: none !important; }
   </style>
 </head>
 <body>
-  <div class="main-container">
-    <header class="header">
-      <h1 class="logo-text">Auto<span>Anki</span></h1>
-      <nav class="nav-links">
+  <div class="page-wrap">
+    <!-- ヘッダー -->
+    <header class="page-header">
+      <div class="logo-text">Auto<span>Anki</span></div>
+      <nav class="top-nav">
         <a href="cardlist.html">問題DB</a>
         <a href="options.html">カード作成</a>
         <a href="settings.html" class="active">設定</a>
       </nav>
     </header>
 
-    <main class="main-content">
-      <!-- ジャンル一覧 -->
-      <section class="section glass-panel" id="genre-list-section">
-        <div class="header" style="margin-bottom: 1rem;">
-          <h2 class="section-title">⚙️ ジャンル管理</h2>
-          <button class="btn btn-primary" id="add-genre-btn">+ 新規ジャンル</button>
-        </div>
-        <div class="genre-list" id="genre-list">
-          <!-- JSで動的生成 -->
-        </div>
-      </section>
+    <!-- ジャンル一覧 -->
+    <div class="card" id="genre-list-section">
+      <div class="card-header">
+        <div class="card-title">⚙️ ジャンル管理</div>
+        <button class="btn btn-primary" id="add-genre-btn">＋ 新規ジャンル</button>
+      </div>
+      <div class="genre-grid" id="genre-list">
+        <!-- JSで動的生成 -->
+      </div>
+    </div>
 
-      <!-- ジャンル詳細エディタ -->
-      <section class="section glass-panel hidden" id="genre-editor">
-        <h2 class="section-title">✏️ ジャンルの編集</h2>
-        
-        <div class="input-group" style="margin-bottom: 2rem;">
-          <label for="genre-name" style="display: block; margin-bottom: 0.5rem; color: var(--text-secondary);">1. ジャンル名</label>
-          <input type="text" id="genre-name" placeholder="例: 英単語、プログラミング" style="width: 100%; max-width: 400px; background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); border-radius: 8px; padding: 0.8rem 1rem; color: var(--text-primary); font-family: inherit; font-size: 1rem;">
-        </div>
+    <!-- ジャンル編集エディタ -->
+    <div class="card hidden" id="genre-editor">
+      <div class="card-header" style="margin-bottom: 1rem;">
+        <div class="card-title" id="editor-title">✏️ ジャンルを追加</div>
+      </div>
 
-        <div style="display: grid; grid-template-columns: 1fr 300px; gap: 2rem;">
-          <div>
-            <!-- 問題フィールド群 -->
-            <div class="field-section">
-              <div class="field-section-header">
-                <span class="field-section-title">2. 問題フィールド定義 (おもて)</span>
-                <button type="button" class="btn btn-secondary btn-sm" id="add-q-field-btn">+ 追加</button>
-              </div>
-              <div class="fields-list" id="q-fields-container"></div>
+      <!-- 1. ジャンル名 -->
+      <div class="field-label-form">1. ジャンル名</div>
+      <input type="text" id="genre-name" class="genre-name-input" placeholder="例: 英単語、プログラミング">
+
+      <div class="genre-editor-grid">
+        <div>
+          <!-- 2. 問題フィールド -->
+          <div class="field-section">
+            <div class="field-section-header">
+              <span class="field-section-label">2. 問題フィールド（おもて）</span>
+              <button type="button" class="btn btn-secondary btn-sm" id="add-q-field-btn">＋ 追加</button>
             </div>
-
-            <!-- 答えフィールド群 -->
-            <div class="field-section">
-              <div class="field-section-header">
-                <span class="field-section-title">3. 答えフィールド定義 (うら)</span>
-                <button type="button" class="btn btn-secondary btn-sm" id="add-a-field-btn">+ 追加</button>
-              </div>
-              <div class="fields-list" id="a-fields-container"></div>
-            </div>
+            <div id="q-fields-container"></div>
           </div>
 
-          <!-- プレビュー -->
-          <div id="preview-section">
-            <div id="preview-panel"></div>
+          <!-- 3. 回答フィールド -->
+          <div class="field-section">
+            <div class="field-section-header">
+              <span class="field-section-label">3. 回答フィールド（うら）</span>
+              <button type="button" class="btn btn-secondary btn-sm" id="add-a-field-btn">＋ 追加</button>
+            </div>
+            <div id="a-fields-container"></div>
           </div>
         </div>
 
-        <div class="editor-actions">
-          <button type="button" class="btn btn-secondary" id="cancel-btn">キャンセル</button>
-          <button type="button" class="btn btn-primary" id="save-genre-btn">保存する</button>
+        <!-- プレビュー -->
+        <div>
+          <div class="field-section-label" style="margin-bottom: 0.75rem;">プレビュー</div>
+          <div class="preview-box" id="preview-panel">
+            <p style="color: var(--text-secondary); font-size: 0.8rem; text-align: center;">フィールドを追加するとプレビューが表示されます</p>
+          </div>
         </div>
-      </section>
-    </main>
+      </div>
+
+      <div class="editor-footer">
+        <button type="button" class="btn btn-secondary" id="cancel-btn">キャンセル</button>
+        <button type="button" class="btn btn-primary" id="save-genre-btn">保存する</button>
+      </div>
+    </div>
   </div>
 
   <div id="toast" class="toast">

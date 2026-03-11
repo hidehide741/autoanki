@@ -25,6 +25,8 @@ async function init() {
 
   el.addGenreBtn.addEventListener('click', () => {
     editingGenreId = null;
+    document.getElementById('editor-title').textContent = '➕ ジャンルを追加';
+    el.saveGenreBtn.textContent = '保存する';
     el.genreName.value = '';
     el.qContainer.innerHTML = '';
     el.aContainer.innerHTML = '';
@@ -85,82 +87,48 @@ function closeEditor() {
 function renderGenreList() {
   el.genreList.innerHTML = '';
   if (genres.length === 0) {
-    el.genreList.innerHTML = '<p style="color: var(--text-secondary); text-align: center; padding: 1rem;">ジャンルがありません。下のフォームから追加してください。</p>';
+    el.genreList.innerHTML = '<p style="color: var(--text-secondary); text-align: center; padding: 2rem; grid-column: 1/-1;">ジャンルがまだありません。「新規ジャンル」から追加してください。</p>';
     return;
   }
 
-  genres.forEach((genre, index) => {
+  genres.forEach((genre) => {
     const item = document.createElement('div');
-    item.className = 'genre-item';
-    if (editingGenreId === genre.id) item.style.border = '1px solid rgba(99,102,241,0.6)';
+    item.className = 'genre-card';
+    if (editingGenreId === genre.id) {
+      item.style.borderColor = 'rgba(99,102,241,0.6)';
+    }
 
     const typeIcon = { text: '📝', textarea: '📄', number: '🔢', image: '🖼️', url: '🔗', date: '📅' };
-    const fieldsPreview = genre.fields.map(f => `${typeIcon[f.type] || '📝'} ${f.label}`).join('  ');
+    const qFields = genre.fields.filter(f => f.role === 'question');
+    const aFields = genre.fields.filter(f => f.role === 'answer');
+    const fieldsPreview = genre.fields.map(f => `${typeIcon[f.type] || '📝'} ${f.label}`).join('&ensp;');
 
     item.innerHTML = `
-      <div class="genre-item-header">
-        <div class="genre-item-info">
-          <div class="genre-item-name">
-            ${genre.name}
-            <span class="toggle-icon">▼</span>
-          </div>
-        </div>
-      </div>
-      <div class="genre-item-content">
-        <div class="genre-fields-preview">${fieldsPreview}</div>
-        <div class="genre-item-actions">
-          <button class="edit-genre-btn" data-id="${genre.id}" style="
-            background: rgba(99,102,241,0.15);
-            border: 1px solid rgba(99,102,241,0.4);
-            color: #a78bfa;
-            padding: 0.4rem 0.8rem;
-            border-radius: 6px;
-            font-size: 0.85rem;
-            cursor: pointer;
-            transition: all 0.2s;
-          ">✏️ 編集</button>
-          <button class="danger-btn delete-genre-btn" data-id="${genre.id}">🗑️ 削除</button>
-        </div>
+      <div class="genre-card-name">${esc(genre.name)}</div>
+      <div class="genre-card-fields">${fieldsPreview || '<span style="opacity:0.5;">フィールドなし</span>'}</div>
+      <div class="genre-card-actions">
+        <button class="btn btn-secondary btn-sm edit-genre-btn" data-id="${genre.id}">✏️ 編集</button>
+        <button class="btn btn-danger  btn-sm delete-genre-btn" data-id="${genre.id}">🗑️ 削除</button>
       </div>
     `;
-    
-    // アコーディオン開閉ロジック
-    const header = item.querySelector('.genre-item-header');
-    header.addEventListener('click', () => {
-      // 他のすべてを閉じる
-      document.querySelectorAll('.genre-item').forEach(el => {
-        if (el !== item) el.classList.remove('expanded');
-      });
-      // 自身の開閉をトグル
-      item.classList.toggle('expanded');
+
+    item.querySelector('.edit-genre-btn').addEventListener('click', (e) => {
+      e.stopPropagation();
+      loadGenreIntoForm(genre.id);
     });
 
-    el.genreList.appendChild(item);
-  });
-
-  // 編集ボタン
-  document.querySelectorAll('.edit-genre-btn').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation(); // アコーディオンの開閉を防止
-      const id = e.target.closest('button').dataset.id;
-      loadGenreIntoForm(id);
-    });
-  });
-
-  // 削除ボタン
-  document.querySelectorAll('.delete-genre-btn').forEach(btn => {
-    btn.addEventListener('click', async (e) => {
-      e.stopPropagation(); // アコーディオンの開閉を防止
-      const id = e.target.closest('button').dataset.id;
-      const genreToDelete = genres.find(g => g.id === id);
-      if (genreToDelete && confirm(`「${genreToDelete.name}」を削除しますか？\nカードは削除されませんが、ジャンル表示は「その他」になります。`)) {
-        if (editingGenreId === id) closeEditor();
-        genres = genres.filter(g => g.id !== id);
-        await StorageManager.deleteGenre(id);
+    item.querySelector('.delete-genre-btn').addEventListener('click', async (e) => {
+      e.stopPropagation();
+      if (confirm(`「${genre.name}」を削除しますか？\nカードは削除されませんが、ジャンル表示は「その他」になります。`)) {
+        if (editingGenreId === genre.id) closeEditor();
+        genres = genres.filter(g => g.id !== genre.id);
+        await StorageManager.deleteGenre(genre.id);
         await StorageManager.saveGenres(genres);
         renderGenreList();
       }
     });
+
+    el.genreList.appendChild(item);
   });
 }
 
@@ -170,6 +138,7 @@ function loadGenreIntoForm(id) {
   if (!genre) return;
 
   editingGenreId = id;
+  document.getElementById('editor-title').textContent = '✏️ ジャンルを編集';
 
   // ジャンル名
   el.genreName.value = genre.name;

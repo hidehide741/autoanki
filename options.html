@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>AutoAnki Settings</title>
+  <link rel="stylesheet" href="options.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="background-animation"></div>
+
+  <div class="layout">
+    <!-- Sidebar -->
+    <aside class="sidebar glass-panel">
+      <div class="logo">
+        <h1>AutoAnki</h1>
+        <p>Effortless Spaced Repetition</p>
+      </div>
+
+      <div class="nav-links" style="margin-top: 2rem;">
+        <a href="newtab.html" class="nav-btn">▶️ 問題を解く</a>
+        <a href="options.html" class="nav-btn active">➕ 問題作成</a>
+        <a href="cardlist.html" class="nav-btn">📋 問題一覧 (DB)</a>
+      </div>
+      <div style="margin-top: auto; padding-top: 1rem; border-top: 1px solid var(--glass-border);">
+        <button id="shutdown-btn-opt" class="nav-btn" style="color: #ef4444; width: 100%; text-align: left; opacity: 0.7;">🔒 サーバー停止</button>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      
+      <!-- Stats Section (Moved from Sidebar) -->
+      <section id="stats-section" class="section glass-panel" style="margin-bottom: 2rem;">
+        <h2 class="section-title">あなたの記録</h2>
+        <div style="display: flex; gap: 2rem; justify-content: space-around;">
+          <div style="text-align: center;">
+            <div style="color: var(--text-secondary); font-size: 0.9rem;">今日の復習数</div>
+            <div class="stat-value" id="opt-today-count" style="font-size: 2rem; margin-top: 0.5rem;">0</div>
+          </div>
+          <div style="text-align: center;">
+            <div style="color: var(--text-secondary); font-size: 0.9rem;">連続日数</div>
+            <div class="stat-value" id="opt-streak-count" style="font-size: 2rem; margin-top: 0.5rem;">0</div>
+          </div>
+          <div style="text-align: center;">
+            <div style="color: var(--text-secondary); font-size: 0.9rem;">登録カード数</div>
+            <div class="stat-value" id="opt-total-cards" style="font-size: 2rem; margin-top: 0.5rem;">0</div>
+          </div>
+        </div>
+      </section>
+      
+      <!-- Add Card Section -->
+      <section id="add-card" class="section glass-panel">
+        <h2 class="section-title">新しいカードを追加</h2>
+        <form id="add-card-form" class="form-container">
+          <div class="form-group">
+            <label for="question-input">問題 (Question)</label>
+            <textarea id="question-input" rows="3" placeholder="例: ミトコンドリアの役割は？" required></textarea>
+          </div>
+          <div class="form-group">
+            <label for="answer-input">答え (Answer)</label>
+            <textarea id="answer-input" rows="2" placeholder="例: ATPを作る" required></textarea>
+          </div>
+          <div class="form-group">
+            <label for="image-input">画像 (任意)</label>
+            <input type="text" id="image-input" placeholder="例: images/sample.png" style="width: 100%; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 1rem; color: #f8fafc; font-family: inherit; font-size: 1rem;">
+          </div>
+          <button type="submit" class="primary-btn">追加する</button>
+          <div id="add-success-msg" class="success-msg hidden">カードを追加しました！</div>
+        </form>
+      </section>
+
+      </section>
+
+    </main>
+  </div>
+
+  <script type="module" src="options.js"></script>
+</body>
+</html>

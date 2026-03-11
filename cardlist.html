@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>Card List - AutoAnki</title>
+  <link rel="stylesheet" href="options.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="background-animation"></div>
+
+  <div class="layout">
+    <!-- Sidebar -->
+    <aside class="sidebar glass-panel">
+      <div class="logo">
+        <h1>AutoAnki</h1>
+        <p>Effortless Spaced Repetition</p>
+      </div>
+
+      <div class="nav-links" style="margin-top: 2rem;">
+        <a href="newtab.html" class="nav-btn">▶️ 問題を解く</a>
+        <a href="options.html" class="nav-btn">➕ 問題作成</a>
+        <a href="cardlist.html" class="nav-btn active">📋 問題一覧 (DB)</a>
+      </div>
+      <div style="margin-top: auto; padding-top: 1rem; border-top: 1px solid var(--glass-border);">
+        <button id="shutdown-btn-list" class="nav-btn" style="color: #ef4444; width: 100%; text-align: left; opacity: 0.7;">🔒 サーバー停止</button>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      
+      <!-- Stats Section -->
+      <section id="stats-section" class="section glass-panel" style="margin-bottom: 2rem;">
+        <h2 class="section-title">あなたの記録</h2>
+        <div style="display: flex; gap: 2rem; justify-content: space-around;">
+          <div style="text-align: center;">
+            <div style="color: var(--text-secondary); font-size: 0.9rem;">今日の復習数</div>
+            <div class="stat-value" id="opt-today-count" style="font-size: 2rem; margin-top: 0.5rem;">0</div>
+          </div>
+          <div style="text-align: center;">
+            <div style="color: var(--text-secondary); font-size: 0.9rem;">連続日数</div>
+            <div class="stat-value" id="opt-streak-count" style="font-size: 2rem; margin-top: 0.5rem;">0</div>
+          </div>
+          <div style="text-align: center;">
+            <div style="color: var(--text-secondary); font-size: 0.9rem;">登録カード数</div>
+            <div class="stat-value" id="opt-total-cards" style="font-size: 2rem; margin-top: 0.5rem;">0</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Card List Section -->
+      <section id="card-list" class="section glass-panel mt">
+        <h2 class="section-title">登録済みのカード一覧 (Database)</h2>
+        <div class="table-container">
+          <table id="cards-table">
+            <thead>
+              <tr>
+                <th>問題</th>
+                <th>画像/パス</th>
+                <th>答え</th>
+                <th>次回レビュー</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="cards-tbody">
+              <!-- JSで動的に追加 -->
+            </tbody>
+          </table>
+        </div>
+        <div id="empty-state" class="empty-state hidden">
+          <p>カードが登録されていません。</p>
+        </div>
+      </section>
+
+      <!-- Danger Zone -->
+      <section class="section glass-panel mt">
+        <h2 class="section-title" style="color: var(--danger);">危険な操作</h2>
+        <p style="color: var(--text-secondary); margin-bottom: 1rem;">初期のデモデータ（りんご等）を復元します。</p>
+        <button id="reset-demo-btn" class="danger-btn">🔄 デモデータ復元</button>
+      </section>
+
+    </main>
+  </div>
+
+  <script type="module" src="cardlist.js"></script>
+</body>
+</html>

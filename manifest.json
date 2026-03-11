@@ -1,0 +1,16 @@
+{
+  "manifest_version": 3,
+  "name": "AutoAnki - The Effortless Spaced Repetition",
+  "version": "1.0.0",
+  "description": "A new tab flashcard app powered by spaced repetition.",
+  "permissions": [
+    "storage"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "chrome_url_overrides": {
+    "newtab": "newtab.html"
+  }
+}

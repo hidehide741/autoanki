@@ -17,8 +17,13 @@ async function init() {
   genres = await StorageManager.getGenres();
   renderGenreList();
 
-  el.addFieldBtn.addEventListener('click', addFieldRow);
+  el.addFieldBtn.addEventListener('click', () => { addFieldRow(); renderPreview(); });
   el.saveGenreBtn.addEventListener('click', saveNewGenre);
+
+  // リアルタイムプレビュー用リスナー
+  el.newGenreName.addEventListener('input', renderPreview);
+  el.questionLabel?.addEventListener('input', renderPreview);
+  el.answerLabel?.addEventListener('input', renderPreview);
 }
 
 function renderGenreList() {
@@ -93,7 +98,10 @@ function addFieldRow() {
   `;
   el.newFieldList.appendChild(row);
 
-  row.querySelector('.remove-field-btn').addEventListener('click', () => row.remove());
+  row.querySelector('.remove-field-btn').addEventListener('click', () => { row.remove(); renderPreview(); });
+  row.querySelector('.field-label-input').addEventListener('input', renderPreview);
+  row.querySelector('.field-type-select').addEventListener('change', renderPreview);
+  row.querySelector('.field-required-check').addEventListener('change', renderPreview);
 }
 
 async function saveNewGenre() {
@@ -103,7 +111,6 @@ async function saveNewGenre() {
     return;
   }
 
-  // 問題・答えのカスタムラベル
   const questionLabel = el.questionLabel?.value.trim() || '問題';
   const answerLabel = el.answerLabel?.value.trim() || '答え';
 
@@ -112,7 +119,6 @@ async function saveNewGenre() {
     { key: 'answer',   label: answerLabel,   type: 'textarea', required: true }
   ];
 
-  // 追加フィールドを収集
   const fieldRows = el.newFieldList.querySelectorAll('.field-row');
   fieldRows.forEach((row, i) => {
     const label = row.querySelector('.field-label-input')?.value.trim();
@@ -142,11 +148,68 @@ async function saveNewGenre() {
   el.newFieldList.innerHTML = '';
   if (el.questionLabel) el.questionLabel.value = '';
   if (el.answerLabel) el.answerLabel.value = '';
+  renderPreview();
 
   renderGenreList();
 
   el.saveMsg.classList.remove('hidden');
   setTimeout(() => el.saveMsg.classList.add('hidden'), 3000);
+}
+
+// リアルタイムプレビュー
+function renderPreview() {
+  const previewForm = document.getElementById('preview-form');
+  const badge = document.getElementById('preview-genre-name-badge');
+  if (!previewForm) return;
+
+  const name = el.newGenreName.value.trim();
+  const questionLabel = el.questionLabel?.value.trim() || '問題';
+  const answerLabel   = el.answerLabel?.value.trim()   || '答え';
+
+  // バッジ更新
+  if (name) {
+    badge.textContent = name;
+    badge.style.display = 'inline-block';
+  } else {
+    badge.style.display = 'none';
+  }
+
+  // フィールドリスト収集
+  const extraFields = [];
+  el.newFieldList.querySelectorAll('.field-row').forEach(row => {
+    const label    = row.querySelector('.field-label-input')?.value.trim();
+    const type     = row.querySelector('.field-type-select')?.value || 'text';
+    const required = row.querySelector('.field-required-check')?.checked || false;
+    if (label) extraFields.push({ label, type, required });
+  });
+
+  const allFields = [
+    { label: questionLabel, type: 'textarea', required: true },
+    { label: answerLabel,   type: 'textarea', required: true },
+    ...extraFields
+  ];
+
+  const typeIcon = { text: '📝', textarea: '📄', number: '🔢', image: '🖼️', url: '🔗', date: '📅' };
+  const inputStyle = `
+    width: 100%; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 6px; padding: 0.5rem 0.75rem; color: rgba(255,255,255,0.4);
+    font-family: inherit; font-size: 0.88rem; pointer-events: none;
+  `;
+
+  previewForm.innerHTML = allFields.map(field => `
+    <div>
+      <div style="font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 0.3rem;">
+        ${typeIcon[field.type] || '📝'} ${field.label}
+        ${field.required ? '<span style="background:rgba(99,102,241,0.3);color:#a78bfa;font-size:0.7rem;padding:0.1rem 0.4rem;border-radius:3px;margin-left:0.3rem;">必須</span>' : ''}
+      </div>
+      ${ field.type === 'textarea'
+          ? `<textarea rows="2" disabled placeholder="${field.label}の入力欄" style="${inputStyle}"></textarea>`
+          : field.type === 'image'
+          ? `<div style="${inputStyle}border:2px dashed rgba(99,102,241,0.3);border-radius:8px;padding:1rem;text-align:center;color:rgba(255,255,255,0.3);">🖼️ Ctrl+V で画像を貼り付け（最大3枚）</div>`
+          : `<input type="${ field.type === 'url' ? 'url' : field.type === 'number' ? 'number' : field.type === 'date' ? 'date' : 'text'}" disabled placeholder="${field.label}の入力欄" style="${inputStyle}">`
+      }
+    </div>
+  `).join('');
 }
 
 document.addEventListener('DOMContentLoaded', init);

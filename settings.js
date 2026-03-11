@@ -251,10 +251,10 @@ function renderPreview() {
         ${field.required ? '<span style="background:rgba(99,102,241,0.3);color:#a78bfa;font-size:0.7rem;padding:0.1rem 0.4rem;border-radius:3px;margin-left:0.3rem;">必須</span>' : ''}
       </div>
       ${field.type === 'textarea'
-        ? `<textarea rows="2" disabled placeholder="${field.label}の入力欄" style="${inputStyle}"></textarea>`
+        ? `<textarea rows="2" disabled placeholder="${field.label}を入力…" style="${inputStyle}"></textarea>`
         : field.type === 'image'
         ? `<div style="${inputStyle}border:2px dashed rgba(99,102,241,0.3);border-radius:8px;padding:1rem;text-align:center;color:rgba(255,255,255,0.3);">🖼️ Ctrl+V で画像を貼り付け（最大3枚）</div>`
-        : `<input type="${field.type === 'url' ? 'url' : field.type === 'number' ? 'number' : field.type === 'date' ? 'date' : 'text'}" disabled placeholder="${field.label}の入力欄" style="${inputStyle}">`
+        : `<input type="${field.type === 'url' ? 'url' : field.type === 'number' ? 'number' : field.type === 'date' ? 'date' : 'text'}" disabled placeholder="${field.label}を入力…" style="${inputStyle}">`
       }
     </div>
   `).join('');

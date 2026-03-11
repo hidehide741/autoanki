@@ -46,9 +46,9 @@ function renderForm() {
   if (!genre) return;
 
   genre.fields.forEach(field => {
-    if (field.key === 'image') {
-      // 通常の URL 入力の代わりに画像ペーストエリアを挿入
-      el.formFields.appendChild(buildImagePasteUI());
+    // image タイプはペーストUIを使う
+    if (field.type === 'image') {
+      el.formFields.appendChild(buildImagePasteUI(field.label));
       return;
     }
 
@@ -65,12 +65,14 @@ function renderForm() {
       input.rows = 3;
     } else {
       input = document.createElement('input');
-      input.type = 'text';
+      // number / date / url などをそのまま利用
+      input.type = ['number', 'date', 'url'].includes(field.type) ? field.type : 'text';
     }
     input.id = `field-${field.key}`;
     input.name = field.key;
     if (field.required) input.required = true;
-    input.placeholder = getPlaceholder(field.key);
+    // プレースホルダーはフィールドラベルから自動生成（プレビューと統一）
+    input.placeholder = `${field.label}を入力…`;
 
     div.appendChild(label);
     div.appendChild(input);
@@ -206,20 +208,6 @@ function setupListeners() {
       submitBtn.textContent = '追加する';
     }
   });
-}
-
-function getPlaceholder(key) {
-  const placeholders = {
-    question: '例: What is photosynthesis?',
-    answer: '例: 光合成とは、植物が光エネルギーを使って...',
-    example: '例: The sun provides energy for photosynthesis.',
-    note: '例: /ˌfoʊtəˈsɪnθɪsɪs/ (名詞)',
-    formula: '例: E = mc²',
-    definition: '例: 物質の最小単位',
-    year: '例: 1945年',
-    process: '例: ミトコンドリアが...'
-  };
-  return placeholders[key] || '';
 }
 
 document.addEventListener('DOMContentLoaded', init);

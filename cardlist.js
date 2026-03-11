@@ -15,9 +15,9 @@ const MAX_EDIT_IMAGES = 3;
 const el = {
   searchInput:  document.getElementById('search-input'),
   genreFilter:  document.getElementById('genre-filter'),
+  sortSelect:   document.getElementById('sort-select'),
   countBadge:   document.getElementById('count-badge'),
-  tableWrap:    document.getElementById('table-wrap'),
-  tableBody:    document.getElementById('table-body'),
+  cardGrid:     document.getElementById('card-grid'),
   emptyState:   document.getElementById('empty-state'),
   pagination:   document.getElementById('pagination'),
 
@@ -48,7 +48,6 @@ async function init() {
     StorageManager.getGenres()
   ]);
   buildGenreFilter();
-  setupHeaderSort();
   setupListeners();
   applyAndRender();
 }
@@ -64,37 +63,7 @@ function buildGenreFilter() {
   });
 }
 
-// ===== カラムヘッダーのソートクリック =====
-function setupHeaderSort() {
-  document.querySelectorAll('.db-table th[data-col]').forEach(th => {
-    const col = th.dataset.col;
-    if (!col || col === 'thumb') return;
-    th.addEventListener('click', () => {
-      if (sortCol === col) {
-        sortAsc = !sortAsc;
-      } else {
-        sortCol = col;
-        sortAsc = true;
-      }
-      updateSortUI();
-      applyAndRender();
-    });
-  });
-}
-
-function updateSortUI() {
-  document.querySelectorAll('.db-table th[data-col]').forEach(th => {
-    th.classList.remove('sorted');
-    const ind = th.querySelector('.sort-indicator');
-    if (ind) ind.textContent = '↕';
-  });
-  const active = document.querySelector(`.db-table th[data-col="${sortCol}"]`);
-  if (active) {
-    active.classList.add('sorted');
-    const ind = active.querySelector('.sort-indicator');
-    if (ind) ind.textContent = sortAsc ? '↑' : '↓';
-  }
-}
+// ヘッダーソートは廃止（グリッド化したため）
 
 // ===== フィルター → ソート → 描画 =====
 function applyAndRender() {
@@ -108,96 +77,101 @@ function applyAndRender() {
   });
 
   // ソート
+  const [col, dir] = (el.sortSelect.value || 'nextReviewDate-asc').split('-');
+  const asc = dir === 'asc';
+
   filtered.sort((a, b) => {
-    let av = a[sortCol], bv = b[sortCol];
-    if (sortCol === 'nextReviewDate') { av = av || Infinity; bv = bv || Infinity; }
-    if (sortCol === 'question' || sortCol === 'answer') {
+    let av = a[col], bv = b[col];
+    if (col === 'nextReviewDate') { av = av || Infinity; bv = bv || Infinity; }
+    if (col === 'question' || col === 'answer') {
       av = (av || '').toLowerCase();
       bv = (bv || '').toLowerCase();
     }
-    if (sortCol === 'genre') {
+    if (col === 'genre') {
       av = genreName(a.genre); bv = genreName(b.genre);
     }
-    if (av < bv) return sortAsc ? -1 : 1;
-    if (av > bv) return sortAsc ?  1 : -1;
+    if (col === 'created_at') {
+      av = a.created_at || 0; bv = b.created_at || 0;
+    }
+    if (av < bv) return asc ? -1 : 1;
+    if (av > bv) return asc ?  1 : -1;
     return 0;
   });
 
   currentPage = 1;
-  renderTable();
+  renderGrid();
   renderPagination();
 
   const totalLabel = query || genre ? `検索結果: ${filtered.length} 件 / 全 ${allCards.length} 件` : `全 ${allCards.length} 件`;
   el.countBadge.textContent = totalLabel;
 }
 
-// ===== テーブル描画 =====
-function renderTable() {
-  el.tableBody.innerHTML = '';
+// ===== カードグリッド描画 =====
+function renderGrid() {
+  el.cardGrid.innerHTML = '';
   const start = (currentPage - 1) * PAGE_SIZE;
   const page  = filtered.slice(start, start + PAGE_SIZE);
 
   if (page.length === 0) {
-    el.tableWrap.classList.add('hidden');
+    el.cardGrid.classList.add('hidden');
     el.emptyState.classList.remove('hidden');
     return;
   }
   el.emptyState.classList.add('hidden');
-  el.tableWrap.classList.remove('hidden');
+  el.cardGrid.classList.remove('hidden');
 
   page.forEach(card => {
     const isDue = card.nextReviewDate && card.nextReviewDate <= Date.now();
     const dueStr = card.nextReviewDate
       ? (isDue ? '🎯 今すぐ' : fmtDate(card.nextReviewDate))
-      : '—';
+      : '未設定';
 
-    // サムネイル
-    let thumbHtml = '<td><span style="color:var(--text-secondary);font-size:0.75rem;">—</span></td>';
+    // サムネイルURL抽出
+    let thumbUrl = '';
     if (card.image) {
       try {
         const imgs = JSON.parse(card.image);
-        const url = Array.isArray(imgs) ? imgs[0] : card.image;
-        if (url) thumbHtml = `<td><img src="${esc(url)}" class="thumb-sm" alt="img" loading="lazy"></td>`;
+        thumbUrl = Array.isArray(imgs) ? imgs[0] : card.image;
       } catch {
-        if (card.image.startsWith('http')) {
-          thumbHtml = `<td><img src="${esc(card.image)}" class="thumb-sm" alt="img" loading="lazy"></td>`;
-        }
+        if (card.image.startsWith('http')) thumbUrl = card.image;
       }
     }
 
-    const tr = document.createElement('tr');
-    tr.dataset.id = card.id;
-    tr.innerHTML = `
-      ${thumbHtml}
-      <td class="cell-question"><div class="cell-text">${esc(card.question || '')}</div></td>
-      <td><span class="genre-badge">${esc(genreName(card.genre))}</span></td>
-      <td><span class="due-badge ${isDue ? 'now' : 'later'}">${dueStr}</span></td>
-      <td style="color:var(--text-secondary);">${fmtInterval(card.interval)}</td>
-      <td class="action-cell">
-        <button class="icon-btn-sm view-btn" data-id="${card.id}" title="閲覧">👁️</button>
-        <button class="icon-btn-sm edit-btn" data-id="${card.id}" title="編集">✏️</button>
-        <button class="icon-btn-sm del delete-btn" data-id="${card.id}" title="削除">🗑️</button>
-      </td>
+    const item = document.createElement('div');
+    item.className = 'card-item';
+    item.dataset.id = card.id;
+
+    // 回答プレビュー（改行コードをスペースに）
+    const answerPreview = (card.answer || '').split('\n---')[0].replace(/\n/g, ' ').trim();
+
+    item.innerHTML = `
+      ${thumbUrl ? `<img src="${esc(thumbUrl)}" class="card-thumb" alt="thumbnail" loading="lazy">` : ''}
+      <div class="card-genre">${esc(genreName(card.genre))}</div>
+      <div class="card-question">${esc(card.question || '無題の問題')}</div>
+      <div class="card-answer-preview">${esc(answerPreview || '（回答なし）')}</div>
+      <div class="card-footer">
+        <div class="card-due ${isDue ? 'urgent' : ''}">復習: ${dueStr}</div>
+        <div class="card-actions">
+          <button class="icon-btn-sm edit-btn" data-id="${card.id}" title="編集">✏️</button>
+          <button class="icon-btn-sm del delete-btn" data-id="${card.id}" title="削除">🗑️</button>
+        </div>
+      </div>
     `;
 
-    tr.addEventListener('click', (e) => {
-      if (e.target.closest('.delete-btn') || e.target.closest('.edit-btn') || e.target.closest('.view-btn')) return;
+    item.addEventListener('click', (e) => {
+      if (e.target.closest('.delete-btn') || e.target.closest('.edit-btn')) return;
       openModal(card.id);
     });
-    tr.querySelector('.view-btn').addEventListener('click', (e) => {
-      e.stopPropagation();
-      openModal(card.id);
-    });
-    tr.querySelector('.edit-btn').addEventListener('click', (e) => {
+    item.querySelector('.edit-btn').addEventListener('click', (e) => {
       e.stopPropagation();
       openEditModal(card.id);
     });
-    tr.querySelector('.delete-btn').addEventListener('click', (e) => {
+    item.querySelector('.delete-btn').addEventListener('click', (e) => {
       e.stopPropagation();
       confirmDelete(card.id);
     });
 
-    el.tableBody.appendChild(tr);
+    el.cardGrid.appendChild(item);
   });
 }
 
@@ -214,9 +188,9 @@ function renderPagination() {
     btn.disabled = disabled;
     btn.addEventListener('click', () => {
       currentPage = page;
-      renderTable();
+      renderGrid();
       renderPagination();
-      document.querySelector('.db-table')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     });
     el.pagination.appendChild(btn);
   };
@@ -237,27 +211,76 @@ function renderPagination() {
   addBtn('›', currentPage + 1, currentPage === total);
 }
 
-// ===== モーダル =====
+// ===== 詳細モーダル =====
 function openModal(id) {
   const card = allCards.find(c => c.id === id);
   if (!card) return;
   activeCardId = id;
 
-  el.modalGenre.textContent = genreName(card.genre);
-  el.modalQ.textContent = card.question || '';
-  el.modalAnswer.textContent = card.answer || '';
+  const genreDef = genres.find(g => g.id === card.genre);
+  const fields = genreDef?.fields || [
+    { key: 'question', label: '問題', type: 'textarea' },
+    { key: 'answer',   label: '答え', type: 'textarea' }
+  ];
 
+  el.modalGenre.textContent = genreDef?.name || 'その他';
+  el.modalQ.innerHTML = ''; // コンテンツを動的に生成
   el.modalImages.innerHTML = '';
-  if (card.image) {
-    let urls = [];
-    try { const p = JSON.parse(card.image); urls = Array.isArray(p) ? p : [card.image]; }
-    catch { urls = [card.image]; }
-    urls.forEach(url => {
-      const img = document.createElement('img');
-      img.src = url; img.alt = '画像';
-      el.modalImages.appendChild(img);
-    });
-  }
+  el.modalAnswer.innerHTML = '';
+
+  fields.forEach(field => {
+    let val = '';
+    if (field.key === 'question') {
+      val = card.question || '';
+    } else if (field.key === 'answer') {
+      val = (card.answer || '').split('\n\n---\n')[0];
+    } else {
+      // 予備フィールドから抽出
+      const raw = card.answer || '';
+      const parts = raw.split('\n\n---\n');
+      if (parts.length > 1) {
+        const extraStr = parts.slice(1).join('\n\n---\n');
+        const searchStr = `[${field.label}]\n`;
+        const startIdx = extraStr.indexOf(searchStr);
+        if (startIdx !== -1) {
+          const contentStart = startIdx + searchStr.length;
+          const nextIdx = extraStr.indexOf('\n\n[', contentStart);
+          val = (nextIdx !== -1 ? extraStr.substring(contentStart, nextIdx) : extraStr.substring(contentStart)).trim();
+        }
+      }
+    }
+
+    if (!val) return;
+
+    if (field.type === 'image') {
+      // 画像は一括管理されているものを表示（便宜上、最初の画像フィールドにすべて表示）
+      if (card.image && el.modalImages.childElementCount === 0) {
+        try {
+          const urls = JSON.parse(card.image);
+          (Array.isArray(urls) ? urls : [urls]).forEach(url => {
+            if (!url) return;
+            const img = document.createElement('img');
+            img.src = url; img.alt = field.label;
+            el.modalImages.appendChild(img);
+          });
+        } catch {
+          const img = document.createElement('img');
+          img.src = card.image; img.alt = field.label;
+          el.modalImages.appendChild(img);
+        }
+      }
+    } else {
+      const fieldWrap = document.createElement('div');
+      fieldWrap.style.marginBottom = '1rem';
+      fieldWrap.innerHTML = `
+        <p class="modal-label">${esc(field.label)}</p>
+        <div class="modal-value ${['answer', 'question'].includes(field.key) ? '' : 'modal-extra-value'}">${esc(val)}</div>
+      `;
+      // question 以外は answer 側に、question は Q 側に配置（既存UI互換）
+      if (field.key === 'question') el.modalQ.appendChild(fieldWrap);
+      else el.modalAnswer.appendChild(fieldWrap);
+    }
+  });
 
   const isDue = card.nextReviewDate && card.nextReviewDate <= Date.now();
   el.statNext.textContent     = card.nextReviewDate ? (isDue ? '🎯 今すぐ' : fmtDate(card.nextReviewDate)) : '未設定';
@@ -528,6 +551,7 @@ async function confirmDelete(id) {
 function setupListeners() {
   el.searchInput.addEventListener('input', applyAndRender);
   el.genreFilter.addEventListener('change', applyAndRender);
+  el.sortSelect.addEventListener('change', applyAndRender);
   el.modalClose.addEventListener('click', closeModal);
   el.modalOverlay.addEventListener('click', e => { if (e.target === el.modalOverlay) closeModal(); });
   el.modalDelete.addEventListener('click', () => { if (activeCardId) confirmDelete(activeCardId); });

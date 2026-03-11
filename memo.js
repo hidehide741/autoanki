@@ -11,6 +11,7 @@ const el = {
   titleInput: document.getElementById('memo-title'),
   contentInput: document.getElementById('memo-content'),
   newBtn: document.getElementById('new-memo-btn'),
+  saveBtn: document.getElementById('save-memo-btn'),
   deleteBtn: document.getElementById('delete-memo-btn'),
   saveStatus: document.getElementById('save-status'),
   toast: document.getElementById('toast')
@@ -100,10 +101,33 @@ async function deleteActiveMemo() {
   }
 }
 
+async function performSave() {
+  if (!activeMemoId) return;
+  
+  const memo = allMemos.find(m => m.id === activeMemoId);
+  if (!memo) return;
+
+  clearTimeout(saveTimeout);
+  el.saveStatus.textContent = '保存中...';
+  el.saveStatus.style.color = 'var(--accent)';
+
+  try {
+    await StorageManager.saveMemo(memo);
+    el.saveStatus.textContent = '保存完了';
+    el.saveStatus.style.color = 'var(--text-secondary)';
+    renderMemoList(); // リストのタイトルや日付を更新
+  } catch (err) {
+    el.saveStatus.textContent = '保存失敗';
+    el.saveStatus.style.color = '#ef4444';
+    console.error('Save failed:', err);
+  }
+}
+
 function handleInput() {
   if (!activeMemoId) return;
   
-  el.saveStatus.textContent = '保存中...';
+  el.saveStatus.textContent = '変更あり...';
+  el.saveStatus.style.color = 'var(--text-secondary)';
   
   // メモリ上のデータを更新
   const memo = allMemos.find(m => m.id === activeMemoId);
@@ -113,24 +137,14 @@ function handleInput() {
     memo.updatedAt = new Date().toISOString();
   }
 
-  // デバウンス処理
+  // オートセーブのデバウンス処理
   clearTimeout(saveTimeout);
-  saveTimeout = setTimeout(async () => {
-    try {
-      await StorageManager.saveMemo(memo);
-      el.saveStatus.textContent = '保存完了';
-      el.saveStatus.style.color = 'var(--text-secondary)';
-      renderMemoList(); // リストのタイトルや日付を更新
-    } catch (err) {
-      el.saveStatus.textContent = '保存失敗';
-      el.saveStatus.style.color = '#ef4444';
-      console.error('Auto-save failed:', err);
-    }
-  }, 1000);
+  saveTimeout = setTimeout(performSave, 1500);
 }
 
 function setupListeners() {
   el.newBtn.addEventListener('click', createNewMemo);
+  el.saveBtn.addEventListener('click', performSave);
   el.deleteBtn.addEventListener('click', deleteActiveMemo);
   
   el.titleInput.addEventListener('input', handleInput);

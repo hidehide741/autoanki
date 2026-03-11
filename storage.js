@@ -516,11 +516,15 @@ const StorageManager = {
         method: 'POST',
         headers: {
           ...HEADERS,
-          'Prefer': 'resolution=merge-duplicates'
+          'Prefer': 'resolution=merge-duplicates,return=minimal'
         },
         body: JSON.stringify(payload)
       });
-      if (!res.ok) throw new Error('Supabase Upsert Error');
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error('Supabase Upsert Error Detail:', errorText);
+        throw new Error(`Supabase Upsert Error: ${res.status} ${errorText}`);
+      }
     } catch (err) {
       console.error('saveMemo failed:', err);
       throw err;

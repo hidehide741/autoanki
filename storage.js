@@ -136,26 +136,18 @@ const StorageManager = {
       }));
 
       // 最初の起動時などでクラウドが空の場合、ローカルから移行を試みる
-      if (mappedCloud.length === 0) {
+      if (cloudGenres.length === 0) {
         const localSaved = await LocalStore.get('genres');
-        if (localSaved && localSaved.length > 0) {
-          console.log('Migrating local genres to Supabase...');
-          await this.saveGenres(localSaved);
-          return localSaved;
-        }
-        // ローカルも空ならデフォルトを保存して返す
-        await this.saveGenres(DEFAULT_GENRES);
-        return DEFAULT_GENRES;
+        const initialToSave = (localSaved && localSaved.length > 0) ? localSaved : DEFAULT_GENRES;
+        
+        console.log('Initializing cloud genres...');
+        await this.saveGenres(initialToSave);
+        return initialToSave;
       }
 
-      // 常にデフォルトジャンルの最新定義をマージ（フィールド追加などのアップデート対応）
-      const defaultIds = new Set(DEFAULT_GENRES.map(g => g.id));
-      const customs = mappedCloud.filter(g => !defaultIds.has(g.id));
-      const merged = [...DEFAULT_GENRES, ...customs];
-
       // ローカルキャッシュも更新
-      await LocalStore.set('genres', merged);
-      return merged;
+      await LocalStore.set('genres', mappedCloud);
+      return mappedCloud;
     } catch (err) {
       console.error('getGenres failed, falling back to local storage:', err);
       const local = await LocalStore.get('genres');

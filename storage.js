@@ -149,6 +149,7 @@ const StorageManager = {
         question: c.question,
         answer: c.answer,
         image: c.image,
+        genre: c.genre,
         nextReviewDate: parseInt(c.next_review_date, 10),
         interval: parseInt(c.interval, 10),
         repetition: c.repetition,
@@ -160,7 +161,6 @@ const StorageManager = {
     }
   },
 
-  // カードを個別に更新 (Supabase REST APIのPATCHを使用)
   async saveCardUpdate(card) {
     try {
       await fetch(`${API_BASE}?id=eq.${card.id}`, {
@@ -170,6 +170,7 @@ const StorageManager = {
           question: card.question,
           answer: card.answer,
           image: card.image,
+          genre: card.genre,
           next_review_date: card.nextReviewDate,
           interval: card.interval,
           repetition: card.repetition,
@@ -180,6 +181,39 @@ const StorageManager = {
       console.error("クラウドへのデータ保存に失敗しました。", e);
     }
   },
+
+  // カードを新規追加 (Supabase REST API の POST を使用)
+  async addCard(question, answer, image = null, genre = 'other') {
+    const now = Date.now();
+    const id = 'card-' + now + '-' + Math.random().toString(36).substr(2, 6);
+    const body = {
+      id,
+      question,
+      answer,
+      image,
+      genre,
+      next_review_date: now,          // 今すぐ出題
+      interval:         86400000,     // 初期インターバル 1日
+      repetition:       0,
+      easiness:         2.5
+    };
+    try {
+      const res = await fetch(API_BASE, {
+        method: 'POST',
+        headers: { ...HEADERS, 'Prefer': 'return=representation' },
+        body: JSON.stringify(body)
+      });
+      if (!res.ok) {
+        const err = await res.text();
+        throw new Error(`カード追加失敗: ${err}`);
+      }
+      return await res.json();
+    } catch (e) {
+      console.error("カードの追加に失敗しました。", e);
+      throw e;
+    }
+  },
+
 
   // インストール時の初期処理（統計のみブラウザに残す）
   async initDemoData() {

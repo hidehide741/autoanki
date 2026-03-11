@@ -162,7 +162,7 @@ function renderTable() {
       <td class="cell-question"><div class="cell-text">${esc(card.question || '')}</div></td>
       <td><span class="genre-badge">${esc(genreName(card.genre))}</span></td>
       <td><span class="due-badge ${isDue ? 'now' : 'later'}">${dueStr}</span></td>
-      <td style="color:var(--text-secondary);">${card.interval ?? '—'} 日</td>
+      <td style="color:var(--text-secondary);">${fmtInterval(card.interval)}</td>
       <td class="action-cell">
         <button class="icon-btn-sm del delete-btn" data-id="${card.id}" title="削除">🗑️</button>
       </td>
@@ -242,7 +242,7 @@ function openModal(id) {
   const isDue = card.nextReviewDate && card.nextReviewDate <= Date.now();
   el.statNext.textContent     = card.nextReviewDate ? (isDue ? '🎯 今すぐ' : fmtDate(card.nextReviewDate)) : '未設定';
   el.statNext.style.color     = isDue ? '#10b981' : '#a78bfa';
-  el.statInterval.textContent = card.interval != null ? `${card.interval}` : '—';
+  el.statInterval.textContent = fmtInterval(card.interval);
   el.statEase.textContent     = card.easeFactor != null ? card.easeFactor.toFixed(2) : '—';
 
   el.modalOverlay.classList.remove('hidden');
@@ -279,6 +279,14 @@ function setupListeners() {
 // ===== ユーティリティ =====
 function genreName(id) {
   return genres.find(g => g.id === id)?.name || id || 'その他';
+}
+function fmtInterval(ms) {
+  if (ms == null) return '—';
+  const DAY  = 86400000;
+  const HOUR = 3600000;
+  if (ms < HOUR)  return `${Math.round(ms / 60000)} 分`;
+  if (ms < DAY)   return `${Math.round(ms / HOUR)} 時間`;
+  return `${Math.round(ms / DAY)} 日`;
 }
 function fmtDate(ts) {
   return new Date(ts).toLocaleDateString('ja-JP', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });

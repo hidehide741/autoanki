@@ -101,14 +101,15 @@ function showQuestionMode() {
       urls = [currentCard.image];
     }
     urls.forEach(url => {
+      if (!url) return;
       const img = document.createElement('img');
       img.src = url;
       img.alt = 'Question Image';
-      img.style.cssText = 'max-height: 200px; max-width: 100%; border-radius: 8px; object-fit: contain; box-shadow: 0 4px 6px rgba(0,0,0,0.3);';
       el.questionImages.appendChild(img);
     });
+    el.questionImages.dataset.cols = Math.min(urls.length, 3);
+    el.questionImages.className = 'image-grid';
     el.questionImages.classList.remove('hidden');
-    el.questionImages.style.display = 'flex';
   } else {
     el.questionImages.classList.add('hidden');
     el.questionImages.style.display = 'none';

@@ -252,8 +252,9 @@ function openModal(id) {
   ];
 
   el.modalGenre.textContent = genreDef?.name || 'その他';
-  el.modalQ.innerHTML = ''; // コンテンツを動的に生成
+  el.modalQ.innerHTML = ''; 
   el.modalImages.innerHTML = '';
+  el.modalImages.className = 'image-grid hidden'; // 初期化
   el.modalAnswer.innerHTML = '';
 
   fields.forEach(field => {
@@ -278,17 +279,22 @@ function openModal(id) {
       // 画像は一括管理されているものを表示（便宜上、最初の画像フィールドにすべて表示）
       if (card.image && el.modalImages.childElementCount === 0) {
         try {
-          const urls = JSON.parse(card.image);
-          (Array.isArray(urls) ? urls : [urls]).forEach(url => {
-            if (!url) return;
-            const img = document.createElement('img');
-            img.src = url; img.alt = field.label;
-            el.modalImages.appendChild(img);
-          });
+          const urls = JSON.parse(card.image).filter(u => u);
+          if (urls.length > 0) {
+            urls.forEach(url => {
+              const img = document.createElement('img');
+              img.src = url; img.alt = field.label;
+              el.modalImages.appendChild(img);
+            });
+            el.modalImages.dataset.cols = Math.min(urls.length, 3);
+            el.modalImages.classList.remove('hidden');
+          }
         } catch {
           const img = document.createElement('img');
           img.src = card.image; img.alt = field.label;
           el.modalImages.appendChild(img);
+          el.modalImages.dataset.cols = 1;
+          el.modalImages.classList.remove('hidden');
         }
       }
     } else {

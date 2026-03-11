@@ -29,34 +29,61 @@ body {
   height: 100vh;
 }
 
-/* サイドバーは newtab.css 等と共通の想定（簡略化して記述） */
+/* サイドバー */
 .sidebar {
-  width: 260px;
-  background: rgba(15, 23, 42, 0.8);
-  border-right: 1px solid var(--glass-border);
+  width: 220px;
+  flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  padding: 1.5rem;
+  gap: 2rem;
+  background: rgba(15, 23, 42, 0.85);
+  backdrop-filter: blur(16px);
+  border-right: 1px solid var(--glass-border);
+  padding: 2rem;
+  position: sticky;
+  top: 0;
 }
 
-.logo h1 { font-size: 1.5rem; font-weight: 800; background: linear-gradient(135deg, #fff, var(--primary)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 0.5rem; }
-.logo p { font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 2rem; }
-
-.nav-links { display: flex; flex-direction: column; gap: 0.5rem; }
-.nav-btn {
-  text-decoration: none;
+.logo h1 {
+  font-size: 1.5rem;
+  background: linear-gradient(135deg, #a78bfa, #818cf8);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-bottom: 0.2rem;
+}
+.logo p {
+  font-size: 0.8rem;
   color: var(--text-secondary);
-  padding: 0.75rem 1rem;
-  border-radius: 10px;
-  font-size: 0.9rem;
+}
+
+.nav-links {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.nav-btn {
+  display: block;
+  padding: 0.8rem 1rem;
+  border-radius: 8px;
+  color: var(--text-primary);
+  text-decoration: none;
   font-weight: 500;
   transition: all 0.2s;
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
+  background: transparent;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+  font-size: 0.9rem;
 }
-.nav-btn:hover { background: rgba(255, 255, 255, 0.05); color: #fff; }
-.nav-btn.active { background: rgba(99, 102, 241, 0.15); color: var(--primary); border-left: 3px solid var(--primary); }
+.nav-btn:hover { background: rgba(255,255,255,0.05); }
+.nav-btn.active {
+  background: rgba(99, 102, 241, 0.2);
+  color: #818cf8;
+  border-left: 3px solid #818cf8;
+}
 
 .main-content {
   flex: 1;

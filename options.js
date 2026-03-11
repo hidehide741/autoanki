@@ -84,34 +84,20 @@ function buildImagePasteUI() {
   wrapper.id = 'image-upload-area';
 
   wrapper.innerHTML = `
-    <label>画像（任意・最大3枚）<span style="color: var(--text-secondary); font-size: 0.8rem; margin-left: 0.5rem;">Ctrl+V でペースト、またはクリックで選択</span></label>
+    <label>画像（任意・最大3枚）<span style="color: var(--text-secondary); font-size: 0.8rem; margin-left: 0.5rem;">Ctrl+V でベースト</span></label>
     <div id="paste-zone" style="
       border: 2px dashed rgba(99,102,241,0.4);
       border-radius: 12px;
       padding: 1.5rem;
       text-align: center;
-      cursor: pointer;
-      transition: all 0.2s;
       color: var(--text-secondary);
       background: rgba(0,0,0,0.15);
     ">
       <div style="font-size: 2rem; margin-bottom: 0.5rem;">🖼️</div>
-      <div style="font-size: 0.9rem;">ここにスクリーンショットをCtrl+Vで貼り付け</div>
-      <div style="font-size: 0.8rem; margin-top: 0.3rem; opacity: 0.6;">またはクリックしてファイルを選択</div>
-      <input type="file" id="image-file-input" accept="image/*" multiple style="display:none">
+      <div style="font-size: 0.9rem;">Ctrl+V でスクリーンショットを貼り付け（最大3枚）</div>
     </div>
     <div id="image-previews" style="display: flex; gap: 0.75rem; flex-wrap: wrap; margin-top: 0.75rem;"></div>
   `;
-
-  // ファイル選択クリック
-  wrapper.querySelector('#paste-zone').addEventListener('click', () => {
-    wrapper.querySelector('#image-file-input').click();
-  });
-
-  // ファイル選択
-  wrapper.querySelector('#image-file-input').addEventListener('change', (e) => {
-    Array.from(e.target.files).slice(0, MAX_IMAGES - pendingImages.length).forEach(file => addImage(file));
-  });
 
   return wrapper;
 }

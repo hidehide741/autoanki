@@ -120,7 +120,13 @@ function showQuestionMode(genreDef) {
     const container = field.role === 'question' ? el.questionArea : el.answerArea;
     const rawContent = (field.role === 'question' ? currentCard.question : currentCard.answer) || '';
     
-    if (field.type === 'image') {
+    if (field.type === 'static') {
+      const staticEl = document.createElement('div');
+      staticEl.className = 'static-text-display';
+      staticEl.style.cssText = 'padding: 0.75rem 1rem; margin: 1rem 0; background: rgba(99,102,241,0.08); border-radius: 8px; border-left: 4px solid #a78bfa; font-weight: 600; font-size: 1.1rem; color: #a78bfa;';
+      staticEl.textContent = field.label;
+      container.appendChild(staticEl);
+    } else if (field.type === 'image') {
       // role と fieldKey モードの両方に対応
       const fieldImages = images.filter(img => {
         if (img.fieldKey) {

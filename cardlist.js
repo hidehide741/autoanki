@@ -295,7 +295,12 @@ function openModal(id) {
 
     if (!val && !field.required && field.type !== 'image') return;
 
-    if (field.type === 'image') {
+    if (field.type === 'static') {
+      const staticEl = document.createElement('div');
+      staticEl.style.cssText = 'padding: 0.75rem 1rem; margin: 1rem 0; background: rgba(99,102,241,0.08); border-radius: 8px; border-left: 4px solid #a78bfa; font-weight: 600; font-size: 1rem; color: #a78bfa;';
+      staticEl.textContent = field.label;
+      (field.role === 'question' ? el.modalQ : el.modalAnswer).appendChild(staticEl);
+    } else if (field.type === 'image') {
       const fieldImages = images.filter(img => img.role === field.role);
       if (fieldImages.length > 0) {
         const grid = document.createElement('div');
@@ -378,6 +383,15 @@ function openEditModal(id) {
   }
 
   fields.forEach(field => {
+    if (field.type === 'static') {
+      const div = document.createElement('div');
+      div.className = 'form-group static-field';
+      div.style.marginBottom = '1rem';
+      div.innerHTML = `<div style="padding: 0.6rem 0.8rem; background: rgba(99,102,241,0.1); border-left: 3px solid #a78bfa; border-radius: 4px; font-weight: 500; color: #a78bfa; font-size: 0.9rem;">${field.label}</div>`;
+      el.editFields.appendChild(div);
+      return;
+    }
+
     if (field.type === 'image') {
       if (!pendingEditImages[field.key]) pendingEditImages[field.key] = [];
       el.editFields.appendChild(buildEditImagePasteUI(field));

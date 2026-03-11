@@ -98,7 +98,7 @@ function renderGenreList() {
       item.style.borderColor = 'rgba(99,102,241,0.6)';
     }
 
-    const typeIcon = { text: '📝', textarea: '📄', number: '🔢', image: '🖼️', url: '🔗', date: '📅' };
+    const typeIcon = { text: '📝', textarea: '📄', number: '🔢', image: '🖼️', url: '🔗', date: '📅', static: '🔖' };
     const qFields = genre.fields.filter(f => f.role === 'question');
     const aFields = genre.fields.filter(f => f.role === 'answer');
     const fieldsPreview = genre.fields.map(f => `${typeIcon[f.type] || '📝'} ${f.label}`).join('&ensp;');
@@ -164,7 +164,8 @@ const FIELD_TYPES = [
   { val: 'number',   label: '🔢 数値' },
   { val: 'image',    label: '🖼️ 画像（Ctrl+V）' },
   { val: 'url',      label: '🔗 URL' },
-  { val: 'date',     label: '📅 日付' }
+  { val: 'date',     label: '📅 日付' },
+  { val: 'static',   label: '🔖 固定テキスト（表示専用）' }
 ];
 
 function addFieldRow(container, label = '', type = 'textarea', required = false) {

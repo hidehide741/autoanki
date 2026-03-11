@@ -53,6 +53,15 @@ function renderForm() {
       return;
     }
 
+    // static (固定テキスト) タイプはラベルのみを表示
+    if (field.type === 'static') {
+      const div = document.createElement('div');
+      div.className = 'form-group static-field';
+      div.innerHTML = `<div style="padding: 0.6rem 0.8rem; background: rgba(99,102,241,0.1); border-left: 3px solid #a78bfa; border-radius: 4px; font-weight: 500; color: #a78bfa; font-size: 0.9rem;">${field.label}</div>`;
+      el.formFields.appendChild(div);
+      return;
+    }
+
     const div = document.createElement('div');
     div.className = 'form-group';
 

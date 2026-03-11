@@ -170,7 +170,9 @@ const FIELD_TYPES = [
 function addFieldRow(container, label = '', type = 'textarea', required = false) {
   const row = document.createElement('div');
   row.className = 'field-row';
+  row.draggable = true; // ドラッグ可能にする
   row.innerHTML = `
+    <div class="drag-handle" title="ドラッグして並び替え">⋮⋮</div>
     <input type="text" class="field-label" value="${esc(label)}" placeholder="ラベル名 (例: 例文)">
     <select class="field-type">
       ${FIELD_TYPES.map(t => `<option value="${t.val}" ${t.val === type ? 'selected' : ''}>${t.label}</option>`).join('')}
@@ -178,6 +180,30 @@ function addFieldRow(container, label = '', type = 'textarea', required = false)
     <label class="required-toggle"><input type="checkbox" class="field-required" ${required ? 'checked' : ''}>必須</label>
     <button type="button" class="btn-remove" title="削除">×</button>
   `;
+
+  // === ドラッグ＆ドロップのイベント制御 ===
+  row.addEventListener('dragstart', (e) => {
+    row.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+  });
+
+  row.addEventListener('dragend', () => {
+    row.classList.remove('dragging');
+    renderPreview();
+  });
+
+  row.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    const draggingRow = container.querySelector('.dragging');
+    if (!draggingRow || draggingRow === row) return;
+
+    // マウス位置によって上か下に挿入
+    const rect = row.getBoundingClientRect();
+    const next = (e.clientY - rect.top) > (rect.height / 2);
+    container.insertBefore(draggingRow, next ? row.nextSibling : row);
+  });
+
+  // ======================================
 
   row.querySelector('.btn-remove').addEventListener('click', () => {
     row.remove();

@@ -8,7 +8,7 @@ const el = {
   cardContainer: document.getElementById('card-container'),
   doneContainer: document.getElementById('done-container'),
   questionText: document.getElementById('question-text'),
-  questionImage: document.getElementById('question-image'),
+  questionImages: document.getElementById('question-images'),
   answerSection: document.getElementById('answer-section'),
   answerText: document.getElementById('answer-text'),
   showAnswerBtn: document.getElementById('show-answer-btn'),
@@ -75,12 +75,28 @@ function showQuestionMode() {
   el.answerSection.classList.add('hidden');
   el.showAnswerBtn.classList.remove('hidden');
 
+  // 画像表示（単一URL または JSON配列に対応）
+  el.questionImages.innerHTML = '';
   if (currentCard && currentCard.image) {
-    el.questionImage.src = `${StorageManager.getBaseUrl()}${currentCard.image}`;
-    el.questionImage.classList.remove('hidden');
+    let urls = [];
+    try {
+      const parsed = JSON.parse(currentCard.image);
+      urls = Array.isArray(parsed) ? parsed : [currentCard.image];
+    } catch {
+      urls = [currentCard.image];
+    }
+    urls.forEach(url => {
+      const img = document.createElement('img');
+      img.src = url;
+      img.alt = 'Question Image';
+      img.style.cssText = 'max-height: 200px; max-width: 100%; border-radius: 8px; object-fit: contain; box-shadow: 0 4px 6px rgba(0,0,0,0.3);';
+      el.questionImages.appendChild(img);
+    });
+    el.questionImages.classList.remove('hidden');
+    el.questionImages.style.display = 'flex';
   } else {
-    el.questionImage.classList.add('hidden');
-    el.questionImage.src = '';
+    el.questionImages.classList.add('hidden');
+    el.questionImages.style.display = 'none';
   }
 }
 

@@ -62,6 +62,32 @@ const HEADERS = {
   'Authorization': `Bearer ${SUPABASE_KEY}`
 };
 
+// Supabase Storage へ画像ファイルをアップロードし、Public URL を返す
+async function uploadImageToSupabase(file) {
+  const ext = file.type === 'image/png' ? 'png' : file.type === 'image/webp' ? 'webp' : 'jpg';
+  const fileName = `${Date.now()}-${Math.random().toString(36).substr(2, 6)}.${ext}`;
+  const uploadUrl = `${SUPABASE_URL}/storage/v1/object/anki-images/${fileName}`;
+
+  const res = await fetch(uploadUrl, {
+    method: 'POST',
+    headers: {
+      'apikey': SUPABASE_KEY,
+      'Authorization': `Bearer ${SUPABASE_KEY}`,
+      'Content-Type': file.type,
+      'x-upsert': 'true'
+    },
+    body: file
+  });
+
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`画像アップロード失敗: ${err}`);
+  }
+
+  // Public URL
+  return `${SUPABASE_URL}/storage/v1/object/public/anki-images/${fileName}`;
+}
+
 // Chrome拡張とWebブラウザの両方で動くようにストレージAPIを吸収
 const LocalStore = {
   async get(key) {
@@ -336,3 +362,4 @@ const StorageManager = {
 };
 
 export default StorageManager;
+export { uploadImageToSupabase };

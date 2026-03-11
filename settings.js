@@ -166,7 +166,13 @@ const FIELD_TYPES = [
   { value: 'date',     label: '📅 日付' }
 ];
 
-function addFieldRow(defaultLabel = '', defaultType = 'text', defaultRequired = false, fieldKey = null) {
+const FIELD_ROLES = [
+  { value: 'normal',   label: '通常' },
+  { value: 'question', label: '✅ 問題' },
+  { value: 'answer',   label: '💡 答え' }
+];
+
+function addFieldRow(defaultLabel = '', defaultType = 'text', defaultRequired = false, fieldKey = null, defaultRole = 'normal') {
   const row = document.createElement('div');
   row.className = 'field-row';
   const id = fieldKey || ('custom_' + Date.now() + Math.random().toString(36).substring(2));
@@ -176,10 +182,17 @@ function addFieldRow(defaultLabel = '', defaultType = 'text', defaultRequired = 
     `<option value="${t.value}" ${t.value === defaultType ? 'selected' : ''}>${t.label}</option>`
   ).join('');
 
+  const roleOptions = FIELD_ROLES.map(r =>
+    `<option value="${r.value}" ${r.value === (fieldKey === 'question' ? 'question' : fieldKey === 'answer' ? 'answer' : defaultRole) ? 'selected' : ''}>${r.label}</option>`
+  ).join('');
+
   row.innerHTML = `
-    <input type="text" value="${defaultLabel}" placeholder="フィールド名（例: 例文）" class="field-label-input" data-id="${id}">
+    <input type="text" value="${defaultLabel}" placeholder="フィールド名" class="field-label-input" data-id="${id}">
     <select class="field-type-select" data-id="${id}" title="フィールドの種類">
       ${typeOptions}
+    </select>
+    <select class="field-role-select" data-id="${id}" title="役割（問題/答えなど）">
+      ${roleOptions}
     </select>
     <label class="required-check-wrap" title="必須フィールドにする">
       <input type="checkbox" class="field-required-check" data-id="${id}" ${defaultRequired ? 'checked' : ''}>
@@ -192,6 +205,7 @@ function addFieldRow(defaultLabel = '', defaultType = 'text', defaultRequired = 
   row.querySelector('.remove-field-btn').addEventListener('click', () => { row.remove(); renderPreview(); });
   row.querySelector('.field-label-input').addEventListener('input', renderPreview);
   row.querySelector('.field-type-select').addEventListener('change', renderPreview);
+  row.querySelector('.field-role-select').addEventListener('change', renderPreview);
   row.querySelector('.field-required-check').addEventListener('change', renderPreview);
 }
 
@@ -207,16 +221,23 @@ async function saveGenre() {
     const label    = row.querySelector('.field-label-input')?.value.trim();
     const type     = row.querySelector('.field-type-select')?.value || 'text';
     const required = row.querySelector('.field-required-check')?.checked || false;
+    const role     = row.querySelector('.field-role-select')?.value || 'normal';
     let key = row.dataset.key;
 
-    if (key === 'question') foundQuestion = true;
-    if (key === 'answer') foundAnswer = true;
+    // 役割に基づいてキーを上書き
+    if (role === 'question') {
+      key = 'question';
+      foundQuestion = true;
+    } else if (role === 'answer') {
+      key = 'answer';
+      foundAnswer = true;
+    }
 
-    if (label) fields.push({ key, label, type, required });
+    if (label) fields.push({ key, label, type, required, role });
   });
 
-  if (fields.length < 2) {
-    alert('少なくとも2つのフィールド（問題と答えを含む）が必要です。');
+  if (!foundQuestion || !foundAnswer) {
+    alert('「問題」と「答え」の役割を持つフィールドを、それぞれ少なくとも1つ設定してください。');
     return;
   }
 

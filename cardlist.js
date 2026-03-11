@@ -321,12 +321,30 @@ function openEditModal(id) {
     input.placeholder = `${field.label}を入力…`;
 
     // 既存値をスマートにセット
-    // 複合フィールド（answer＋extra）: "---" 壽当の哈番目だけ抽出
-    if (field.key === 'answer') {
+    if (field.key === 'question') {
+      input.value = card.question || '';
+    } else if (field.key === 'answer') {
       const raw = card.answer || '';
       input.value = raw.split('\n\n---\n')[0];
     } else {
-      input.value = card[field.key] || '';
+      const raw = card.answer || '';
+      const parts = raw.split('\n\n---\n');
+      input.value = '';
+      if (parts.length > 1) {
+        const extraStr = parts.slice(1).join('\n\n---\n');
+        // "[ラベル]\n内容" を簡易抽出（次の"\n\n[" または末尾まで）
+        const searchStr = `[${field.label}]\n`;
+        const startIdx = extraStr.indexOf(searchStr);
+        if (startIdx !== -1) {
+          const contentStart = startIdx + searchStr.length;
+          const nextIdx = extraStr.indexOf('\n\n[', contentStart);
+          if (nextIdx !== -1) {
+            input.value = extraStr.substring(contentStart, nextIdx).trim();
+          } else {
+            input.value = extraStr.substring(contentStart).trim();
+          }
+        }
+      }
     }
 
     div.appendChild(label);

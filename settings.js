@@ -10,8 +10,6 @@ const el = {
   addFieldBtn: document.getElementById('add-field-btn'),
   saveGenreBtn: document.getElementById('save-genre-btn'),
   saveMsg: document.getElementById('save-msg'),
-  questionLabel: document.getElementById('question-label-input'),
-  answerLabel: document.getElementById('answer-label-input'),
   formTitle: document.getElementById('form-section-title'),
   cancelEditBtn: document.getElementById('cancel-edit-btn')
 };
@@ -25,8 +23,14 @@ async function init() {
   el.cancelEditBtn?.addEventListener('click', cancelEdit);
 
   el.newGenreName.addEventListener('input', renderPreview);
-  el.questionLabel?.addEventListener('input', renderPreview);
-  el.answerLabel?.addEventListener('input', renderPreview);
+  
+  addDefaultFields();
+}
+
+function addDefaultFields() {
+  el.newFieldList.innerHTML = '';
+  addFieldRow('問題', 'textarea', true, 'question');
+  addFieldRow('答え', 'textarea', true, 'answer');
 }
 
 function renderGenreList() {
@@ -101,17 +105,10 @@ function loadGenreIntoForm(index) {
   // ジャンル名
   el.newGenreName.value = genre.name;
 
-  // 問題・答えのラベル
-  const qField = genre.fields.find(f => f.key === 'question');
-  const aField = genre.fields.find(f => f.key === 'answer');
-  if (el.questionLabel) el.questionLabel.value = qField?.label || '';
-  if (el.answerLabel)   el.answerLabel.value   = aField?.label || '';
-
-  // 追加フィールドをクリアして再構築
+  // フィールドをクリアして再構築
   el.newFieldList.innerHTML = '';
-  const extraFields = genre.fields.filter(f => f.key !== 'question' && f.key !== 'answer');
-  extraFields.forEach(field => {
-    addFieldRow(field.label, field.type, field.required);
+  genre.fields.forEach(field => {
+    addFieldRow(field.label, field.type, field.required, field.key);
   });
 
   // 保存ボタン・キャンセルボタンの切り替え
@@ -128,9 +125,7 @@ function loadGenreIntoForm(index) {
 function cancelEdit() {
   editingIndex = null;
   el.newGenreName.value = '';
-  el.newFieldList.innerHTML = '';
-  if (el.questionLabel) el.questionLabel.value = '';
-  if (el.answerLabel)   el.answerLabel.value = '';
+  addDefaultFields();
   el.saveGenreBtn.textContent = '保存する';
   el.cancelEditBtn?.classList.add('hidden');
   if (el.formTitle) el.formTitle.textContent = '➕ ジャンルを追加';
@@ -148,10 +143,11 @@ const FIELD_TYPES = [
   { value: 'date',     label: '📅 日付' }
 ];
 
-function addFieldRow(defaultLabel = '', defaultType = 'text', defaultRequired = false) {
+function addFieldRow(defaultLabel = '', defaultType = 'text', defaultRequired = false, fieldKey = null) {
   const row = document.createElement('div');
   row.className = 'field-row';
-  const id = Date.now() + Math.random();
+  const id = fieldKey || ('custom_' + Date.now() + Math.random().toString(36).substring(2));
+  row.dataset.key = id;
 
   const typeOptions = FIELD_TYPES.map(t =>
     `<option value="${t.value}" ${t.value === defaultType ? 'selected' : ''}>${t.label}</option>`
@@ -180,20 +176,33 @@ async function saveGenre() {
   const name = el.newGenreName.value.trim();
   if (!name) { alert('ジャンル名を入力してください'); return; }
 
-  const questionLabel = el.questionLabel?.value.trim() || '問題';
-  const answerLabel   = el.answerLabel?.value.trim()   || '答え';
-
-  const fields = [
-    { key: 'question', label: questionLabel, type: 'textarea', required: true },
-    { key: 'answer',   label: answerLabel,   type: 'textarea', required: true }
-  ];
+  const fields = [];
+  let foundQuestion = false;
+  let foundAnswer = false;
 
   el.newFieldList.querySelectorAll('.field-row').forEach((row, i) => {
     const label    = row.querySelector('.field-label-input')?.value.trim();
     const type     = row.querySelector('.field-type-select')?.value || 'text';
     const required = row.querySelector('.field-required-check')?.checked || false;
-    if (label) fields.push({ key: `custom_${i}_${Date.now()}`, label, type, required });
+    let key = row.dataset.key;
+
+    if (key === 'question') foundQuestion = true;
+    if (key === 'answer') foundAnswer = true;
+
+    if (label) fields.push({ key, label, type, required });
   });
+
+  if (fields.length < 2) {
+    alert('少なくとも2つのフィールド（問題と答えを含む）が必要です。');
+    return;
+  }
+
+  // question / answer のキーを持つフィールドが消されていたら、先頭の2つを強制設定
+  if (!foundQuestion && fields.length > 0) fields[0].key = 'question';
+  if (!foundAnswer && fields.length > 1) {
+    const possibleAnswers = fields.filter(f => f.key !== 'question');
+    if (possibleAnswers.length > 0) possibleAnswers[0].key = 'answer';
+  }
 
   if (editingIndex !== null) {
     // 編集モード：既存ジャンルを上書き（id・isDefault は保持）
@@ -221,25 +230,18 @@ function renderPreview() {
   if (!previewForm) return;
 
   const name = el.newGenreName.value.trim();
-  const questionLabel = el.questionLabel?.value.trim() || '問題';
-  const answerLabel   = el.answerLabel?.value.trim()   || '答え';
-
-  if (name) { badge.textContent = name; badge.style.display = 'inline-block'; }
-  else      { badge.style.display = 'none'; }
-
-  const extraFields = [];
+  const allFields = [];
   el.newFieldList.querySelectorAll('.field-row').forEach(row => {
     const label    = row.querySelector('.field-label-input')?.value.trim();
     const type     = row.querySelector('.field-type-select')?.value || 'text';
     const required = row.querySelector('.field-required-check')?.checked || false;
-    if (label) extraFields.push({ label, type, required });
+    if (label) allFields.push({ label, type, required });
   });
 
-  const allFields = [
-    { label: questionLabel, type: 'textarea', required: true },
-    { label: answerLabel,   type: 'textarea', required: true },
-    ...extraFields
-  ];
+  if (allFields.length === 0) {
+    previewForm.innerHTML = '<p style="color: var(--text-secondary); font-size: 0.88rem; text-align: center;">ジャンル名やフィールドを入力するとここにプレビューが表示されます</p>';
+    return;
+  }
 
   const typeIcon = { text: '📝', textarea: '📄', number: '🔢', image: '🖼️', url: '🔗', date: '📅' };
   const inputStyle = `width:100%;background:rgba(0,0,0,0.2);border:1px solid rgba(255,255,255,0.1);border-radius:6px;padding:0.5rem 0.75rem;color:rgba(255,255,255,0.4);font-family:inherit;font-size:0.88rem;pointer-events:none;`;

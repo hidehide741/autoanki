@@ -2,56 +2,411 @@ import StorageManager, { uploadImageToSupabase } from './storage.js';
 
 const MAX_IMAGES = 3;
 
-let selectedGenreId = 'other';
+// HTML エスケープ（短縮エイリアス）
+const esc = (s) => String(s).replace(/[&<>"'`]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;','`':'&#x60;'})[c]);
 let genres = [];
-let pendingImages = {}; // { [fieldKey]: [{file, previewUrl}] } の形式
-let editingCardId = null;  // 編集モード時のカードID（null=新規）
-let editingCardOriginal = null; // 編集対象の元カードデータ
+let pendingImages = {};
+let editingCardId = null;
+let editingCardOriginal = null;
+
+// ===== ステップ管理 =====
+let currentStep = 1;          // 1=型選択, 2=微調整, 3=入力
+let activeGenre = null;       // ステップ2・3で使う「現在の型」(fields配列を含む)
+let activeGenreId = null;     // 選択したジャンルのid（保存時に使う）
+
+// settings.jsと共通のフィールドタイプ定義
+const FIELD_TYPES = [
+  { val: 'text',          label: '📝 1行テキスト' },
+  { val: 'textarea',      label: '📄 複数行テキスト' },
+  { val: 'freetext',      label: '✏️ 記述式（自由記述）' },
+  { val: 'fillblank',     label: '🔍 穴埋め（{{空欄}}形式）' },
+  { val: 'choice_single', label: '🔘 選択肢（単一選択）' },
+  { val: 'choice_multi',  label: '☑️ 選択肢（複数選択）' },
+  { val: 'hint',          label: '💡 ヒント' },
+  { val: 'tags',          label: '🏷️ タグ' },
+  { val: 'difficulty',    label: '⭐ 難易度（1〜5）' },
+  { val: 'explanation',   label: '📖 解説' },
+  { val: 'wrongexample',  label: '❌ 誤答例（複数可）' },
+  { val: 'timer',         label: '⏱️ 制限時間（秒）' },
+  { val: 'feedback',      label: '💬 フィードバック' },
+  { val: 'number',        label: '🔢 数値' },
+  { val: 'image',         label: '🖼️ 画像（Ctrl+V）' },
+  { val: 'url',           label: '🔗 URL / 関連リンク' },
+  { val: 'date',          label: '📅 日付' },
+  { val: 'static',        label: '🔖 固定テキスト（表示専用）' }
+];
 
 const el = {
-  genreTabs: document.getElementById('genre-tabs'),
   formFields: document.getElementById('form-fields'),
   addForm: document.getElementById('add-card-form'),
   successMsg: document.getElementById('add-success-msg')
 };
 
+// ===== ステップ遷移 =====
+function goStep(n) {
+  currentStep = n;
+  document.getElementById('step1-panel').classList.toggle('hidden', n !== 1);
+  document.getElementById('step2-panel').classList.toggle('hidden', n !== 2);
+  document.getElementById('step3-panel').classList.toggle('hidden', n !== 3);
+  // ステップインジケーター更新
+  document.querySelectorAll('.step-dot').forEach(dot => {
+    const s = parseInt(dot.dataset.step);
+    dot.classList.remove('active', 'done');
+    if (s === n) dot.classList.add('active');
+    else if (s < n) dot.classList.add('done');
+  });
+  document.querySelectorAll('.step-line').forEach((line, i) => {
+    line.classList.toggle('done', i + 1 < n);
+  });
+}
+
 async function init() {
   genres = await StorageManager.getGenres();
 
-  // URLパラメータ ?edit=<id> を検知して編集モードへ
+  // URLパラメータ ?edit=<id> を検知して編集モードへ（直接STEP3）
   const params = new URLSearchParams(window.location.search);
   const editId = params.get('edit');
   if (editId) {
     editingCardId = editId;
     await enterEditMode(editId);
-  } else {
-    selectedGenreId = genres[genres.length - 1]?.id || 'other';
-    renderTabs();
-    renderForm();
+    return;
   }
-  setupListeners();
+
+  // 通常フロー: STEP1から
+  renderStep1();
+  goStep(1);
+  setupGlobalListeners();
 }
 
-function renderTabs() {
-  el.genreTabs.innerHTML = '';
+// ===== STEP 1: 型を選ぶ =====
+function renderStep1() {
+  const grid = document.getElementById('template-grid');
+  grid.innerHTML = '';
+
   genres.forEach(genre => {
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'genre-tab' + (genre.id === selectedGenreId ? ' active' : '');
-    btn.textContent = genre.name;
-    btn.dataset.genreId = genre.id;
-    btn.addEventListener('click', () => {
-      selectedGenreId = genre.id;
-      renderTabs();
-      renderForm();
+    const card = document.createElement('div');
+    card.className = 'template-card';
+    const fieldNames = genre.fields.map(f => {
+      const ti = FIELD_TYPES.find(t => t.val === f.type);
+      return (ti ? ti.label.replace(/^\S+\s/, '') : f.type);
+    }).slice(0, 4).join('、') + (genre.fields.length > 4 ? '…' : '');
+    card.innerHTML = `
+      <div class="template-card-name">${esc(genre.name)}</div>
+      <div class="template-card-fields">${fieldNames}</div>
+    `;
+    card.addEventListener('click', () => {
+      // ジャンルのフィールドをディープコピーしてSTEP2へ
+      activeGenre = { ...genre, fields: JSON.parse(JSON.stringify(genre.fields)) };
+      activeGenreId = genre.id;
+      goStep(2);
+      renderStep2();
     });
-    el.genreTabs.appendChild(btn);
+    grid.appendChild(card);
   });
+
+  document.getElementById('scratch-btn').onclick = () => {
+    // 空の型でSTEP2へ
+    activeGenre = {
+      id: null,
+      name: '新しい型',
+      fields: [
+        { key: 'q_0', label: '問題', type: 'textarea', required: true, role: 'question', options: {} },
+        { key: 'a_0', label: '答え', type: 'textarea', required: true, role: 'answer',   options: {} }
+      ]
+    };
+    activeGenreId = null;
+    goStep(2);
+    renderStep2();
+  };
 }
 
-// 編集モード: カードデータ取得 → ジャンル選択 → フォーム生成 → 既存値反映
+// ===== STEP 2: フィールド微調整 =====
+// settings.jsのaddFieldRow相当の実装（options.js内完結版）
+let _s2DragSrcWrapper = null;
+
+function s2AddFieldRow(container, type = 'textarea', required = false, options = {}) {
+  const DETAIL_DEFS = {
+    _common: [
+      { key: 'align',    label: '文字揃え(横)',   type: 'select', choices: [['left','左寄り'],['center','中央'],['right','右寄り']], default: 'left' },
+      { key: 'valign',   label: '文字揃え(縦)',   type: 'select', choices: [['top','上'],['middle','中'],['bottom','下']], default: 'middle' },
+      { key: 'bold',     label: '太字',           type: 'toggle', default: false },
+      { key: 'fontSize', label: '文字サイズ',     type: 'select', choices: [['sm','小'],['md','中'],['lg','大']], default: 'md' },
+      { key: 'color',    label: '文字色',         type: 'color',  choices: ['#ffffff','#a78bfa','#60a5fa','#34d399','#fbbf24','#f87171'], default: '' },
+    ],
+    textarea:      [{ key: 'rows', label: '表示行数', type: 'number', min:1, max:10, default: 3 }],
+    freetext:      [{ key: 'rows', label: '表示行数', type: 'number', min:1, max:10, default: 3 }],
+    explanation:   [{ key: 'rows', label: '表示行数', type: 'number', min:1, max:10, default: 3 }],
+    fillblank:     [{ key: 'blankStyle', label: '空欄スタイル', type: 'select', choices: [['underline','下線'],['box','ボックス'],['highlight','ハイライト']], default: 'underline' }, { key: 'showHint', label: 'ヒント表示', type: 'toggle', default: false }],
+    choice_single: [{ key: 'layout', label: '並び方', type: 'select', choices: [['vertical','縦'],['horizontal','横']], default: 'vertical' }, { key: 'shuffle', label: 'シャッフル', type: 'toggle', default: true }, { key: 'defaultCount', label: 'デフォルト選択肢数', type: 'number', min:2, max:6, default: 3 }],
+    choice_multi:  [{ key: 'layout', label: '並び方', type: 'select', choices: [['vertical','縦'],['horizontal','横']], default: 'vertical' }, { key: 'shuffle', label: 'シャッフル', type: 'toggle', default: true }, { key: 'defaultCount', label: 'デフォルト選択肢数', type: 'number', min:2, max:6, default: 3 }],
+    image:         [{ key: 'maxCount', label: '最大枚数', type: 'select', choices: [['1','1枚'],['2','2枚'],['3','3枚']], default: '3' }, { key: 'size', label: '表示サイズ', type: 'select', choices: [['sm','小'],['md','中'],['lg','大']], default: 'md' }],
+    hint:          [{ key: 'showTiming', label: '表示タイミング', type: 'select', choices: [['button','ボタン後'],['always','常時']], default: 'button' }],
+    difficulty:    [{ key: 'maxStars', label: '最大値', type: 'select', choices: [['3','3段階'],['5','5段階'],['10','10段階']], default: '5' }, { key: 'defaultVal', label: 'デフォルト値', type: 'number', min:1, max:10, default: 3 }],
+    timer:         [{ key: 'defaultSec', label: 'デフォルト秒数', type: 'number', min:5, max:600, default: 30 }, { key: 'timeupAction', label: 'タイムアップ時', type: 'select', choices: [['warn','警告のみ'],['auto','自動送り']], default: 'warn' }],
+    url:           [{ key: 'linkLabel', label: 'リンクラベル', type: 'text', default: '参考資料を見る' }],
+    static:        [{ key: 'border', label: '枠を表示', type: 'toggle', default: true }],
+  };
+
+  const row = document.createElement('div');
+  row.className = 'field-row';
+  row.draggable = true;
+  row.innerHTML = `
+    <div class="drag-handle" title="ドラッグして並び替え">⋮⋮</div>
+    <select class="field-type">
+      ${FIELD_TYPES.map(t => `<option value="${t.val}" ${t.val === type ? 'selected' : ''}>${t.label}</option>`).join('')}
+    </select>
+    <button type="button" class="detail-toggle-btn" style="background:rgba(99,102,241,0.12);border:1px solid rgba(99,102,241,0.25);color:#a78bfa;border-radius:6px;padding:0.3rem 0.6rem;cursor:pointer;font-size:0.8rem;white-space:nowrap;">⚙ 詳細</button>
+    <label class="required-toggle"><input type="checkbox" class="field-required" ${required ? 'checked' : ''}>必須</label>
+    <button type="button" class="btn-remove" title="削除">×</button>
+  `;
+
+  const detailPanel = document.createElement('div');
+  detailPanel.className = 'detail-panel';
+  detailPanel.style.cssText = 'display:none;grid-column:1/-1;background:rgba(0,0,0,0.25);border:1px solid rgba(99,102,241,0.2);border-radius:8px;padding:0.75rem 1rem;margin-top:0.25rem;';
+
+  const buildDetail = (curType, curOpts) => {
+    const defs = [...(DETAIL_DEFS._common || []), ...(DETAIL_DEFS[curType] || [])];
+    detailPanel.innerHTML = `<div style="font-size:0.75rem;color:#a78bfa;font-weight:600;margin-bottom:0.6rem;">⚙ 詳細設定</div><div class="detail-fields" style="display:flex;flex-wrap:wrap;gap:0.5rem 1.5rem;"></div>`;
+    const fc = detailPanel.querySelector('.detail-fields');
+    defs.forEach(def => {
+      const val = curOpts[def.key] !== undefined ? curOpts[def.key] : def.default;
+      const wrap = document.createElement('label');
+      wrap.style.cssText = 'display:flex;align-items:center;gap:0.4rem;font-size:0.82rem;color:var(--text-secondary);cursor:pointer;';
+      if (def.type === 'toggle') {
+        wrap.innerHTML = `<input type="checkbox" class="detail-input" data-key="${def.key}" ${val ? 'checked' : ''} style="accent-color:#6366f1;width:14px;height:14px;"> ${def.label}`;
+      } else if (def.type === 'select') {
+        wrap.innerHTML = `${def.label}: <select class="detail-input" data-key="${def.key}" style="background:rgba(0,0,0,0.3);border:1px solid var(--glass-border);color:var(--text-primary);padding:0.25rem 0.5rem;border-radius:5px;font-size:0.8rem;">${def.choices.map(([v,l]) => `<option value="${v}" ${String(val)===v?'selected':''}>${l}</option>`).join('')}</select>`;
+      } else if (def.type === 'number') {
+        wrap.innerHTML = `${def.label}: <input type="number" class="detail-input" data-key="${def.key}" value="${val}" min="${def.min||0}" max="${def.max||9999}" style="background:rgba(0,0,0,0.3);border:1px solid var(--glass-border);color:var(--text-primary);padding:0.25rem 0.5rem;border-radius:5px;width:70px;font-size:0.8rem;">`;
+      } else if (def.type === 'color') {
+        const swatches = def.choices.map(c => `<button type="button" class="color-swatch" data-color="${c}" style="width:18px;height:18px;border-radius:50%;background:${c};border:2px solid ${String(val)===c?'#fff':'transparent'};cursor:pointer;flex-shrink:0;"></button>`).join('');
+        wrap.innerHTML = `${def.label}: <span class="color-swatches" style="display:flex;gap:4px;align-items:center;">${swatches}<button type="button" class="color-swatch" data-color="" style="width:18px;height:18px;border-radius:50%;background:rgba(255,255,255,0.1);border:2px solid ${!val?'#fff':'transparent'};cursor:pointer;font-size:0.65rem;">✕</button></span><input type="hidden" class="detail-input" data-key="${def.key}" value="${val}">`;
+      } else if (def.type === 'text') {
+        wrap.innerHTML = `${def.label}: <input type="text" class="detail-input" data-key="${def.key}" value="${esc(String(val))}" style="background:rgba(0,0,0,0.3);border:1px solid var(--glass-border);color:var(--text-primary);padding:0.25rem 0.5rem;border-radius:5px;font-size:0.8rem;min-width:120px;">`;
+      }
+      fc.appendChild(wrap);
+    });
+    detailPanel.querySelectorAll('.color-swatches').forEach(group => {
+      group.querySelectorAll('.color-swatch').forEach(btn => {
+        btn.addEventListener('click', () => {
+          group.querySelectorAll('.color-swatch').forEach(b => b.style.borderColor = 'transparent');
+          btn.style.borderColor = '#fff';
+          const hi = group.parentElement.querySelector('.detail-input[data-key="color"]');
+          if (hi) hi.value = btn.dataset.color;
+          renderStep2Preview();
+        });
+      });
+    });
+    detailPanel.querySelectorAll('.detail-input').forEach(inp => {
+      inp.addEventListener('change', renderStep2Preview);
+      inp.addEventListener('input', renderStep2Preview);
+    });
+  };
+  buildDetail(type, options);
+
+  const wrapper = document.createElement('div');
+  wrapper.className = 'field-row-wrapper';
+  wrapper.style.cssText = 'margin-bottom:0.75rem;';
+  wrapper.appendChild(row);
+  wrapper.appendChild(detailPanel);
+
+  row.querySelector('.field-type').addEventListener('change', (e) => {
+    buildDetail(e.target.value, {});
+    renderStep2Preview();
+  });
+  row.querySelector('.detail-toggle-btn').addEventListener('click', () => {
+    const open = detailPanel.style.display !== 'none';
+    detailPanel.style.display = open ? 'none' : 'block';
+    row.querySelector('.detail-toggle-btn').style.background = open ? 'rgba(99,102,241,0.12)' : 'rgba(99,102,241,0.3)';
+  });
+  row.querySelector('.btn-remove').addEventListener('click', () => { wrapper.remove(); renderStep2Preview(); });
+  row.querySelector('.field-required').addEventListener('change', renderStep2Preview);
+
+  // D&D
+  row.addEventListener('dragstart', (e) => {
+    _s2DragSrcWrapper = wrapper;
+    e.dataTransfer.effectAllowed = 'move';
+    const rect = wrapper.getBoundingClientRect();
+    const ghost = wrapper.cloneNode(true);
+    ghost.style.cssText = `position:fixed;top:-9999px;left:-9999px;width:${rect.width}px;pointer-events:none;`;
+    document.body.appendChild(ghost);
+    e.dataTransfer.setDragImage(ghost, e.clientX - rect.left, e.clientY - rect.top);
+    requestAnimationFrame(() => ghost.remove());
+    requestAnimationFrame(() => wrapper.classList.add('dragging'));
+  });
+  row.addEventListener('dragend', () => {
+    if (_s2DragSrcWrapper) _s2DragSrcWrapper.classList.remove('dragging');
+    container.querySelectorAll('.field-row-wrapper').forEach(w => w.classList.remove('drop-above','drop-below'));
+    _s2DragSrcWrapper = null;
+    renderStep2Preview();
+  });
+  wrapper.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    if (!_s2DragSrcWrapper || _s2DragSrcWrapper === wrapper) return;
+    container.querySelectorAll('.field-row-wrapper').forEach(w => w.classList.remove('drop-above','drop-below'));
+    const rect = wrapper.getBoundingClientRect();
+    const goBelow = e.clientY > rect.top + rect.height / 2;
+    wrapper.classList.add(goBelow ? 'drop-below' : 'drop-above');
+    container.insertBefore(_s2DragSrcWrapper, goBelow ? wrapper.nextSibling : wrapper);
+  });
+  wrapper.addEventListener('dragleave', (e) => {
+    if (!wrapper.contains(e.relatedTarget)) wrapper.classList.remove('drop-above','drop-below');
+  });
+
+  container.appendChild(wrapper);
+  renderStep2Preview();
+}
+
+function s2CollectFieldData(wrapper) {
+  const row = wrapper.querySelector('.field-row');
+  const type = row.querySelector('.field-type').value;
+  const required = row.querySelector('.field-required').checked;
+  const typeInfo = FIELD_TYPES.find(t => t.val === type);
+  const label = typeInfo ? typeInfo.label.replace(/^\S+\s/, '') : type;
+  const options = {};
+  wrapper.querySelectorAll('.detail-input').forEach(inp => {
+    const key = inp.dataset.key;
+    if (!key) return;
+    if (inp.type === 'checkbox') options[key] = inp.checked;
+    else if (inp.type === 'number') options[key] = Number(inp.value);
+    else options[key] = inp.value;
+  });
+  return { type, required, label, options };
+}
+
+function renderStep2() {
+  const qCont = document.getElementById('s2-q-container');
+  const aCont = document.getElementById('s2-a-container');
+  qCont.innerHTML = '';
+  aCont.innerHTML = '';
+
+  const genre = activeGenre;
+  genre.fields.forEach(f => {
+    const cont = f.role === 'answer' ? aCont : qCont;
+    s2AddFieldRow(cont, f.type, f.required, f.options || {});
+  });
+
+  document.getElementById('s2-add-q-btn').onclick = () => s2AddFieldRow(qCont);
+  document.getElementById('s2-add-a-btn').onclick = () => s2AddFieldRow(aCont);
+
+  document.getElementById('back-to-step1').onclick = () => goStep(1);
+
+  document.getElementById('step2-next-btn').onclick = async () => {
+    // フィールドを収集してactiveGenreに反映
+    const fields = [];
+    let qi = 0, ai = 0;
+    document.getElementById('s2-q-container').querySelectorAll('.field-row-wrapper').forEach(w => {
+      const d = s2CollectFieldData(w);
+      fields.push({ key: `q_${qi++}`, ...d, role: 'question' });
+    });
+    document.getElementById('s2-a-container').querySelectorAll('.field-row-wrapper').forEach(w => {
+      const d = s2CollectFieldData(w);
+      fields.push({ key: `a_${ai++}`, ...d, role: 'answer' });
+    });
+    if (fields.filter(f => f.role === 'question').length === 0) { alert('問題フィールドを1つ以上追加してください'); return; }
+    if (fields.filter(f => f.role === 'answer').length === 0) { alert('答えフィールドを1つ以上追加してください'); return; }
+
+    activeGenre = { ...activeGenre, fields };
+
+    // 「ジャンルとして保存」チェックが入っていれば保存
+    if (document.getElementById('save-as-genre-chk').checked) {
+      const newGenre = {
+        id: activeGenreId || ('custom_' + Date.now()),
+        name: activeGenre.name || '新しい型',
+        isDefault: false,
+        fields
+      };
+      // 既存ジャンルの更新か新規追加
+      const idx = genres.findIndex(g => g.id === newGenre.id);
+      if (idx !== -1) genres[idx] = newGenre;
+      else genres.push(newGenre);
+      await StorageManager.saveGenres(genres);
+      activeGenreId = newGenre.id;
+    }
+
+    goStep(3);
+    renderForm();
+  };
+
+  // コンテナの変更をリアルタイムプレビューに反映
+  qCont.addEventListener('change', renderStep2Preview);
+  aCont.addEventListener('change', renderStep2Preview);
+  renderStep2Preview();
+}
+
+function renderStep2Preview() {
+  const panel = document.getElementById('step2-preview-panel');
+  if (!panel) return;
+
+  const collectData = (contId) => {
+    const data = [];
+    document.getElementById(contId).querySelectorAll('.field-row-wrapper').forEach(w => {
+      const d = s2CollectFieldData(w);
+      data.push(d);
+    });
+    return data;
+  };
+
+  const qData = collectData('s2-q-container');
+  const aData = collectData('s2-a-container');
+
+  const dummyBox = (f) => {
+    const opts = f.options || {};
+    const align = opts.align || 'left';
+    const jcMap = { left: 'flex-start', center: 'center', right: 'flex-end' };
+    const jc = jcMap[align] || 'flex-start';
+    const ai = ({ top: 'flex-start', middle: 'center', bottom: 'flex-end' })[opts.valign || 'middle'] || 'center';
+    const fontSize = ({ sm: '0.72rem', md: '0.85rem', lg: '1.05rem' })[opts.fontSize || 'md'];
+    const color = opts.color || '';
+    const bold = opts.bold;
+    const labelStyle = `opacity:0.7;font-size:${fontSize};${bold?'font-weight:700;':''}${color?`color:${color};`:'color:var(--text-secondary);'}`;
+    const label = `<span style="${labelStyle}">${esc(f.label)}</span>`;
+
+    if (['textarea','freetext','fillblank','explanation'].includes(f.type)) {
+      return `<div style="min-height:52px;background:rgba(0,0,0,0.2);border:1px dashed rgba(255,255,255,0.12);border-radius:5px;display:flex;align-items:${jc==='flex-end'?'flex-end':(jc==='center'?'center':'flex-start')};justify-content:${ai};padding:0.4rem 0.75rem;">${label}${f.type==='fillblank'?'<span style="opacity:0.45;font-size:0.7rem;margin-left:0.4rem;">{{空欄}}形式</span>':''}</div>`;
+    }
+    if (f.type === 'image') {
+      return `<div style="height:52px;background:rgba(0,0,0,0.2);border:1px dashed rgba(255,255,255,0.12);border-radius:5px;display:flex;align-items:center;justify-content:${jc};padding:0 0.75rem;gap:0.5rem;"><span>🖼️</span>${label}</div>`;
+    }
+    if (f.type === 'choice_single' || f.type === 'choice_multi') {
+      const count = Math.min(Number(opts.defaultCount) || 3, 3);
+      const rows = Array.from({length:count},(_,i) => `<div style="height:20px;background:rgba(0,0,0,0.18);border:1px dashed rgba(255,255,255,0.1);border-radius:3px;padding:0 6px;font-size:0.7rem;color:var(--text-secondary);display:flex;align-items:center;">${i===0?'✅':'○'} ${i===0?'正解':`選択肢${i+1}`}</div>`).join('');
+      return `<div style="display:flex;flex-direction:column;gap:2px;">${rows}</div>`;
+    }
+    if (f.type === 'difficulty') {
+      const max = Number(opts.maxStars || 5), def = Number(opts.defaultVal || 3);
+      return `<div style="background:rgba(0,0,0,0.2);border:1px dashed rgba(255,255,255,0.1);border-radius:5px;padding:0.3rem 0.75rem;font-size:${fontSize};">${'⭐'.repeat(def)}${'☆'.repeat(max-def)} <span style="opacity:0.5;font-size:0.68rem;">${def}/${max}</span></div>`;
+    }
+    if (f.type === 'tags') return `<div style="background:rgba(0,0,0,0.2);border:1px dashed rgba(255,255,255,0.1);border-radius:5px;padding:0.3rem 0.75rem;"><span style="background:rgba(20,184,166,0.2);border:1px solid rgba(20,184,166,0.35);color:${color||'#14b8a6'};padding:0.1rem 0.45rem;border-radius:10px;font-size:${fontSize};">タグ例</span></div>`;
+    if (f.type === 'hint') return `<div style="background:rgba(251,191,36,0.07);border:1px dashed rgba(251,191,36,0.3);border-radius:5px;padding:0.3rem 0.75rem;font-size:${fontSize};color:${color||'#fbbf24'};">💡 ${esc(f.label)}</div>`;
+    if (f.type === 'wrongexample') return `<div style="background:rgba(239,68,68,0.07);border-left:2px solid rgba(239,68,68,0.4);border-radius:3px;padding:0.3rem 0.75rem;font-size:${fontSize};color:var(--text-secondary);">❌ 誤答例</div>`;
+    if (f.type === 'feedback') return `<div style="background:rgba(34,197,94,0.07);border:1px dashed rgba(34,197,94,0.3);border-radius:5px;padding:0.3rem 0.75rem;font-size:${fontSize};color:${color||'#22c55e'};">💬 ${esc(f.label)}</div>`;
+    if (f.type === 'timer') return `<div style="background:rgba(0,0,0,0.2);border:1px dashed rgba(255,255,255,0.12);border-radius:5px;padding:0.3rem 0.75rem;font-size:${fontSize};color:${color||'#f87171'};">⏱ ${opts.defaultSec||30}秒</div>`;
+    if (f.type === 'static') {
+      const hasBorder = opts.border !== false;
+      return `<div style="min-height:28px;display:flex;align-items:${ai};justify-content:${jc};${hasBorder?'background:rgba(99,102,241,0.08);border:1px solid rgba(167,139,250,0.35);border-radius:6px;':''}padding:0.3rem 0.75rem;"><span style="font-size:${fontSize};${bold?'font-weight:700;':''}color:${color||'#a78bfa'};">🔖 固定テキスト</span></div>`;
+    }
+    return `<div style="min-height:30px;background:rgba(0,0,0,0.2);border:1px dashed rgba(255,255,255,0.12);border-radius:5px;display:flex;align-items:${ai};justify-content:${jc};padding:0 0.75rem;">${label}</div>`;
+  };
+
+  const renderSection = (title, data) => {
+    if (!data.length) return '';
+    return `<div style="margin-bottom:0.75rem;">
+      <div style="font-size:0.72rem;color:#a78bfa;font-weight:600;margin-bottom:0.4rem;border-bottom:1px solid rgba(167,139,250,0.2);padding-bottom:0.25rem;">${title}</div>
+      ${data.map(f => `<div style="margin-bottom:0.35rem;">${dummyBox(f)}</div>`).join('')}
+    </div>`;
+  };
+
+  panel.innerHTML = `
+    <div style="background:rgba(15,23,42,0.6);padding:1.25rem;border-radius:12px;border:1px solid rgba(255,255,255,0.1);">
+      ${renderSection('FRONT（問題）', qData)}
+      ${renderSection('BACK（答え）', aData)}
+    </div>
+  `;
+}
+
+// ===== 編集モード（STEP3直行） =====
 async function enterEditMode(cardId) {
-  // カードを1件取得
   let card;
   try {
     const res = await fetch(
@@ -72,9 +427,15 @@ async function enterEditMode(cardId) {
   }
   editingCardOriginal = card;
 
-  // ジャンルを合わせる
+  // 対応するジャンルを activeGenre に設定
   const genreExists = genres.find(g => g.id === card.genre);
-  selectedGenreId = genreExists ? card.genre : (genres[0]?.id || 'other');
+  activeGenre = genreExists ? { ...genreExists, fields: JSON.parse(JSON.stringify(genreExists.fields)) }
+                            : { ...genres[0], fields: JSON.parse(JSON.stringify(genres[0]?.fields || [])) };
+  activeGenreId = activeGenre?.id || null;
+
+  // ステップインジケーター非表示（編集モードはSTEP3直行）
+  const stepInd = document.getElementById('step-indicator');
+  if (stepInd) stepInd.style.display = 'none';
 
   // UIを編集モードに切り替え
   const pageTitle = document.getElementById('page-title');
@@ -83,14 +444,11 @@ async function enterEditMode(cardId) {
   if (submitBtn) submitBtn.textContent = '更新する';
   const cancelBtn = document.getElementById('cancel-edit-btn');
   if (cancelBtn) cancelBtn.classList.remove('hidden');
-  // 編集モード中はジャンルタブを非表示（ジャンルは変更不可）
-  el.genreTabs.style.display = 'none';
 
-  renderTabs();
+  goStep(3);
   renderForm();
-
-  // フォームに既存データを流し込む
   fillFormWithCard(card);
+  setupGlobalListeners();
 }
 
 let currentPreviewGenre = null;
@@ -98,7 +456,7 @@ let currentPreviewValues = {};
 
 // 編集モード用: フォームに既存カードデータを流し込む
 function fillFormWithCard(card) {
-  const genre = genres.find(g => g.id === selectedGenreId);
+  const genre = activeGenre;
   if (!genre) return;
   const parseSection = (text) => {
     const result = {};
@@ -164,7 +522,7 @@ function renderForm() {
   pendingImages = {};
   currentPreviewValues = {};
 
-  const genre = genres.find(g => g.id === selectedGenreId);
+  const genre = activeGenre;
   if (!genre) return;
   currentPreviewGenre = genre;
 
@@ -712,7 +1070,7 @@ function renderPreviews(fieldKey) {
   container.appendChild(countEl);
 }
 
-function setupListeners() {
+function setupGlobalListeners() {
   // Ctrl+V でクリップボードから画像を取得
   document.addEventListener('paste', (e) => {
     // アクティブな要素が paste-zone かどうかを確認
@@ -743,7 +1101,7 @@ function setupListeners() {
     submitBtn.textContent = '保存中...';
 
     try {
-      const genre = genres.find(g => g.id === selectedGenreId);
+      const genre = activeGenre;
       if (!genre) return;
 
       const values = {};
@@ -828,7 +1186,7 @@ function setupListeners() {
         }, 1500);
       } else {
         // ===== 新規モード: カードを追加 =====
-        await StorageManager.addCard(question, fullAnswer, imageValue, selectedGenreId);
+        await StorageManager.addCard(question, fullAnswer, imageValue, activeGenreId || 'other');
 
         // フォームリセット
         el.addForm.querySelectorAll('input:not([type="file"]), textarea').forEach(i => i.value = '');
@@ -853,3 +1211,4 @@ function setupListeners() {
 }
 
 document.addEventListener('DOMContentLoaded', init);
+

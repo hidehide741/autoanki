@@ -99,7 +99,7 @@
         <!-- 左カラム: 入力フォームパネル -->
         <section class="section glass-panel editor-left" style="margin-bottom: 0; padding: 1.5rem 2rem;">
           <div class="section-header" style="border-bottom: 1px solid var(--glass-border); padding-bottom: 1rem; margin-bottom: 2rem;">
-            <h2 class="section-title" style="margin:0; border:none; padding:0;">新しいカードを追加</h2>
+            <h2 class="section-title" id="page-title" style="margin:0; border:none; padding:0;">新しいカードを追加</h2>
           </div>
 
           <!-- ジャンルタブ -->
@@ -113,8 +113,9 @@
               <!-- JSで動的生成 -->
             </div>
             <div class="form-actions">
-              <button type="submit" class="primary-btn">追加する</button>
-              <div id="add-success-msg" class="success-msg hidden">✅ カードを追加しました！</div>
+              <button type="submit" id="submit-btn" class="primary-btn">追加する</button>
+              <a id="cancel-edit-btn" href="cardlist.html" class="secondary-btn hidden" style="padding:0.6rem 1.2rem;border-radius:8px;border:1px solid var(--glass-border);color:var(--text-secondary);text-decoration:none;font-size:0.9rem;">← 問題DBに戻る</a>
+              <div id="add-success-msg" class="success-msg hidden">✅ 保存しました！</div>
             </div>
           </form>
         </section>

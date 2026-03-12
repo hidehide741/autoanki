@@ -5,6 +5,8 @@ const MAX_IMAGES = 3;
 let selectedGenreId = 'other';
 let genres = [];
 let pendingImages = {}; // { [fieldKey]: [{file, previewUrl}] } の形式
+let editingCardId = null;  // 編集モード時のカードID（null=新規）
+let editingCardOriginal = null; // 編集対象の元カードデータ
 
 const el = {
   genreTabs: document.getElementById('genre-tabs'),
@@ -15,9 +17,18 @@ const el = {
 
 async function init() {
   genres = await StorageManager.getGenres();
-  selectedGenreId = genres[genres.length - 1]?.id || 'other';
-  renderTabs();
-  renderForm();
+
+  // URLパラメータ ?edit=<id> を検知して編集モードへ
+  const params = new URLSearchParams(window.location.search);
+  const editId = params.get('edit');
+  if (editId) {
+    editingCardId = editId;
+    await enterEditMode(editId);
+  } else {
+    selectedGenreId = genres[genres.length - 1]?.id || 'other';
+    renderTabs();
+    renderForm();
+  }
   setupListeners();
 }
 
@@ -36,6 +47,50 @@ function renderTabs() {
     });
     el.genreTabs.appendChild(btn);
   });
+}
+
+// 編集モード: カードデータ取得 → ジャンル選択 → フォーム生成 → 既存値反映
+async function enterEditMode(cardId) {
+  // カードを1件取得
+  let card;
+  try {
+    const res = await fetch(
+      `https://qahkvamgssedhjvtlika.supabase.co/rest/v1/cards?id=eq.${encodeURIComponent(cardId)}&select=*`,
+      { headers: {
+        'apikey': 'sb_publishable_g3U08ZrJjKyXaeaEuPeuaQ_SNoUxyVg',
+        'Authorization': 'Bearer sb_publishable_g3U08ZrJjKyXaeaEuPeuaQ_SNoUxyVg'
+      }}
+    );
+    const rows = await res.json();
+    if (!rows.length) throw new Error('カードが見つかりません');
+    const c = rows[0];
+    card = { id: c.id, question: c.question, answer: c.answer, image: c.image, genre: c.genre };
+  } catch (e) {
+    alert('カードの読み込みに失敗しました: ' + e.message);
+    window.location.href = 'cardlist.html';
+    return;
+  }
+  editingCardOriginal = card;
+
+  // ジャンルを合わせる
+  const genreExists = genres.find(g => g.id === card.genre);
+  selectedGenreId = genreExists ? card.genre : (genres[0]?.id || 'other');
+
+  // UIを編集モードに切り替え
+  const pageTitle = document.getElementById('page-title');
+  if (pageTitle) pageTitle.textContent = '✏️ カードを編集';
+  const submitBtn = document.getElementById('submit-btn');
+  if (submitBtn) submitBtn.textContent = '更新する';
+  const cancelBtn = document.getElementById('cancel-edit-btn');
+  if (cancelBtn) cancelBtn.classList.remove('hidden');
+  // 編集モード中はジャンルタブを非表示（ジャンルは変更不可）
+  el.genreTabs.style.display = 'none';
+
+  renderTabs();
+  renderForm();
+
+  // フォームに既存データを流し込む
+  fillFormWithCard(card);
 }
 
 let currentPreviewGenre = null;
@@ -355,49 +410,63 @@ function setupListeners() {
       const question = qParts.join('\n\n');
       const fullAnswer = aParts.join('\n\n');
 
-      // 画像をSupabaseにアップロード
-      // 全フィールドの画像を role 情報付きで集約
+      // 画像: 既存URL はそのまま使い、新規ファイルのみアップロード
       let imageValue = null;
       const uploadTasks = [];
       const imageFieldKeys = Object.keys(pendingImages);
-      
+
       for (const key of imageFieldKeys) {
         const field = genre.fields.find(f => f.key === key);
         const role = field?.role || 'question';
-        
+
         pendingImages[key].forEach(img => {
-          uploadTasks.push((async () => {
-            const url = await uploadImageToSupabase(img.file);
-            return { url, role, fieldKey: key }; // fieldKey を追加
-          })());
+          if (img.existingUrl) {
+            // 既存画像はアップロード不要、URLをそのまま使用
+            uploadTasks.push(Promise.resolve({ url: img.existingUrl, role, fieldKey: key }));
+          } else {
+            uploadTasks.push((async () => {
+              const url = await uploadImageToSupabase(img.file);
+              return { url, role, fieldKey: key };
+            })());
+          }
         });
       }
-      
+
       if (uploadTasks.length > 0) {
         const results = await Promise.all(uploadTasks);
         imageValue = JSON.stringify(results);
       }
 
-      await StorageManager.addCard(question, fullAnswer, imageValue, selectedGenreId);
+      if (editingCardId) {
+        // ===== 編集モード: 既存カードを更新 =====
+        await StorageManager.updateCardContent(editingCardId, question, fullAnswer, imageValue);
+        el.successMsg.classList.remove('hidden');
+        setTimeout(() => {
+          el.successMsg.classList.add('hidden');
+          window.location.href = 'cardlist.html';
+        }, 1500);
+      } else {
+        // ===== 新規モード: カードを追加 =====
+        await StorageManager.addCard(question, fullAnswer, imageValue, selectedGenreId);
 
-      // フォームリセット
-      el.addForm.querySelectorAll('input:not([type="file"]), textarea').forEach(i => i.value = '');
-      // blob URL を解放してメモリリークを防止
-      Object.values(pendingImages).forEach(imgs =>
-        imgs.forEach(img => img.previewUrl && URL.revokeObjectURL(img.previewUrl))
-      );
-      pendingImages = {};
-      renderForm(); // フォームを再生成してリセット
+        // フォームリセット
+        el.addForm.querySelectorAll('input:not([type="file"]), textarea').forEach(i => i.value = '');
+        Object.values(pendingImages).forEach(imgs =>
+          imgs.forEach(img => img.previewUrl && !img.existingUrl && URL.revokeObjectURL(img.previewUrl))
+        );
+        pendingImages = {};
+        renderForm();
 
-      el.successMsg.classList.remove('hidden');
-      setTimeout(() => el.successMsg.classList.add('hidden'), 3000);
+        el.successMsg.classList.remove('hidden');
+        setTimeout(() => el.successMsg.classList.add('hidden'), 3000);
+      }
 
     } catch (err) {
       console.error(err);
       alert('エラーが発生しました: ' + err.message);
     } finally {
       submitBtn.disabled = false;
-      submitBtn.textContent = '追加する';
+      submitBtn.textContent = editingCardId ? '更新する' : '追加する';
     }
   });
 }

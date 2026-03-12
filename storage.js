@@ -404,6 +404,23 @@ const StorageManager = {
     await this.incrementStats();
   },
 
+  // カードの内容（question/answer/image）だけを更新する（編集画面から呼び出す）
+  async updateCardContent(cardId, question, answer, image) {
+    try {
+      const body = { question, answer };
+      if (image !== undefined) body.image = image;
+      const res = await fetch(`${API_BASE}?id=eq.${cardId}`, {
+        method: 'PATCH',
+        headers: HEADERS,
+        body: JSON.stringify(body)
+      });
+      if (!res.ok) throw new Error(await res.text());
+    } catch (e) {
+      console.error('カード内容の更新に失敗しました', e);
+      throw e;
+    }
+  },
+
   async updateLastAnswerTime() {
     await LocalStore.set('lastAnswerTime', Date.now());
   },

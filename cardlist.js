@@ -724,7 +724,11 @@ function setupListeners() {
   el.modalClose.addEventListener('click', closeModal);
   el.modalOverlay.addEventListener('click', e => { if (e.target === el.modalOverlay) closeModal(); });
   el.modalDelete.addEventListener('click', () => { if (activeCardId) confirmDelete(activeCardId); });
-  el.modalEdit?.addEventListener('click', () => { if (activeCardId) { closeModal(); openEditModal(activeCardId); } });
+  el.modalEdit?.addEventListener('click', () => {
+    if (activeCardId) {
+      window.location.href = `options.html?edit=${encodeURIComponent(activeCardId)}`;
+    }
+  });
   el.editClose.addEventListener('click', closeEditModal);
   el.editOverlay.addEventListener('click', e => { if (e.target === el.editOverlay) closeEditModal(); });
   el.editSaveBtn.addEventListener('click', saveCardEdit);

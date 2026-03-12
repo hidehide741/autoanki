@@ -1324,9 +1324,10 @@ function updateCardPreview(genre, values) {
 
     // 文字揃え(縦) ラッパー
     const valignWrap = (html) => {
-      if (!opts.valign || opts.valign === 'middle') return html;
-      const ai = opts.valign === 'top' ? 'flex-start' : 'flex-end';
-      return `<div style="display:flex;flex-direction:column;justify-content:${ai};min-height:3rem;">${html}</div>`;
+      const v = opts.valign || 'top';
+      if (v === 'top') return html;
+      const jc = v === 'bottom' ? 'flex-end' : 'center';
+      return `<div style="display:flex;flex-direction:column;justify-content:${jc};min-height:5rem;">${html}</div>`;
     };
 
     // 基本テキストスタイル（text / textarea / freetext / number / date 等）

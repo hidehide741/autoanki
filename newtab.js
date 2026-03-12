@@ -201,11 +201,27 @@ function showQuestionMode(genreDef) {
       }
 
       if (val) {
+        const opts = field.options || {};
+        const fsSz = opts.fontSize === 'sm' ? '0.82rem' : opts.fontSize === 'lg' ? '1.25rem' : null;
         const p = document.createElement('p');
         p.className = field.role === 'question' ? 'question' : 'answer';
         p.style.whiteSpace = 'pre-wrap';
+        if (fsSz) p.style.fontSize = fsSz;
+        if (opts.bold) p.style.fontWeight = '700';
+        if (opts.color) { p.style.color = opts.color; p.style.webkitTextFillColor = opts.color; p.style.background = 'none'; p.style.webkitBackgroundClip = 'initial'; p.style.backgroundClip = 'initial'; }
+        if (opts.align) p.style.textAlign = opts.align;
         p.textContent = val;
-        container.appendChild(p);
+
+        // 文字揃え(縦)
+        const v = opts.valign || 'top';
+        if (v !== 'top') {
+          const wrapper = document.createElement('div');
+          wrapper.style.cssText = `display:flex;flex-direction:column;justify-content:${v === 'bottom' ? 'flex-end' : 'center'};min-height:5rem;`;
+          wrapper.appendChild(p);
+          container.appendChild(wrapper);
+        } else {
+          container.appendChild(p);
+        }
       }
     }
   });

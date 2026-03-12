@@ -159,13 +159,24 @@ function loadGenreIntoForm(id) {
 
 // フィールドタイプの選択肢
 const FIELD_TYPES = [
-  { val: 'text',     label: '📝 1行テキスト' },
-  { val: 'textarea', label: '📄 複数行テキスト' },
-  { val: 'number',   label: '🔢 数値' },
-  { val: 'image',    label: '🖼️ 画像（Ctrl+V）' },
-  { val: 'url',      label: '🔗 URL' },
-  { val: 'date',     label: '📅 日付' },
-  { val: 'static',   label: '🔖 固定テキスト（表示専用）' }
+  { val: 'text',          label: '📝 1行テキスト' },
+  { val: 'textarea',      label: '📄 複数行テキスト' },
+  { val: 'freetext',      label: '✏️ 記述式（自由記述）' },
+  { val: 'fillblank',     label: '🔍 穴埋め（{{空欄}}形式）' },
+  { val: 'choice_single', label: '🔘 選択肢（単一選択）' },
+  { val: 'choice_multi',  label: '☑️ 選択肢（複数選択）' },
+  { val: 'hint',          label: '💡 ヒント' },
+  { val: 'tags',          label: '🏷️ タグ' },
+  { val: 'difficulty',    label: '⭐ 難易度（1〜5）' },
+  { val: 'explanation',   label: '📖 解説' },
+  { val: 'wrongexample',  label: '❌ 誤答例（複数可）' },
+  { val: 'timer',         label: '⏱️ 制限時間（秒）' },
+  { val: 'feedback',      label: '💬 フィードバック' },
+  { val: 'number',        label: '🔢 数値' },
+  { val: 'image',         label: '🖼️ 画像（Ctrl+V）' },
+  { val: 'url',           label: '🔗 URL / 関連リンク' },
+  { val: 'date',          label: '📅 日付' },
+  { val: 'static',        label: '🔖 固定テキスト（表示専用）' }
 ];
 
 function addFieldRow(container, label = '', type = 'textarea', required = false) {
@@ -303,9 +314,17 @@ function renderPreview() {
         ${data.map(f => `
           <div style="margin-bottom: 0.75rem;">
             <p style="font-size: 0.7rem; color: var(--text-secondary); margin-bottom: 0.25rem;">${esc(f.label)}</p>
-            ${f.type === 'textarea' ? `<div style="height: 48px; background: rgba(0,0,0,0.2); border: 1px dashed var(--glass-border); border-radius: 4px;"></div>` : 
+            ${
+              (f.type === 'textarea' || f.type === 'freetext' || f.type === 'fillblank' || f.type === 'explanation') ? `<div style="height: 48px; background: rgba(0,0,0,0.2); border: 1px dashed var(--glass-border); border-radius: 4px;"></div>` :
               f.type === 'image' ? `<div style="height: 80px; background: rgba(0,0,0,0.2); border: 1px dashed var(--glass-border); border-radius: 4px; display: flex; align-items: center; justify-content: center; color: var(--text-secondary); font-size: 0.8rem;">🖼️ 画像エリア</div>` :
-              `<div style="height: 32px; background: rgba(0,0,0,0.2); border: 1px dashed var(--glass-border); border-radius: 4px;"></div>`}
+              (f.type === 'choice_single' || f.type === 'choice_multi') ? `<div style="display:flex;flex-direction:column;gap:3px;">${['A','B','C'].map((l,i) => `<div style="height:22px;background:rgba(0,0,0,0.2);border:1px dashed var(--glass-border);border-radius:3px;display:flex;align-items:center;padding:0 6px;font-size:0.7rem;color:var(--text-secondary);">${i===0?'✅':(f.type==='choice_multi'?'☐':'○')} 選択肢${l}</div>`).join('')}</div>` :
+              f.type === 'difficulty' ? `<div style="font-size:1.1rem;margin-top:4px;">⭐⭐⭐☆☆</div>` :
+              f.type === 'tags' ? `<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:4px;">${['タグ1','タグ2'].map(t => `<span style="background:rgba(20,184,166,0.2);border:1px solid rgba(20,184,166,0.4);color:#14b8a6;padding:2px 8px;border-radius:12px;font-size:0.7rem;">${t}</span>`).join('')}</div>` :
+              f.type === 'wrongexample' ? `<div style="display:flex;flex-direction:column;gap:3px;">${['誤答例1','誤答例2'].map(w => `<div style="height:22px;background:rgba(239,68,68,0.1);border-left:2px solid #ef4444;border-radius:3px;padding:0 8px;display:flex;align-items:center;font-size:0.7rem;color:var(--text-secondary);">❌ ${w}</div>`).join('')}</div>` :
+              f.type === 'hint' ? `<div style="height:28px;background:rgba(251,191,36,0.1);border-left:2px solid #fbbf24;border-radius:3px;display:flex;align-items:center;padding:0 8px;font-size:0.7rem;color:var(--text-secondary);">💡 ヒントエリア</div>` :
+              f.type === 'feedback' ? `<div style="height:28px;background:rgba(34,197,94,0.1);border-left:2px solid #22c55e;border-radius:3px;display:flex;align-items:center;padding:0 8px;font-size:0.7rem;color:var(--text-secondary);">💬 フィードバックエリア</div>` :
+              `<div style="height: 32px; background: rgba(0,0,0,0.2); border: 1px dashed var(--glass-border); border-radius: 4px;"></div>`
+            }
           </div>
         `).join('')}
       </div>

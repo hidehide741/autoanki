@@ -52,8 +52,9 @@ async function loadNextCard() {
 
     if (result.status === 'cooldown') {
       if (StorageManager.isExtension) {
-        const remainMs = await StorageManager.getCooldownRemainingMs();
-        showCooldownMode(remainMs);
+        // 拡張機能モード: 15分以内に答えた場合はGoogle Homeへリダイレクト
+        window.location.replace('https://www.google.com/');
+        return;
       } else {
         showDoneMode();
       }

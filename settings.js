@@ -179,6 +179,9 @@ const FIELD_TYPES = [
   { val: 'static',        label: '🔖 固定テキスト（表示専用）' }
 ];
 
+// D&D用モジュールレベル変数
+let _dragSrcWrapper = null;
+
 function addFieldRow(container, label = '', type = 'textarea', required = false, options = {}) {
   // 詳細設定の定義（タイプごと）
   const DETAIL_DEFS = {
@@ -295,74 +298,56 @@ function addFieldRow(container, label = '', type = 'textarea', required = false,
     row.querySelector('.detail-toggle-btn').style.background = isOpen ? 'rgba(99,102,241,0.12)' : 'rgba(99,102,241,0.3)';
   });
 
-  // ドラッグ＆ドロップ（スライドアニメーション方式）
-  let dragOverWrapper = null; // 現在ホバー中のwrapper
-  let insertAfter = false;    // そのwrapperの下に挿入するか
-
+  // ドラッグ＆ドロップ（DOM直接移動方式）
   row.addEventListener('dragstart', (e) => {
+    _dragSrcWrapper = wrapper;
     e.dataTransfer.effectAllowed = 'move';
-    // 高さを保存してから要素を畳む（元のスペースを消す）
-    wrapper.dataset.dragHeight = wrapper.getBoundingClientRect().height;
+
+    // ブラウザのドラッグゴースト用にクローンを一時追加
+    const rect = wrapper.getBoundingClientRect();
+    const ghost = wrapper.cloneNode(true);
+    ghost.style.cssText = `position:fixed;top:-9999px;left:-9999px;width:${rect.width}px;pointer-events:none;`;
+    document.body.appendChild(ghost);
+    e.dataTransfer.setDragImage(ghost, e.clientX - rect.left, e.clientY - rect.top);
+    requestAnimationFrame(() => ghost.remove());
+
+    // ドラッグ元にハイライトスタイルを適用
     requestAnimationFrame(() => wrapper.classList.add('dragging'));
   });
 
   row.addEventListener('dragend', () => {
-    wrapper.classList.remove('dragging');
-    // 全wrapperのtranslateとスペースをリセット
+    if (_dragSrcWrapper) _dragSrcWrapper.classList.remove('dragging');
     container.querySelectorAll('.field-row-wrapper').forEach(w => {
-      w.style.transform = '';
-      w.style.transition = '';
       w.classList.remove('drop-above', 'drop-below');
     });
-    // 最終位置にDOM挿入
-    if (dragOverWrapper && dragOverWrapper !== wrapper) {
-      container.insertBefore(wrapper, insertAfter ? dragOverWrapper.nextSibling : dragOverWrapper);
-    }
-    dragOverWrapper = null;
+    _dragSrcWrapper = null;
     renderPreview();
   });
 
   wrapper.addEventListener('dragover', (e) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
-    const dragging = container.querySelector('.field-row-wrapper.dragging');
-    if (!dragging || dragging === wrapper) return;
+    if (!_dragSrcWrapper || _dragSrcWrapper === wrapper) return;
 
-    const rect = wrapper.getBoundingClientRect();
-    const midY = rect.top + rect.height / 2;
-    const goBelow = e.clientY > midY;
-
-    dragOverWrapper = wrapper;
-    insertAfter = goBelow;
-
-    // datasetに保存した高さを使用（畳まれてgetBoundingClientRectが0になるため）
-    const allWrappers = Array.from(container.querySelectorAll('.field-row-wrapper'));
-    const draggingH   = parseFloat(dragging.dataset.dragHeight || 0);
-    const draggingIdx = allWrappers.indexOf(dragging);
-    const targetIdx   = allWrappers.indexOf(wrapper);
-
-    allWrappers.forEach((w, i) => {
-      if (w === dragging) { w.style.transition = ''; w.style.transform = ''; return; }
-      w.style.transition = 'transform 0.18s ease';
+    // 全インジケーターをリセット
+    container.querySelectorAll('.field-row-wrapper').forEach(w => {
       w.classList.remove('drop-above', 'drop-below');
-
-      let shift = 0;
-      if (draggingIdx < targetIdx) {
-        // 下に移動中：ドラッグ元より下 & ターゲット以上のアイテムを上にずらす
-        if (i > draggingIdx && (goBelow ? i <= targetIdx : i < targetIdx)) shift = -draggingH;
-      } else {
-        // 上に移動中：ターゲット以上 & ドラッグ元より上のアイテムを下にずらす
-        if (i < draggingIdx && (goBelow ? i > targetIdx : i >= targetIdx)) shift = draggingH;
-      }
-      w.style.transform = shift ? `translateY(${shift}px)` : '';
     });
 
-    // ターゲットにドロップ位置インジケーター
+    const rect = wrapper.getBoundingClientRect();
+    const goBelow = e.clientY > rect.top + rect.height / 2;
+
+    // ドロップ位置ラインを表示
     wrapper.classList.add(goBelow ? 'drop-below' : 'drop-above');
+
+    // DOMを直接移動（ドラッグ中に他のアイテムが螪然にシフト）
+    container.insertBefore(_dragSrcWrapper, goBelow ? wrapper.nextSibling : wrapper);
   });
 
-  wrapper.addEventListener('dragleave', () => {
-    wrapper.classList.remove('drop-above', 'drop-below');
+  wrapper.addEventListener('dragleave', (e) => {
+    if (!wrapper.contains(e.relatedTarget)) {
+      wrapper.classList.remove('drop-above', 'drop-below');
+    }
   });
 
   row.querySelector('.btn-remove').addEventListener('click', () => { wrapper.remove(); renderPreview(); });

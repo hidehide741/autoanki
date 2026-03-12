@@ -113,12 +113,12 @@
       transition: background 0.2s;
     }
     .field-row-wrapper.dragging {
-      height: 0 !important;
-      overflow: hidden !important;
-      margin-bottom: 0 !important;
-      border: none !important;
-      pointer-events: none;
+      background: rgba(99,102,241,0.18);
+      border: 2px solid rgba(99,102,241,0.7);
+      border-radius: 8px;
+      box-shadow: 0 0 14px rgba(99,102,241,0.35);
     }
+    .field-row-wrapper.dragging .field-row { background: transparent; }
     /* ドロップ位置インジケーター */
     .field-row-wrapper.drop-above {
       box-shadow: 0 -3px 0 0 #6366f1;
@@ -323,7 +323,7 @@
     <span id="toast-msg">保存しました</span>
   </div>
 
-  <script src="settings.js?v=20260313g" type="module"></script>
+  <script src="settings.js?v=20260313h" type="module"></script>
   <script>
     (function(){
       const layout=document.getElementById('app-layout'),btn=document.getElementById('sidebar-toggle-btn'),overlay=document.getElementById('sidebar-overlay');

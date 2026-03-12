@@ -151,7 +151,7 @@ function wrapFieldWithToolbar(field, formGroupDiv) {
   container.dataset.fieldLabel = field.label;
   container.dataset.fieldRequired = field.required ? '1' : '0';
   container.style.cssText = 'margin-bottom:1.25rem;';
-  container.draggable = true;
+  container.draggable = false;
 
   const toolbar = document.createElement('div');
   toolbar.style.cssText = 'display:flex;justify-content:space-between;align-items:center;gap:0.35rem;margin-bottom:0.3rem;';
@@ -164,6 +164,8 @@ function wrapFieldWithToolbar(field, formGroupDiv) {
   dragHandle.className = 'fc-drag-handle';
   dragHandle.title = 'ドラッグして並び替え';
   dragHandle.textContent = '⋯⋯';
+  dragHandle.addEventListener('mousedown', () => { container.draggable = true; });
+  dragHandle.addEventListener('mouseleave', () => { if (!_formDragSrc) container.draggable = false; });
 
   const typeLabel = document.createElement('span');
   typeLabel.style.cssText = 'font-size:0.72rem;color:var(--text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;';
@@ -226,6 +228,7 @@ function wrapFieldWithToolbar(field, formGroupDiv) {
   container.addEventListener('dragend', () => {
     if (_formDragSrc) _formDragSrc.classList.remove('fc-dragging');
     document.querySelectorAll('.field-container').forEach(c => c.classList.remove('fc-drop-above','fc-drop-below'));
+    container.draggable = false;
     _formDragSrc = null;
     // DOM 順序から activeGenre.fields を再構築
     syncFieldsFromDom();

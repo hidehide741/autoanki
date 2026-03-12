@@ -299,22 +299,7 @@ function createFieldDetailPanel(field) {
       wrap.innerHTML = `${def.label}: <input type="number" class="detail-input" data-key="${def.key}" value="${val}" min="${def.min||0}" max="${def.max||9999}" style="background:rgba(0,0,0,0.3);border:1px solid var(--glass-border);color:var(--text-primary);padding:0.25rem 0.5rem;border-radius:5px;width:70px;font-size:0.8rem;">`;
     } else if (def.type === 'color') {
       const swatches = def.choices.map(c => `<button type="button" class="color-swatch" data-color="${c}" style="width:18px;height:18px;border-radius:50%;background:${c};border:2px solid ${String(val)===c?'#fff':'transparent'};cursor:pointer;flex-shrink:0;"></button>`).join('');
-      wrap.innerHTML = `${def.label}: <span class="color-swatches" style="display:flex;gap:4px;align-items:center;">${swatches}<button type="button" class="color-swatch" data-color="" style="width:18px;height:18px;border-radius:50%;background:rgba(255,255,255,0.1);border:2px solid ${!val?'#fff':'transparent'};cursor:pointer;font-size:0.65rem;">✕</button></span><input type="hidden" class="detail-input" data-key="${def.key}" value="${val}">`;
-      fieldsRow.appendChild(wrap);
-      wrap.querySelectorAll('.color-swatch').forEach(btn => {
-        btn.addEventListener('click', () => {
-          wrap.querySelectorAll('.color-swatch').forEach(b => b.style.borderColor = 'transparent');
-          btn.style.borderColor = '#fff';
-          const hi = wrap.querySelector('.detail-input[data-key="color"]');
-          if (hi) {
-            hi.value = btn.dataset.color;
-            if (!field.options) field.options = {};
-            field.options.color = btn.dataset.color;
-            updateCardPreview(activeGenre, currentPreviewValues);
-          }
-        });
-      });
-      return;
+      wrap.innerHTML = `${def.label}: <span class="color-swatches" style="display:flex;gap:4px;align-items:center;">${swatches}</span><input type="hidden" class="detail-input" data-key="${def.key}" value="${val}">`;
     } else if (def.type === 'text') {
       wrap.innerHTML = `${def.label}: <input type="text" class="detail-input" data-key="${def.key}" value="${esc(String(val))}" style="background:rgba(0,0,0,0.3);border:1px solid var(--glass-border);color:var(--text-primary);padding:0.25rem 0.5rem;border-radius:5px;font-size:0.8rem;min-width:120px;">`;
     }
@@ -553,7 +538,7 @@ function s2AddFieldRow(container, type = 'textarea', required = false, options =
       { key: 'valign',   label: '文字揃え(縦)',   type: 'select', choices: [['top','上'],['middle','中'],['bottom','下']], default: 'middle' },
       { key: 'bold',     label: '太字',           type: 'toggle', default: false },
       { key: 'fontSize', label: '文字サイズ',     type: 'select', choices: [['sm','小'],['md','中'],['lg','大']], default: 'md' },
-      { key: 'color',    label: '文字色',         type: 'color',  choices: ['#ffffff','#a78bfa','#60a5fa','#34d399','#fbbf24','#f87171'], default: '' },
+      { key: 'color',    label: '文字色',         type: 'color',  choices: ['#ffffff','#a78bfa','#60a5fa','#34d399','#fbbf24','#f87171','#000000'], default: '' },
     ],
     textarea:      [{ key: 'rows', label: '表示行数', type: 'number', min:1, max:10, default: 3 }],
     freetext:      [{ key: 'rows', label: '表示行数', type: 'number', min:1, max:10, default: 3 }],
@@ -602,7 +587,7 @@ function s2AddFieldRow(container, type = 'textarea', required = false, options =
         wrap.innerHTML = `${def.label}: <input type="number" class="detail-input" data-key="${def.key}" value="${val}" min="${def.min||0}" max="${def.max||9999}" style="background:rgba(0,0,0,0.3);border:1px solid var(--glass-border);color:var(--text-primary);padding:0.25rem 0.5rem;border-radius:5px;width:70px;font-size:0.8rem;">`;
       } else if (def.type === 'color') {
         const swatches = def.choices.map(c => `<button type="button" class="color-swatch" data-color="${c}" style="width:18px;height:18px;border-radius:50%;background:${c};border:2px solid ${String(val)===c?'#fff':'transparent'};cursor:pointer;flex-shrink:0;"></button>`).join('');
-        wrap.innerHTML = `${def.label}: <span class="color-swatches" style="display:flex;gap:4px;align-items:center;">${swatches}<button type="button" class="color-swatch" data-color="" style="width:18px;height:18px;border-radius:50%;background:rgba(255,255,255,0.1);border:2px solid ${!val?'#fff':'transparent'};cursor:pointer;font-size:0.65rem;">✕</button></span><input type="hidden" class="detail-input" data-key="${def.key}" value="${val}">`;
+        wrap.innerHTML = `${def.label}: <span class="color-swatches" style="display:flex;gap:4px;align-items:center;">${swatches}</span><input type="hidden" class="detail-input" data-key="${def.key}" value="${val}">`;
       } else if (def.type === 'text') {
         wrap.innerHTML = `${def.label}: <input type="text" class="detail-input" data-key="${def.key}" value="${esc(String(val))}" style="background:rgba(0,0,0,0.3);border:1px solid var(--glass-border);color:var(--text-primary);padding:0.25rem 0.5rem;border-radius:5px;font-size:0.8rem;min-width:120px;">`;
       }

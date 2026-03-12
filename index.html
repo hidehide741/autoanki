@@ -12,7 +12,7 @@
 <body>
   <div class="background-animation"></div>
 
-  <div class="layout">
+  <div class="layout sidebar-expanded" id="app-layout">
     <!-- サイドバー -->
     <aside class="sidebar" id="app-sidebar">
       <div class="logo">
@@ -20,13 +20,14 @@
         <p>Effortless Spaced Repetition</p>
       </div>
       <div class="nav-links">
-        <a href="dashboard.html" class="nav-btn">📊 ダッシュボード</a>
-        <a href="index.html"     class="nav-btn active">▶️ 問題を解く</a>
-        <a href="options.html"   class="nav-btn">➕ 問題作成</a>
-        <a href="cardlist.html"  class="nav-btn">📋 問題DB</a>
-        <a href="settings.html"  class="nav-btn">⚙️ 設定</a>
-        <a href="memo.html"      class="nav-btn">🗒️ メモ</a>
+        <a href="dashboard.html" class="nav-btn"><span class="nav-icon">📊</span><span class="nav-text"> ダッシュボード</span></a>
+        <a href="index.html"     class="nav-btn active"><span class="nav-icon">▶️</span><span class="nav-text"> 問題を解く</span></a>
+        <a href="options.html"   class="nav-btn"><span class="nav-icon">➕</span><span class="nav-text"> 問題作成</span></a>
+        <a href="cardlist.html"  class="nav-btn"><span class="nav-icon">📋</span><span class="nav-text"> 問題DB</span></a>
+        <a href="settings.html"  class="nav-btn"><span class="nav-icon">⚙️</span><span class="nav-text"> 設定</span></a>
+        <a href="memo.html"      class="nav-btn"><span class="nav-icon">🗒️</span><span class="nav-text"> メモ</span></a>
       </div>
+      <button class="sidebar-toggle-btn" id="sidebar-toggle-btn" title="折りたたむ">‹</button>
     </aside>
 
     <!-- メインコンテンツ -->
@@ -142,5 +143,25 @@
   </div>
 
   <script type="module" src="newtab.js?v=20260312c"></script>
+  <script>
+    (function(){
+      const layout=document.getElementById('app-layout'),btn=document.getElementById('sidebar-toggle-btn');
+      const saved=localStorage.getItem('sidebar-mode')||'expanded';
+      layout.className=layout.className.replace(/sidebar-expanded|sidebar-collapsed|sidebar-fixed|sidebar-float/g,'').trim();
+      layout.classList.add('sidebar-'+saved);
+      function updateArrow(){btn.textContent=layout.classList.contains('sidebar-collapsed')?'›':'‹';}
+      updateArrow();
+      btn.addEventListener('click',function(){
+        if(layout.classList.contains('sidebar-expanded')){
+          layout.classList.replace('sidebar-expanded','sidebar-collapsed');
+          localStorage.setItem('sidebar-mode','collapsed');
+        } else {
+          layout.classList.replace('sidebar-collapsed','sidebar-expanded');
+          localStorage.setItem('sidebar-mode','expanded');
+        }
+        updateArrow();
+      });
+    })();
+  </script>
 </body>
 </html>

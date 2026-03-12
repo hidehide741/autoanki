@@ -1346,7 +1346,7 @@ function updateCardPreview(genre, values) {
       const borderStyle = showBorder
         ? 'background:rgba(99,102,241,0.08);border:1px solid rgba(167,139,250,0.35);border-radius:6px;'
         : 'background:transparent;border:none;border-radius:0;';
-      return valignWrap(`<div style="padding:0.4rem 0.75rem;margin:0.3rem 0 0.6rem;${borderStyle}${boldSt||'font-weight:600;'}font-size:${fsSz||'0.95rem'};color:${opts.color||'#a78bfa'};${alignSt}">${escapeHtml(v)}</div>`);
+      return valignWrap(`<div style="padding:0.4rem 0.75rem;margin:0.3rem 0 0.6rem;${borderStyle}font-weight:${opts.bold?'700':'400'};font-size:${fsSz||'0.95rem'};color:${opts.color||'#a78bfa'};${alignSt}">${escapeHtml(v)}</div>`);
     }
 
     if (f.type === 'image') {
@@ -1370,7 +1370,7 @@ function updateCardPreview(genre, values) {
       const displayed = val
         ? escapeHtml(val).replace(/\{\{(.+?)\}\}/g, `<span style="${blankSpanStyle}">___</span>`)
         : '<span style="color:#64748b;">（未入力）</span>';
-      return valignWrap(`<div style="font-size:${fsSz||'1.05rem'};${boldSt||'font-weight:600;'}line-height:1.7;margin-bottom:0.75rem;color:${opts.color||'#f1f5f9'};${alignSt}">${displayed}</div>`);
+      return valignWrap(`<div style="font-size:${fsSz||'1.05rem'};font-weight:${opts.bold?'700':'400'};line-height:1.7;margin-bottom:0.75rem;color:${opts.color||'#f1f5f9'};${alignSt}">${displayed}</div>`);
     }
 
     if (f.type === 'choice_single' || f.type === 'choice_multi') {

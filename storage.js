@@ -433,6 +433,14 @@ const StorageManager = {
     return remaining > 0 ? remaining : 0;
   },
 
+  // 「問題なし」画面を一度表示したかフラグ
+  async getEmptyNotified() {
+    return await LocalStore.get('emptyNotified');
+  },
+  async setEmptyNotified(val) {
+    await LocalStore.set('emptyNotified', !!val);
+  },
+
   async incrementStats() {
     let stats = await LocalStore.get('stats');
     if (!stats) return;

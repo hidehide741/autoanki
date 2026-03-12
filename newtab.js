@@ -45,6 +45,15 @@ async function loadNextCard() {
     const result = await StorageManager.getDueCardOrStatus();
     
     if (result.status === 'empty') {
+      if (StorageManager.isExtension) {
+        // 拡張機能モード: 1回だけ「問題なし」表示、2回目以降はGoogle
+        const alreadyNotified = await StorageManager.getEmptyNotified();
+        if (alreadyNotified) {
+          window.location.replace('https://www.google.com/');
+          return;
+        }
+        await StorageManager.setEmptyNotified(true);
+      }
       showEmptyMode();
       isProcessing = false;
       return;
@@ -52,7 +61,7 @@ async function loadNextCard() {
 
     if (result.status === 'cooldown') {
       if (StorageManager.isExtension) {
-        // 拡張機能モード: 15分以内に答えた場合はGoogle Homeへリダイレクト
+        // 拡張機能モード: 15分クールタイム中はGoogle
         window.location.replace('https://www.google.com/');
         return;
       } else {
@@ -65,6 +74,10 @@ async function loadNextCard() {
     currentCard = result.card;
     
     if (currentCard) {
+      // dueカードあり → emptyNotifiedをリセット（次にemptyになったとき再度通知する）
+      if (StorageManager.isExtension) {
+        await StorageManager.setEmptyNotified(false);
+      }
       const genres = await StorageManager.getGenres();
       const genreDef = genres.find(g => g.id === currentCard.genre);
       

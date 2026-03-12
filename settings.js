@@ -183,10 +183,11 @@ function addFieldRow(container, label = '', type = 'textarea', required = false,
   // 詳細設定の定義（タイプごと）
   const DETAIL_DEFS = {
     _common: [
-      { key: 'align',    label: '文字揃え',   type: 'select', choices: [['left','左寄り'],['center','中央'],['right','右寄り']], default: 'left' },
-      { key: 'bold',     label: '太字',       type: 'toggle', default: false },
-      { key: 'fontSize', label: '文字サイズ', type: 'select', choices: [['sm','小'],['md','中'],['lg','大']], default: 'md' },
-      { key: 'color',    label: '文字色',     type: 'color',  choices: ['#ffffff','#a78bfa','#60a5fa','#34d399','#fbbf24','#f87171'], default: '' },
+      { key: 'align',    label: '文字揃え(横)',   type: 'select', choices: [['left','左寄り'],['center','中央'],['right','右寄り']], default: 'left' },
+      { key: 'valign',   label: '文字揃え(縦)',   type: 'select', choices: [['top','上'],['middle','中'],['bottom','下']], default: 'middle' },
+      { key: 'bold',     label: '太字',           type: 'toggle', default: false },
+      { key: 'fontSize', label: '文字サイズ',     type: 'select', choices: [['sm','小'],['md','中'],['lg','大']], default: 'md' },
+      { key: 'color',    label: '文字色',         type: 'color',  choices: ['#ffffff','#a78bfa','#60a5fa','#34d399','#fbbf24','#f87171'], default: '' },
     ],
     textarea:      [{ key: 'rows',      label: '表示行数',   type: 'number', min:1, max:10, default: 3 }, { key: 'maxlen', label: '最大文字数', type: 'number', min:0, default: 0, hint:'0=無制限' }],
     text:          [{ key: 'maxlen',    label: '最大文字数', type: 'number', min:0, default: 0, hint:'0=無制限' }],
@@ -200,6 +201,7 @@ function addFieldRow(container, label = '', type = 'textarea', required = false,
     difficulty:    [{ key: 'maxStars', label: '最大値',     type: 'select', choices: [['3','3段階'],['5','5段階'],['10','10段階']], default: '5' }, { key: 'defaultVal', label: 'デフォルト値', type: 'number', min:1, max:10, default: 3 }],
     timer:         [{ key: 'defaultSec',label: 'デフォルト秒数', type: 'number', min:5, max:600, default: 30 }, { key: 'timeupAction', label: 'タイムアップ時', type: 'select', choices: [['warn','警告のみ'],['auto','自動送り']], default: 'warn' }],
     url:           [{ key: 'linkLabel', label: 'リンクラベル', type: 'text', default: '参考資料を見る' }],
+    static:        [{ key: 'border',   label: '枠を表示',   type: 'toggle', default: true }],
   };
 
   const typeDefs = DETAIL_DEFS[type] || [];
@@ -403,6 +405,7 @@ function renderPreview() {
 
       // --- 共通スタイル設定 ---
       const align      = opts.align    || 'left';
+      const valign     = opts.valign    || 'middle';
       const bold       = opts.bold     || false;
       const sizeMap    = { sm: '0.72rem', md: '0.85rem', lg: '1.05rem' };
       const fontSize   = sizeMap[opts.fontSize || 'md'];
@@ -410,6 +413,8 @@ function renderPreview() {
 
       const justifyMap = { left: 'flex-start', center: 'center', right: 'flex-end' };
       const jc         = justifyMap[align] || 'flex-start';
+      const valignMap  = { top: 'flex-start', middle: 'center', bottom: 'flex-end' };
+      const ai         = valignMap[valign] || 'center';
 
       // ラベルに共通スタイルを適用
       const labelStyle = [
@@ -427,17 +432,16 @@ function renderPreview() {
       // --- タイプ別ボックス ---
       // 複数行系 (textarea, freetext, fillblank, explanation)
       if (['textarea','freetext','fillblank','explanation'].includes(f.type)) {
-        const alignItems = align === 'center' ? 'center' : 'flex-start';
         const fillBlankNote = f.type === 'fillblank'
           ? `<span style="opacity:0.45;font-size:0.7rem;margin-left:0.4rem;">{{空欄}}形式</span>` : '';
-        return `<div style="min-height:52px;background:rgba(0,0,0,0.2);border:1px dashed rgba(255,255,255,0.12);border-radius:5px;display:flex;flex-direction:column;align-items:${jc === 'flex-end' ? 'flex-end' : (jc === 'center' ? 'center' : 'flex-start')};justify-content:${alignItems === 'center' ? 'center' : 'flex-start'};padding:0.4rem 0.75rem;gap:0.25rem;">${label}${fillBlankNote}</div>`;
+        return `<div style="min-height:52px;background:rgba(0,0,0,0.2);border:1px dashed rgba(255,255,255,0.12);border-radius:5px;display:flex;flex-direction:column;align-items:${jc === 'flex-end' ? 'flex-end' : (jc === 'center' ? 'center' : 'flex-start')};justify-content:${ai};padding:0.4rem 0.75rem;gap:0.25rem;">${label}${fillBlankNote}</div>`;
       }
 
       // 画像
       if (f.type === 'image') {
         const maxCount = opts.maxCount || '3';
         const sizeLabel = { sm:'小(サムネ)', md:'中', lg:'大(full幅)' }[opts.size || 'md'];
-        return `<div style="height:64px;background:rgba(0,0,0,0.2);border:1px dashed rgba(255,255,255,0.12);border-radius:5px;display:flex;align-items:${align === 'center' ? 'center' : 'flex-start'};justify-content:${jc};padding:0 0.75rem;gap:0.5rem;"><span style="font-size:1.2rem;">🖼️</span><div style="display:flex;flex-direction:column;gap:2px;">${label}<span style="opacity:0.4;font-size:0.68rem;">最大${maxCount}枚 / ${sizeLabel}</span></div></div>`;
+        return `<div style="height:64px;background:rgba(0,0,0,0.2);border:1px dashed rgba(255,255,255,0.12);border-radius:5px;display:flex;align-items:${ai};justify-content:${jc};padding:0 0.75rem;gap:0.5rem;"><span style="font-size:1.2rem;">🖼️</span><div style="display:flex;flex-direction:column;gap:2px;">${label}<span style="opacity:0.4;font-size:0.68rem;">最大${maxCount}枚 / ${sizeLabel}</span></div></div>`;
       }
 
       // 選択肢
@@ -500,8 +504,18 @@ function renderPreview() {
         return `<div style="min-height:30px;background:rgba(0,0,0,0.2);border:1px dashed rgba(255,255,255,0.12);border-radius:5px;display:flex;align-items:center;justify-content:${jc};padding:0 0.75rem;"><span style="font-size:${fontSize};${bold ? 'font-weight:700;' : ''}color:${urlColor};text-decoration:underline;">🔗 ${esc(linkLabel)}</span></div>`;
       }
 
-      // デフォルト（text, number, date, static など）
-      return `<div style="min-height:30px;background:rgba(0,0,0,0.2);border:1px dashed rgba(255,255,255,0.12);border-radius:5px;display:flex;align-items:center;justify-content:${jc};padding:0 0.75rem;">${label}</div>`;
+      // 固定テキスト (static)
+      if (f.type === 'static') {
+        const hasBorder = opts.border !== false; // デフォルトtrue
+        const staticColor = color || '#a78bfa';
+        const borderStyle = hasBorder
+          ? `background:rgba(99,102,241,0.08);border:1px solid rgba(167,139,250,0.35);border-radius:6px;padding:0.4rem 0.75rem;`
+          : `background:transparent;border:none;padding:0.2rem 0.75rem;`;
+        return `<div style="min-height:28px;display:flex;align-items:${ai};justify-content:${jc};${borderStyle}"><span style="font-size:${fontSize};${bold ? 'font-weight:700;' : ''}color:${staticColor};">🔖 固定テキスト</span></div>`;
+      }
+
+      // デフォルト（text, number, date など）
+      return `<div style="min-height:30px;background:rgba(0,0,0,0.2);border:1px dashed rgba(255,255,255,0.12);border-radius:5px;display:flex;align-items:${ai};justify-content:${jc};padding:0 0.75rem;">${label}</div>`;
     };
 
     return `

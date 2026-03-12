@@ -586,7 +586,7 @@ function s2AddFieldRow(container, type = 'textarea', required = false, options =
       } else if (def.type === 'number') {
         wrap.innerHTML = `${def.label}: <input type="number" class="detail-input" data-key="${def.key}" value="${val}" min="${def.min||0}" max="${def.max||9999}" style="background:rgba(0,0,0,0.3);border:1px solid var(--glass-border);color:var(--text-primary);padding:0.25rem 0.5rem;border-radius:5px;width:70px;font-size:0.8rem;">`;
       } else if (def.type === 'color') {
-        const swatches = def.choices.map(c => `<button type="button" class="color-swatch" data-color="${c}" style="width:18px;height:18px;border-radius:50%;background:${c};border:2px solid ${String(val)===c?'#fff':'transparent'};cursor:pointer;flex-shrink:0;"></button>`).join('');
+        const swatches = def.choices.map(c => `<button type="button" class="color-swatch" data-color="${c}" style="width:18px;height:18px;border-radius:50%;background:${c};border:2px solid ${String(val)===c?'#fff':'rgba(255,255,255,0.25)'};cursor:pointer;flex-shrink:0;"></button>`).join('');
         wrap.innerHTML = `${def.label}: <span class="color-swatches" style="display:flex;gap:4px;align-items:center;">${swatches}</span><input type="hidden" class="detail-input" data-key="${def.key}" value="${val}">`;
       } else if (def.type === 'text') {
         wrap.innerHTML = `${def.label}: <input type="text" class="detail-input" data-key="${def.key}" value="${esc(String(val))}" style="background:rgba(0,0,0,0.3);border:1px solid var(--glass-border);color:var(--text-primary);padding:0.25rem 0.5rem;border-radius:5px;font-size:0.8rem;min-width:120px;">`;
@@ -1307,7 +1307,7 @@ function updateCardPreview(genre, values) {
 
     // 基本テキストスタイル（text / textarea / freetext / number / date 等）
     const baseTextStyle = isQuestion
-      ? `font-size:${fsSz||'1.1rem'};font-weight:700;line-height:1.55;letter-spacing:-0.01em;${
+      ? `font-size:${fsSz||'1.1rem'};font-weight:${opts.bold===false?'400':opts.bold?'700':'700'};line-height:1.55;letter-spacing:-0.01em;${
           opts.color
             ? `color:${opts.color};-webkit-text-fill-color:${opts.color};background:none;-webkit-background-clip:initial;background-clip:initial;`
             : 'background:linear-gradient(135deg,#f1f5f9,#cbd5e1);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;'

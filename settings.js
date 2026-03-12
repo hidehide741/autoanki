@@ -249,7 +249,7 @@ function addFieldRow(container, label = '', type = 'textarea', required = false,
       } else if (def.type === 'number') {
         wrap.innerHTML = `${def.label}${def.hint?` <span style="opacity:0.5;font-size:0.75rem;">(${def.hint})</span>`:''}: <input type="number" class="detail-input" data-key="${def.key}" value="${val}" min="${def.min||0}" max="${def.max||9999}" style="background:rgba(0,0,0,0.3);border:1px solid var(--glass-border);color:var(--text-primary);padding:0.25rem 0.5rem;border-radius:5px;width:70px;font-size:0.8rem;">`;
       } else if (def.type === 'color') {
-        const swatches = def.choices.map(c => `<button type="button" class="color-swatch" data-color="${c}" style="width:18px;height:18px;border-radius:50%;background:${c};border:2px solid ${String(val)===c?'#fff':'transparent'};cursor:pointer;flex-shrink:0;"></button>`).join('');
+        const swatches = def.choices.map(c => `<button type="button" class="color-swatch" data-color="${c}" style="width:18px;height:18px;border-radius:50%;background:${c};border:2px solid ${String(val)===c?'#fff':'rgba(255,255,255,0.25)'};cursor:pointer;flex-shrink:0;"></button>`).join('');
         wrap.innerHTML = `${def.label}: <span class="color-swatches" style="display:flex;gap:4px;align-items:center;">${swatches}</span><input type="hidden" class="detail-input" data-key="${def.key}" value="${val}">`;
       } else if (def.type === 'text') {
         wrap.innerHTML = `${def.label}: <input type="text" class="detail-input" data-key="${def.key}" value="${esc(String(val))}" style="background:rgba(0,0,0,0.3);border:1px solid var(--glass-border);color:var(--text-primary);padding:0.25rem 0.5rem;border-radius:5px;font-size:0.8rem;min-width:120px;">`;

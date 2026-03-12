@@ -169,7 +169,7 @@ body {
   align-self: center;
 }
 
-/* ===== メインコンテンツ =====
+/* ===== メインコンテンツ ===== */
 .main-content {
   flex: 1;
   display: flex;

@@ -153,13 +153,10 @@
       function updateArrow(){btn.textContent=layout.classList.contains('sidebar-collapsed')?'›':'‹';}
       updateArrow();
       btn.addEventListener('click',function(){
-        if(layout.classList.contains('sidebar-expanded')){
-          layout.classList.replace('sidebar-expanded','sidebar-collapsed');
-          localStorage.setItem('sidebar-mode','collapsed');
-        } else {
-          layout.classList.replace('sidebar-collapsed','sidebar-expanded');
-          localStorage.setItem('sidebar-mode','expanded');
-        }
+        const collapsed=layout.classList.contains('sidebar-collapsed');
+        layout.classList.remove('sidebar-expanded','sidebar-collapsed');
+        layout.classList.add(collapsed?'sidebar-expanded':'sidebar-collapsed');
+        localStorage.setItem('sidebar-mode',collapsed?'expanded':'collapsed');
         updateArrow();
       });
     })();

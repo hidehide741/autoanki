@@ -45,6 +45,9 @@ function renderForm() {
   const genre = genres.find(g => g.id === selectedGenreId);
   if (!genre) return;
 
+  // 入力値を保持するオブジェクト
+  const previewValues = {};
+
   genre.fields.forEach(field => {
     // image タイプはペーストUIを使う
     if (field.type === 'image') {
@@ -75,18 +78,69 @@ function renderForm() {
       input.rows = 3;
     } else {
       input = document.createElement('input');
-      // number / date / url などをそのまま利用
       input.type = ['number', 'date', 'url'].includes(field.type) ? field.type : 'text';
     }
     input.id = `field-${field.key}`;
     input.name = field.key;
     if (field.required) input.required = true;
-    // プレースホルダーはフィールドラベルから自動生成（プレビューと統一）
     input.placeholder = `${field.label}を入力…`;
+
+    // 入力イベントでプレビュー更新
+    input.addEventListener('input', () => {
+      previewValues[field.key] = input.value;
+      updateCardPreview(genre, previewValues);
+    });
 
     div.appendChild(label);
     div.appendChild(input);
     el.formFields.appendChild(div);
+  });
+
+  // 初期化時もプレビューをクリア
+  updateCardPreview(genre, previewValues);
+}
+
+// プレビューパネルを更新する関数
+function updateCardPreview(genre, values) {
+  const panel = document.getElementById('card-preview-panel');
+  if (!panel) return;
+
+  // 問題・答えなどを分けて表示（roleで判定）
+  const qFields = genre.fields.filter(f => f.role === 'question');
+  const aFields = genre.fields.filter(f => f.role === 'answer');
+
+  let html = '';
+  if (qFields.length > 0) {
+    html += '<div style="margin-bottom:1.2rem;">';
+    html += '<div style="color:#a78bfa;font-size:0.9rem;margin-bottom:0.3rem;">問題</div>';
+    qFields.forEach(f => {
+      const val = values[f.key] || '';
+      html += `<div style=\"background:rgba(99,102,241,0.08);padding:0.7em 1em;border-radius:8px;margin-bottom:0.5em;\">${val ? escapeHtml(val) : '<span style=\"color:#94a3b8;\">（未入力）</span>'}</div>`;
+    });
+    html += '</div>';
+  }
+  if (aFields.length > 0) {
+    html += '<div>';
+    html += '<div style="color:#a78bfa;font-size:0.9rem;margin-bottom:0.3rem;">答え</div>';
+    aFields.forEach(f => {
+      const val = values[f.key] || '';
+      html += `<div style=\"background:rgba(99,102,241,0.08);padding:0.7em 1em;border-radius:8px;margin-bottom:0.5em;\">${val ? escapeHtml(val) : '<span style=\"color:#94a3b8;\">（未入力）</span>'}</div>`;
+    });
+    html += '</div>';
+  }
+  if (!html) {
+    html = '<p style="color: var(--text-secondary); font-size: 0.85rem; text-align: center;">入力内容のプレビューがここに表示されます</p>';
+  }
+  panel.innerHTML = html;
+}
+
+// HTMLエスケープ関数
+function escapeHtml(str) {
+  return str.replace(/[&<>'"]/g, function(tag) {
+    const chars = {
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
+    };
+    return chars[tag] || tag;
   });
 }
 

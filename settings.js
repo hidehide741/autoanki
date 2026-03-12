@@ -308,25 +308,33 @@ function renderPreview() {
 
   const renderSection = (title, data) => {
     if (data.length === 0) return '';
+    // フィールド名をボックス内部にプレースホルダー風で表示
+    const dummyBox = (f) => {
+      const labelInner = `<span style="opacity:0.55;font-size:0.8rem;">${esc(f.label)}</span>`;
+      if (f.type === 'textarea' || f.type === 'freetext' || f.type === 'fillblank' || f.type === 'explanation') {
+        return `<div style="min-height:52px;background:rgba(0,0,0,0.2);border:1px dashed rgba(255,255,255,0.12);border-radius:5px;display:flex;align-items:center;justify-content:center;padding:0.4rem 0.75rem;color:var(--text-secondary);">${labelInner}</div>`;
+      } else if (f.type === 'image') {
+        return `<div style="height:64px;background:rgba(0,0,0,0.2);border:1px dashed rgba(255,255,255,0.12);border-radius:5px;display:flex;align-items:center;justify-content:center;gap:0.4rem;color:var(--text-secondary);">🖼️ ${labelInner}</div>`;
+      } else if (f.type === 'choice_single' || f.type === 'choice_multi') {
+        return `<div style="display:flex;flex-direction:column;gap:3px;">${['A','B','C'].map((l,i) => `<div style="height:22px;background:rgba(0,0,0,0.2);border:1px dashed rgba(255,255,255,0.1);border-radius:3px;display:flex;align-items:center;padding:0 6px;font-size:0.72rem;color:var(--text-secondary);">${i===0?'✅':(f.type==='choice_multi'?'☐':'○')} ${i===0?esc(f.label)+' (正解例)':'選択肢'}</div>`).join('')}</div>`;
+      } else if (f.type === 'difficulty') {
+        return `<div style="height:30px;background:rgba(0,0,0,0.2);border:1px dashed rgba(255,255,255,0.1);border-radius:5px;display:flex;align-items:center;padding:0 0.75rem;gap:0.3rem;font-size:1rem;">⭐⭐⭐☆☆ ${labelInner}</div>`;
+      } else if (f.type === 'tags') {
+        return `<div style="height:30px;background:rgba(0,0,0,0.2);border:1px dashed rgba(255,255,255,0.1);border-radius:5px;display:flex;align-items:center;padding:0 0.75rem;gap:0.4rem;"><span style="background:rgba(20,184,166,0.2);border:1px solid rgba(20,184,166,0.35);color:#14b8a6;padding:0.1rem 0.45rem;border-radius:10px;font-size:0.72rem;">${esc(f.label)}</span></div>`;
+      } else if (f.type === 'hint') {
+        return `<div style="height:30px;background:rgba(251,191,36,0.07);border:1px dashed rgba(251,191,36,0.3);border-radius:5px;display:flex;align-items:center;padding:0 0.75rem;gap:0.4rem;color:var(--text-secondary);">💡 ${labelInner}</div>`;
+      } else if (f.type === 'wrongexample') {
+        return `<div style="display:flex;flex-direction:column;gap:2px;">${['誤答例1','誤答例2'].map(w => `<div style="height:22px;background:rgba(239,68,68,0.07);border-left:2px solid rgba(239,68,68,0.4);border-radius:3px;padding:0 8px;display:flex;align-items:center;font-size:0.72rem;color:var(--text-secondary);">❌ ${w}</div>`).join('')}</div>`;
+      } else if (f.type === 'feedback') {
+        return `<div style="height:30px;background:rgba(34,197,94,0.07);border:1px dashed rgba(34,197,94,0.3);border-radius:5px;display:flex;align-items:center;padding:0 0.75rem;gap:0.4rem;color:var(--text-secondary);">💬 ${labelInner}</div>`;
+      } else {
+        return `<div style="height:30px;background:rgba(0,0,0,0.2);border:1px dashed rgba(255,255,255,0.12);border-radius:5px;display:flex;align-items:center;padding:0 0.75rem;color:var(--text-secondary);">${labelInner}</div>`;
+      }
+    };
     return `
       <div style="margin-bottom: 1rem;">
         <div style="font-size: 0.75rem; color: #a78bfa; font-weight: 600; margin-bottom: 0.5rem; text-transform: uppercase; border-bottom: 1px solid rgba(167,139,250,0.2);">${title}</div>
-        ${data.map(f => `
-          <div style="margin-bottom: 0.75rem;">
-            <p style="font-size: 0.7rem; color: var(--text-secondary); margin-bottom: 0.25rem;">${esc(f.label)}</p>
-            ${
-              (f.type === 'textarea' || f.type === 'freetext' || f.type === 'fillblank' || f.type === 'explanation') ? `<div style="height: 48px; background: rgba(0,0,0,0.2); border: 1px dashed var(--glass-border); border-radius: 4px;"></div>` :
-              f.type === 'image' ? `<div style="height: 80px; background: rgba(0,0,0,0.2); border: 1px dashed var(--glass-border); border-radius: 4px; display: flex; align-items: center; justify-content: center; color: var(--text-secondary); font-size: 0.8rem;">🖼️ 画像エリア</div>` :
-              (f.type === 'choice_single' || f.type === 'choice_multi') ? `<div style="display:flex;flex-direction:column;gap:3px;">${['A','B','C'].map((l,i) => `<div style="height:22px;background:rgba(0,0,0,0.2);border:1px dashed var(--glass-border);border-radius:3px;display:flex;align-items:center;padding:0 6px;font-size:0.7rem;color:var(--text-secondary);">${i===0?'✅':(f.type==='choice_multi'?'☐':'○')} 選択肢${l}</div>`).join('')}</div>` :
-              f.type === 'difficulty' ? `<div style="font-size:1.1rem;margin-top:4px;">⭐⭐⭐☆☆</div>` :
-              f.type === 'tags' ? `<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:4px;">${['タグ1','タグ2'].map(t => `<span style="background:rgba(20,184,166,0.2);border:1px solid rgba(20,184,166,0.4);color:#14b8a6;padding:2px 8px;border-radius:12px;font-size:0.7rem;">${t}</span>`).join('')}</div>` :
-              f.type === 'wrongexample' ? `<div style="display:flex;flex-direction:column;gap:3px;">${['誤答例1','誤答例2'].map(w => `<div style="height:22px;background:rgba(239,68,68,0.1);border-left:2px solid #ef4444;border-radius:3px;padding:0 8px;display:flex;align-items:center;font-size:0.7rem;color:var(--text-secondary);">❌ ${w}</div>`).join('')}</div>` :
-              f.type === 'hint' ? `<div style="height:28px;background:rgba(251,191,36,0.1);border-left:2px solid #fbbf24;border-radius:3px;display:flex;align-items:center;padding:0 8px;font-size:0.7rem;color:var(--text-secondary);">💡 ヒントエリア</div>` :
-              f.type === 'feedback' ? `<div style="height:28px;background:rgba(34,197,94,0.1);border-left:2px solid #22c55e;border-radius:3px;display:flex;align-items:center;padding:0 8px;font-size:0.7rem;color:var(--text-secondary);">💬 フィードバックエリア</div>` :
-              `<div style="height: 32px; background: rgba(0,0,0,0.2); border: 1px dashed var(--glass-border); border-radius: 4px;"></div>`
-            }
-          </div>
-        `).join('')}
+        ${data.map(f => `<div style="margin-bottom: 0.4rem;">${dummyBox(f)}</div>`).join('')}
       </div>
     `;
   };

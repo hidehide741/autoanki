@@ -113,10 +113,10 @@
       transition: background 0.2s;
     }
     .field-row-wrapper.dragging {
-      opacity: 0.35;
-      background: rgba(99,102,241,0.08);
-      border: 1px dashed rgba(99,102,241,0.4);
+      background: rgba(99,102,241,0.15);
+      border: 2px solid rgba(99,102,241,0.7);
       border-radius: 8px;
+      box-shadow: 0 0 12px rgba(99,102,241,0.3);
       pointer-events: none;
     }
     .field-row-wrapper.dragging .field-row { background: transparent; }
@@ -324,7 +324,7 @@
     <span id="toast-msg">保存しました</span>
   </div>
 
-  <script src="settings.js?v=20260313e" type="module"></script>
+  <script src="settings.js?v=20260313f" type="module"></script>
   <script>
     (function(){
       const layout=document.getElementById('app-layout'),btn=document.getElementById('sidebar-toggle-btn'),overlay=document.getElementById('sidebar-overlay');

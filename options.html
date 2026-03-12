@@ -243,8 +243,8 @@
           <!-- STEP2 プレビュー -->
           <aside class="editor-right" style="position:sticky;top:2rem;">
             <section class="section glass-panel" style="margin-bottom:0;padding:1.5rem;">
-              <div style="font-size:0.75rem;color:var(--text-secondary);margin-bottom:0.75rem;font-weight:500;">型プレビュー</div>
-              <div id="step2-preview-panel" style="background:rgba(15,23,42,0.6);padding:1.25rem;border-radius:12px;border:1px solid rgba(255,255,255,0.1);"></div>
+              <div style="font-size:0.75rem;color:var(--text-secondary);margin-bottom:0.75rem;font-weight:500;">フィールド構成プレビュー</div>
+              <div id="step2-preview-panel"></div>
             </section>
           </aside>
         </div>
@@ -272,9 +272,9 @@
           <!-- 右: プレビュー -->
           <aside class="editor-right" style="position:sticky;top:2rem;">
             <section class="section glass-panel" style="margin-bottom:0;padding:1.5rem;">
-              <div class="field-section-label" style="margin-bottom:1rem;color:var(--text-secondary);">リアルタイムプレビュー</div>
-              <div class="preview-box" id="card-preview-panel" style="background:rgba(0,0,0,0.25);border-color:rgba(255,255,255,0.05);">
-                <p style="color:var(--text-secondary);font-size:0.85rem;text-align:center;">入力内容のプレビューがここに表示されます</p>
+              <div style="font-size:0.75rem;color:var(--text-secondary);margin-bottom:0.75rem;font-weight:500;">カードプレビュー（実際の表示と同じ）</div>
+              <div id="card-preview-panel">
+                <div style="color:var(--text-secondary);font-size:0.85rem;text-align:center;padding:2rem 0;">入力するとリアルタイムで表示されます</div>
               </div>
             </section>
           </aside>
@@ -284,7 +284,7 @@
     </main>
   </div>
 
-  <script type="module" src="options.js?v=20260312b"></script>
+  <script type="module" src="options.js?v=20260312c"></script>
   <script>
     (function(){
       const layout=document.getElementById('app-layout'),btn=document.getElementById('sidebar-toggle-btn'),overlay=document.getElementById('sidebar-overlay');

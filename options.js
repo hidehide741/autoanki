@@ -874,117 +874,177 @@ function createRoleBlock(title, color) {
   return block;
 }
 
-// プレビューパネルを更新する関数
+// ===== プレビューパネル：実際のカード表示と同じ見た目で描画 =====
 function updateCardPreview(genre, values) {
   const panel = document.getElementById('card-preview-panel');
   if (!panel) return;
 
-  // role ごとに HTML を組み立てる（テキスト＋画像両対応）
-  function buildSideHtml(role) {
-    const fields = genre.fields.filter(f => f.role === role);
-    let html = '';
-    fields.forEach(f => {
-      if (f.type === 'static') {
-        // 固定テキスト：ユーザーが入力した値（なければ field.label）をラベルとして表示
-        const staticVal = (values[f.key] !== undefined && values[f.key] !== '') ? values[f.key] : f.label;
-        html += `<div style="padding:0.6rem 1rem;margin:0.4rem 0 0.6rem 0;background:rgba(99,102,241,0.1);border-radius:8px;border-left:4px solid #a78bfa;font-weight:600;font-size:1rem;color:#a78bfa;">${escapeHtml(staticVal)}</div>`;
-      } else if (f.type === 'image') {
-        const imgs = pendingImages[f.key] || [];
-        if (imgs.length > 0) {
-          html += `<div style="display:flex;flex-wrap:wrap;gap:0.5rem;margin-bottom:0.6rem;">`;
-          imgs.forEach(img => {
-            html += `<img src="${img.previewUrl}" style="max-height:100px;max-width:140px;border-radius:6px;border:1px solid rgba(255,255,255,0.15);object-fit:cover;">`;
-          });
-          html += `</div>`;
-        }
-      } else if (f.type === 'fillblank') {
-        const val = values[f.key] || '';
-        if (val) {
-          const displayed = escapeHtml(val).replace(/\{\{(.+?)\}\}/g, '<span style="background:rgba(250,204,21,0.2);border-bottom:2px solid #fbbf24;padding:0 3px;color:#fbbf24;font-weight:600;">___</span>');
-          html += `<div style="background:rgba(0,0,0,0.12);padding:0.9rem;border-radius:8px;margin-bottom:0.6rem;font-size:0.92rem;line-height:1.7;">${displayed}</div>`;
-        } else {
-          html += `<div style="background:rgba(0,0,0,0.12);padding:0.9rem;border-radius:8px;margin-bottom:0.6rem;min-height:36px;font-size:0.92rem;"><span style="color:#94a3b8;">（未入力）</span></div>`;
-        }
-      } else if (f.type === 'choice_single' || f.type === 'choice_multi') {
-        const val = values[f.key];
-        if (val) {
-          try {
-            const data = JSON.parse(val);
-            html += `<div style="display:flex;flex-direction:column;gap:0.3rem;margin-bottom:0.6rem;">`;
-            (data.options || []).forEach((opt, i) => {
-              const isCorrect = (data.correct || []).includes(i);
-              html += `<div style="padding:0.4rem 0.75rem;border-radius:6px;font-size:0.9rem;background:${isCorrect ? 'rgba(34,197,94,0.15)' : 'rgba(0,0,0,0.12)'};border:1px solid ${isCorrect ? 'rgba(34,197,94,0.4)' : 'rgba(255,255,255,0.05)'}">${isCorrect ? '✅' : (f.type === 'choice_multi' ? '☐' : '○')} ${escapeHtml(opt)}</div>`;
-            });
-            html += `</div>`;
-          } catch {}
-        }
-      } else if (f.type === 'tags') {
-        const val = values[f.key] || '';
-        if (val) {
-          const tags = val.split(',').map(t => t.trim()).filter(t => t);
-          html += `<div style="display:flex;flex-wrap:wrap;gap:0.3rem;margin-bottom:0.6rem;">${tags.map(t => `<span style="background:rgba(20,184,166,0.2);border:1px solid rgba(20,184,166,0.4);color:#14b8a6;padding:0.15rem 0.5rem;border-radius:12px;font-size:0.8rem;">${escapeHtml(t)}</span>`).join('')}</div>`;
-        }
-      } else if (f.type === 'difficulty') {
-        const v = parseInt(values[f.key] || '3');
-        html += `<div style="font-size:1.2rem;margin-bottom:0.6rem;">${'⭐'.repeat(v)}${'☆'.repeat(5 - v)} <span style="font-size:0.85rem;color:var(--text-secondary);">${v}/5</span></div>`;
-      } else if (f.type === 'hint') {
-        const val = values[f.key] || '';
-        if (val) html += `<div style="background:rgba(251,191,36,0.08);border-left:3px solid #fbbf24;padding:0.6rem 0.75rem;border-radius:6px;margin-bottom:0.6rem;font-size:0.9rem;">💡 ${escapeHtml(val)}</div>`;
-      } else if (f.type === 'explanation') {
-        const val = values[f.key] || '';
-        if (val) html += `<div style="background:rgba(99,102,241,0.08);border-left:3px solid #6366f1;padding:0.6rem 0.75rem;border-radius:6px;margin-bottom:0.6rem;font-size:0.9rem;line-height:1.6;">📖 ${escapeHtml(val).replace(/\n/g,'<br>')}</div>`;
-      } else if (f.type === 'wrongexample') {
-        const val = values[f.key];
-        if (val) {
-          try {
-            const items = JSON.parse(val);
-            if (items.length > 0) {
-              html += `<div style="display:flex;flex-direction:column;gap:0.3rem;margin-bottom:0.6rem;">`;
-              items.forEach(item => {
-                html += `<div style="background:rgba(239,68,68,0.08);border-left:3px solid #ef4444;padding:0.4rem 0.75rem;border-radius:6px;font-size:0.9rem;">❌ ${escapeHtml(item)}</div>`;
-              });
-              html += `</div>`;
-            }
-          } catch {}
-        }
-      } else if (f.type === 'feedback') {
-        const val = values[f.key] || '';
-        if (val) html += `<div style="background:rgba(34,197,94,0.08);border-left:3px solid #22c55e;padding:0.6rem 0.75rem;border-radius:6px;margin-bottom:0.6rem;font-size:0.9rem;">💬 ${escapeHtml(val)}</div>`;
-      } else {
-        const val = values[f.key] || '';
-        html += `<div style="background:rgba(0,0,0,0.12);padding:0.9rem;border-radius:8px;margin-bottom:0.6rem;min-height:36px;font-size:0.92rem;">${val ? escapeHtml(val).replace(/\n/g,'<br>') : '<span style="color:#94a3b8;">（未入力）</span>'}</div>`;
-      }
-    });
-    if (!html) html = `<div style="background:rgba(0,0,0,0.08);padding:0.8rem;border-radius:8px;color:#94a3b8;font-size:0.85rem;">（フィールドがありません）</div>`;
-    return html;
+  // 1フィールドを実際のカード表示と同じ方法でHTMLに変換
+  function renderFieldHtml(f, isQuestion) {
+    const baseTextStyle = isQuestion
+      ? 'font-size:1.1rem;font-weight:700;line-height:1.55;letter-spacing:-0.01em;background:linear-gradient(135deg,#f1f5f9,#cbd5e1);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;white-space:pre-wrap;margin-bottom:0.75rem;display:block;'
+      : 'font-size:1rem;font-weight:600;color:#a78bfa;line-height:1.5;white-space:pre-wrap;margin-bottom:0.75rem;display:block;';
+
+    if (f.type === 'static') {
+      const v = (values[f.key] !== undefined && values[f.key] !== '') ? values[f.key] : f.label;
+      return `<div style="padding:0.5rem 0.9rem;margin:0.3rem 0 0.6rem;background:rgba(99,102,241,0.1);border-radius:7px;border-left:4px solid #a78bfa;font-weight:600;font-size:0.95rem;color:#a78bfa;">${escapeHtml(v)}</div>`;
+    }
+
+    if (f.type === 'image') {
+      const imgs = pendingImages[f.key] || [];
+      if (!imgs.length) return '';
+      const cols = Math.min(imgs.length, 3);
+      return `<div style="display:grid;grid-template-columns:repeat(${cols},1fr);gap:0.5rem;margin:0.5rem 0 0.75rem;">
+        ${imgs.map(img => `<img src="${img.previewUrl}" style="width:100%;max-height:160px;object-fit:contain;border-radius:10px;border:1px solid rgba(255,255,255,0.1);">`).join('')}
+      </div>`;
+    }
+
+    if (f.type === 'fillblank') {
+      const val = values[f.key] || '';
+      const displayed = val
+        ? escapeHtml(val).replace(/\{\{(.+?)\}\}/g,
+            '<span style="background:rgba(250,204,21,0.2);border-bottom:2px solid #fbbf24;padding:0 4px;color:#fbbf24;font-weight:700;">___</span>')
+        : '<span style="color:#64748b;">（未入力）</span>';
+      return `<div style="font-size:1.05rem;font-weight:600;line-height:1.7;margin-bottom:0.75rem;color:#f1f5f9;">${displayed}</div>`;
+    }
+
+    if (f.type === 'choice_single' || f.type === 'choice_multi') {
+      const val = values[f.key];
+      if (!val) return '';
+      try {
+        const data = JSON.parse(val);
+        const opts = (data.options || []).map((opt, i) => {
+          const isCorrect = (data.correct || []).includes(i);
+          return `<div style="padding:0.45rem 0.85rem;border-radius:8px;font-size:0.92rem;background:${isCorrect ? 'rgba(34,197,94,0.12)' : 'rgba(255,255,255,0.04)'};border:1px solid ${isCorrect ? 'rgba(34,197,94,0.35)' : 'rgba(255,255,255,0.07)'};color:${isCorrect ? '#4ade80' : '#e2e8f0'};display:flex;align-items:center;gap:0.5rem;">
+            <span style="opacity:0.8;">${isCorrect ? '✅' : (f.type === 'choice_multi' ? '☐' : '○')}</span>
+            ${escapeHtml(opt) || '<span style="color:#64748b;">（未入力）</span>'}
+          </div>`;
+        }).join('');
+        return `<div style="display:flex;flex-direction:column;gap:0.35rem;margin-bottom:0.75rem;">${opts}</div>`;
+      } catch { return ''; }
+    }
+
+    if (f.type === 'tags') {
+      const val = values[f.key] || '';
+      if (!val) return '';
+      const tags = val.split(',').map(t => t.trim()).filter(t => t);
+      return `<div style="display:flex;flex-wrap:wrap;gap:0.3rem;margin-bottom:0.75rem;">${tags.map(t =>
+        `<span style="background:rgba(20,184,166,0.18);border:1px solid rgba(20,184,166,0.4);color:#2dd4bf;padding:0.18rem 0.55rem;border-radius:12px;font-size:0.82rem;">${escapeHtml(t)}</span>`
+      ).join('')}</div>`;
+    }
+
+    if (f.type === 'difficulty') {
+      const max = parseInt((f.options || {}).maxStars || 5);
+      const v = parseInt(values[f.key] || '3');
+      return `<div style="font-size:1.1rem;margin-bottom:0.75rem;">${'⭐'.repeat(v)}${'☆'.repeat(Math.max(0, max - v))} <span style="font-size:0.82rem;color:#94a3b8;">${v}/${max}</span></div>`;
+    }
+
+    if (f.type === 'hint') {
+      const val = values[f.key] || '';
+      if (!val) return '';
+      return `<div style="background:rgba(251,191,36,0.08);border-left:3px solid #fbbf24;padding:0.55rem 0.85rem;border-radius:6px;margin-bottom:0.75rem;font-size:0.9rem;color:#fde68a;">💡 ${escapeHtml(val)}</div>`;
+    }
+
+    if (f.type === 'explanation') {
+      const val = values[f.key] || '';
+      if (!val) return '';
+      return `<div style="background:rgba(99,102,241,0.08);border-left:3px solid #6366f1;padding:0.55rem 0.85rem;border-radius:6px;margin-bottom:0.75rem;font-size:0.9rem;line-height:1.65;color:#c7d2fe;">📖 ${escapeHtml(val).replace(/\n/g,'<br>')}</div>`;
+    }
+
+    if (f.type === 'wrongexample') {
+      const val = values[f.key];
+      if (!val) return '';
+      try {
+        const items = JSON.parse(val).filter(v => v);
+        if (!items.length) return '';
+        return `<div style="display:flex;flex-direction:column;gap:0.3rem;margin-bottom:0.75rem;">${items.map(item =>
+          `<div style="background:rgba(239,68,68,0.08);border-left:3px solid #ef4444;padding:0.4rem 0.75rem;border-radius:5px;font-size:0.9rem;color:#fca5a5;">❌ ${escapeHtml(item)}</div>`
+        ).join('')}</div>`;
+      } catch { return ''; }
+    }
+
+    if (f.type === 'feedback') {
+      const val = values[f.key] || '';
+      if (!val) return '';
+      return `<div style="background:rgba(34,197,94,0.08);border-left:3px solid #22c55e;padding:0.55rem 0.85rem;border-radius:6px;margin-bottom:0.75rem;font-size:0.9rem;color:#86efac;">💬 ${escapeHtml(val)}</div>`;
+    }
+
+    if (f.type === 'timer') {
+      const sec = parseInt((f.options || {}).defaultSec || values[f.key] || 30);
+      return `<div style="display:inline-flex;align-items:center;gap:0.4rem;background:rgba(248,113,113,0.1);border:1px solid rgba(248,113,113,0.25);border-radius:8px;padding:0.3rem 0.75rem;margin-bottom:0.75rem;font-size:0.92rem;color:#f87171;">⏱ ${sec}秒</div>`;
+    }
+
+    if (f.type === 'url') {
+      const val = values[f.key] || '';
+      const label = (f.options || {}).linkLabel || '参考資料を見る';
+      if (!val) return '';
+      return `<div style="margin-bottom:0.75rem;"><a href="${escapeHtml(val)}" target="_blank" style="color:#60a5fa;text-decoration:underline;font-size:0.92rem;">🔗 ${escapeHtml(label)}</a></div>`;
+    }
+
+    // text / textarea / freetext / number / date / その他
+    const val = values[f.key] || '';
+    if (!val) return '';
+    return `<p style="${baseTextStyle}">${escapeHtml(val).replace(/\n/g,'<br>')}</p>`;
   }
 
-  const qBodyHtml = buildSideHtml('question');
-  const aBodyHtml = buildSideHtml('answer');
+  // 問題・答えそれぞれのフィールドをHTML化
+  const qFields = genre.fields.filter(f => f.role === 'question');
+  const aFields = genre.fields.filter(f => f.role === 'answer');
 
+  const qHtml = qFields.map(f => renderFieldHtml(f, true)).join('') ||
+    '<p style="color:#475569;font-size:0.9rem;">（問題フィールドなし）</p>';
+  const aHtml = aFields.map(f => renderFieldHtml(f, false)).join('') ||
+    '<p style="color:#475569;font-size:0.9rem;">（答えフィールドなし）</p>';
+
+  // カード本体HTML（newtab.htmlの.glass-cardに近いスタイル）
   panel.innerHTML = `
-    <div style="display:flex;flex-direction:column;gap:1rem;">
-      <div>
-        <div style="color:#a78bfa;font-size:0.85rem;font-weight:600;margin-bottom:0.5rem;text-transform:uppercase;letter-spacing:0.04em;">問題</div>
-        ${qBodyHtml}
-      </div>
-      <div>
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem;">
-          <div style="color:#a78bfa;font-size:0.85rem;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;">答え</div>
-          <button id="preview-toggle-answer" type="button" style="background:transparent;border:1px solid rgba(255,255,255,0.12);color:var(--text-secondary);padding:0.25rem 0.6rem;border-radius:6px;cursor:pointer;font-size:0.8rem;">表示</button>
+    <div style="background:rgba(20,27,50,0.75);border:1px solid rgba(255,255,255,0.1);border-radius:20px;padding:1.75rem 2rem;box-shadow:0 20px 40px -10px rgba(0,0,0,0.5);">
+
+      <!-- ジャンルバッジ -->
+      <div style="display:inline-block;font-size:0.68rem;font-weight:600;color:#a78bfa;background:rgba(99,102,241,0.15);padding:0.12rem 0.55rem;border-radius:4px;margin-bottom:1rem;letter-spacing:0.04em;text-transform:uppercase;">${escapeHtml(genre.name || 'プレビュー')}</div>
+
+      <!-- 問題エリア -->
+      <div id="preview-q-area">${qHtml}</div>
+
+      <!-- 答えを見るボタン -->
+      <button id="preview-show-answer-btn" type="button" style="width:100%;padding:0.8rem;background:linear-gradient(135deg,#6366f1,#4f46e5);color:white;border:none;border-radius:12px;font-size:0.95rem;font-weight:600;cursor:pointer;margin-top:0.5rem;box-shadow:0 4px 15px rgba(99,102,241,0.35);font-family:inherit;transition:all 0.2s;">答えを見る</button>
+
+      <!-- 答えエリア（初期非表示） -->
+      <div id="preview-a-area" style="display:none;">
+        <div style="height:1px;background:linear-gradient(90deg,transparent,rgba(255,255,255,0.1),transparent);margin:1.25rem 0;"></div>
+        ${aHtml}
+
+        <!-- 評価ボタン（ダミー） -->
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:0.5rem;margin-top:0.5rem;opacity:0.5;pointer-events:none;">
+          <div style="background:rgba(239,68,68,0.06);border:1px solid rgba(239,68,68,0.25);border-radius:12px;padding:0.65rem 0.25rem;display:flex;flex-direction:column;align-items:center;gap:0.2rem;">
+            <span style="font-size:1rem;">😰</span><span style="font-size:0.8rem;font-weight:700;color:#ef4444;">忘れた</span><span style="font-size:0.65rem;color:#94a3b8;">12時間</span>
+          </div>
+          <div style="background:rgba(245,158,11,0.06);border:1px solid rgba(245,158,11,0.25);border-radius:12px;padding:0.65rem 0.25rem;display:flex;flex-direction:column;align-items:center;gap:0.2rem;">
+            <span style="font-size:1rem;">😓</span><span style="font-size:0.8rem;font-weight:700;color:#f59e0b;">難しい</span><span style="font-size:0.65rem;color:#94a3b8;">1日</span>
+          </div>
+          <div style="background:rgba(16,185,129,0.06);border:1px solid rgba(16,185,129,0.25);border-radius:12px;padding:0.65rem 0.25rem;display:flex;flex-direction:column;align-items:center;gap:0.2rem;">
+            <span style="font-size:1rem;">😊</span><span style="font-size:0.8rem;font-weight:700;color:#10b981;">普通</span><span style="font-size:0.65rem;color:#94a3b8;">3日</span>
+          </div>
+          <div style="background:rgba(59,130,246,0.06);border:1px solid rgba(59,130,246,0.25);border-radius:12px;padding:0.65rem 0.25rem;display:flex;flex-direction:column;align-items:center;gap:0.2rem;">
+            <span style="font-size:1rem;">🎯</span><span style="font-size:0.8rem;font-weight:700;color:#3b82f6;">簡単</span><span style="font-size:0.65rem;color:#94a3b8;">7日+</span>
+          </div>
         </div>
-        <div id="preview-answer-body" style="display:none;">${aBodyHtml}</div>
       </div>
     </div>`;
 
-  const toggleBtn = document.getElementById('preview-toggle-answer');
-  const answerDiv = document.getElementById('preview-answer-body');
-  if (toggleBtn && answerDiv) {
-    toggleBtn.addEventListener('click', () => {
-      const shown = answerDiv.style.display === 'block';
-      answerDiv.style.display = shown ? 'none' : 'block';
-      toggleBtn.textContent = shown ? '表示' : '非表示';
-      toggleBtn.style.color = shown ? 'var(--text-secondary)' : '#a78bfa';
+  // 「答えを見る」ボタンのトグル
+  const showBtn = document.getElementById('preview-show-answer-btn');
+  const aArea   = document.getElementById('preview-a-area');
+  if (showBtn && aArea) {
+    showBtn.addEventListener('click', () => {
+      const shown = aArea.style.display !== 'none';
+      aArea.style.display = shown ? 'none' : 'block';
+      showBtn.textContent = shown ? '答えを見る' : '答えを隠す';
+      showBtn.style.background = shown
+        ? 'linear-gradient(135deg,#6366f1,#4f46e5)'
+        : 'rgba(255,255,255,0.05)';
+      showBtn.style.color = shown ? 'white' : '#94a3b8';
+      showBtn.style.boxShadow = shown ? '0 4px 15px rgba(99,102,241,0.35)' : 'none';
     });
   }
 }

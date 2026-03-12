@@ -4,30 +4,32 @@ let currentCard = null;
 let answerShown = false;
 let isProcessing = false; // 二重送信防止用
 
-// DOM要素
-const el = {
-  cardContainer: document.getElementById('card-container'),
-  doneContainer: document.getElementById('done-container'),
-  answerSection: document.getElementById('answer-section'),
-  showAnswerBtn: document.getElementById('show-answer-btn'),
-  ratingButtons: document.querySelectorAll('.rating-btn'),
-  skipBtn:       document.getElementById('skip-btn'),
-  optionsBtn:    document.getElementById('options-btn'),
-  todayCount:    document.getElementById('today-count'),
-  streakCount:   document.getElementById('streak-count'),
-  genreBadge:    document.getElementById('genre-badge'),
-  progressBar:   document.getElementById('progress-bar'),
-  doneToday:     document.getElementById('done-today'),
-  doneStreak:    document.getElementById('done-streak'),
-  questionArea:    document.getElementById('question-area'),
-  answerArea:      document.getElementById('answer-area'),
-  emptyContainer:  document.getElementById('empty-container'),
-  errorContainer:  document.getElementById('error-container'),
-  errorMessage:    document.getElementById('error-message'),
-};
+// DOM要素（DOMContentLoaded後に init() で初期化）
+let el = {};
 
 // 初期化
 async function init() {
+  // DOMContentLoaded後にDOM要素を取得（必ず要素が存在する状態で参照する）
+  el = {
+    cardContainer: document.getElementById('card-container'),
+    doneContainer: document.getElementById('done-container'),
+    answerSection: document.getElementById('answer-section'),
+    showAnswerBtn: document.getElementById('show-answer-btn'),
+    ratingButtons: document.querySelectorAll('.rating-btn'),
+    skipBtn:       document.getElementById('skip-btn'),
+    optionsBtn:    document.getElementById('options-btn'),
+    todayCount:    document.getElementById('today-count'),
+    streakCount:   document.getElementById('streak-count'),
+    genreBadge:    document.getElementById('genre-badge'),
+    progressBar:   document.getElementById('progress-bar'),
+    doneToday:     document.getElementById('done-today'),
+    doneStreak:    document.getElementById('done-streak'),
+    questionArea:    document.getElementById('question-area'),
+    answerArea:      document.getElementById('answer-area'),
+    emptyContainer:  document.getElementById('empty-container'),
+    errorContainer:  document.getElementById('error-container'),
+    errorMessage:    document.getElementById('error-message'),
+  };
   await updateStats();
   await loadNextCard();
   setupEventListeners();
@@ -307,6 +309,10 @@ function setupEventListeners() {
       window.location.href = 'options.html';
     }
   });
+
+  // エラー画面の再読み込みボタン（onclick属性は使えないためここで登録）
+  const reloadBtn = document.getElementById('reload-btn');
+  if (reloadBtn) reloadBtn.addEventListener('click', () => location.reload());
 
   document.addEventListener('keydown', (e) => {
     if (el.cardContainer.classList.contains('hidden') || isProcessing) return;

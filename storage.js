@@ -57,7 +57,8 @@ const DEFAULT_GENRES = [
 ];
 
 
-const isExtension = typeof chrome !== 'undefined' && chrome.runtime && !!chrome.runtime.id && window.location.protocol.startsWith('chrome-extension');
+const isExtension = typeof chrome !== 'undefined' && chrome.runtime && !!chrome.runtime.id &&
+  (typeof window !== 'undefined' ? window.location.protocol.startsWith('chrome-extension') : true);
 const HEADERS = {
   'Content-Type': 'application/json',
   'apikey': SUPABASE_KEY,

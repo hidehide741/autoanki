@@ -285,22 +285,6 @@
   </div>
 
   <script type="module" src="options.js?v=20260312c"></script>
-  <script>
-    (function(){
-      const layout=document.getElementById('app-layout'),btn=document.getElementById('sidebar-toggle-btn');
-      const saved=localStorage.getItem('sidebar-mode')||'expanded';
-      layout.className=layout.className.replace(/sidebar-expanded|sidebar-collapsed|sidebar-fixed|sidebar-float/g,'').trim();
-      layout.classList.add('sidebar-'+saved);
-      function updateArrow(){btn.textContent=layout.classList.contains('sidebar-collapsed')?'›':'‹';}
-      updateArrow();
-      btn.addEventListener('click',function(){
-        const collapsed=layout.classList.contains('sidebar-collapsed');
-        layout.classList.remove('sidebar-expanded','sidebar-collapsed');
-        layout.classList.add(collapsed?'sidebar-expanded':'sidebar-collapsed');
-        localStorage.setItem('sidebar-mode',collapsed?'expanded':'collapsed');
-        updateArrow();
-      });
-    })();
-  </script>
+  <script src="sidebar.js"></script>
 </body>
 </html>

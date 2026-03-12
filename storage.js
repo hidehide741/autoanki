@@ -12,46 +12,46 @@ const DEFAULT_GENRES = [
   {
     id: 'language', name: '🌐 語学', isDefault: true,
     fields: [
-      { key: 'question', label: '単語・フレーズ', type: 'textarea', required: true },
-      { key: 'answer',   label: '意味（日本語）', type: 'textarea', required: true },
-      { key: 'example',  label: '例文',             type: 'textarea' },
-      { key: 'note',     label: '補足（発音・品詞など）', type: 'text' },
-      { key: 'image',    label: '画像',             type: 'image' }
+      { key: 'question', label: '単語・フレーズ',         type: 'textarea', required: true,  role: 'question' },
+      { key: 'answer',   label: '意味（日本語）',         type: 'textarea', required: true,  role: 'answer' },
+      { key: 'example',  label: '例文',                   type: 'textarea', required: false, role: 'answer' },
+      { key: 'note',     label: '補足（発音・品詞など）', type: 'text',     required: false, role: 'answer' },
+      { key: 'image',    label: '画像',                   type: 'image',    required: false, role: 'question' }
     ]
   },
   {
     id: 'science', name: '🔬 理科', isDefault: true,
     fields: [
-      { key: 'question', label: '用語・概念名', type: 'textarea', required: true },
-      { key: 'answer',   label: '定義・説明',   type: 'textarea', required: true },
-      { key: 'note',     label: '仕組み・機能', type: 'textarea' },
-      { key: 'image',    label: '画像',         type: 'image' }
+      { key: 'question', label: '用語・概念名', type: 'textarea', required: true,  role: 'question' },
+      { key: 'answer',   label: '定義・説明',   type: 'textarea', required: true,  role: 'answer' },
+      { key: 'note',     label: '仕組み・機能', type: 'textarea', required: false, role: 'answer' },
+      { key: 'image',    label: '画像',         type: 'image',    required: false, role: 'question' }
     ]
   },
   {
     id: 'math', name: '📐 数学', isDefault: true,
     fields: [
-      { key: 'question', label: '概念・定理名', type: 'textarea', required: true },
-      { key: 'answer',   label: '公式・定義',   type: 'textarea', required: true },
-      { key: 'example',  label: '例題',         type: 'textarea' },
-      { key: 'note',     label: '注意点・記憶術', type: 'text' }
+      { key: 'question', label: '概念・定理名',   type: 'textarea', required: true,  role: 'question' },
+      { key: 'answer',   label: '公式・定義',     type: 'textarea', required: true,  role: 'answer' },
+      { key: 'example',  label: '例題',           type: 'textarea', required: false, role: 'answer' },
+      { key: 'note',     label: '注意点・記憶術', type: 'text',     required: false, role: 'answer' }
     ]
   },
   {
     id: 'history', name: '📅 歴史', isDefault: true,
     fields: [
-      { key: 'question', label: '出来事・人名', type: 'textarea', required: true },
-      { key: 'answer',   label: '内容・説明',   type: 'textarea', required: true },
-      { key: 'note',     label: '年号・時代',   type: 'text' },
-      { key: 'image',    label: '画像',         type: 'image' }
+      { key: 'question', label: '出来事・人名', type: 'textarea', required: true,  role: 'question' },
+      { key: 'answer',   label: '内容・説明',   type: 'textarea', required: true,  role: 'answer' },
+      { key: 'note',     label: '年号・時代',   type: 'text',     required: false, role: 'answer' },
+      { key: 'image',    label: '画像',         type: 'image',    required: false, role: 'question' }
     ]
   },
   {
     id: 'other', name: '📝 その他', isDefault: true,
     fields: [
-      { key: 'question', label: '問題', type: 'textarea', required: true },
-      { key: 'answer',   label: '答え', type: 'textarea', required: true },
-      { key: 'image',    label: '画像', type: 'image' }
+      { key: 'question', label: '問題', type: 'textarea', required: true,  role: 'question' },
+      { key: 'answer',   label: '答え', type: 'textarea', required: true,  role: 'answer' },
+      { key: 'image',    label: '画像', type: 'image',    required: false, role: 'question' }
     ]
   }
 ];

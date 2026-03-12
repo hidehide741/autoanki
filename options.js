@@ -941,6 +941,10 @@ function renderForm() {
   const aInner = aBlock.querySelector('.role-block-inner');
 
   genre.fields.forEach(field => {
+    // role 未定義の場合: key名で判定（'answer'/'a_'始まり→answer、それ以外→question）
+    if (!field.role) {
+      field.role = (field.key === 'answer' || field.key.startsWith('a_')) ? 'answer' : 'question';
+    }
     const targetInner = field.role === 'answer' ? aInner : qInner;
 
     // image タイプはペーストUIを使う

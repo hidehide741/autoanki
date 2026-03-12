@@ -449,19 +449,27 @@ function openEditModal(id) {
     }
   }
 
+  // role ごとのブロックコンテナを作成
+  const qBlock = createEditRoleBlock('問題（おもて）', '#6366f1');
+  const aBlock = createEditRoleBlock('答え（うら）', '#8b5cf6');
+  const qInner = qBlock.querySelector('.role-block-inner');
+  const aInner = aBlock.querySelector('.role-block-inner');
+
   fields.forEach(field => {
+    const targetInner = field.role === 'answer' ? aInner : qInner;
+
     if (field.type === 'static') {
       const div = document.createElement('div');
       div.className = 'form-group static-field';
       div.style.marginBottom = '1rem';
       div.innerHTML = `<div style="padding: 0.6rem 0.8rem; background: rgba(99,102,241,0.1); border-left: 3px solid #a78bfa; border-radius: 4px; font-weight: 500; color: #a78bfa; font-size: 0.9rem;">${field.label}</div>`;
-      el.editFields.appendChild(div);
+      targetInner.appendChild(div);
       return;
     }
 
     if (field.type === 'image') {
       if (!pendingEditImages[field.key]) pendingEditImages[field.key] = [];
-      el.editFields.appendChild(buildEditImagePasteUI(field));
+      targetInner.appendChild(buildEditImagePasteUI(field));
       return;
     }
 
@@ -512,8 +520,11 @@ function openEditModal(id) {
 
     div.appendChild(label);
     div.appendChild(input);
-    el.editFields.appendChild(div);
+    targetInner.appendChild(div);
   });
+
+  el.editFields.appendChild(qBlock);
+  el.editFields.appendChild(aBlock);
 
   el.editSaveMsg.classList.add('hidden');
   el.editOverlay.classList.remove('hidden');
@@ -521,6 +532,25 @@ function openEditModal(id) {
 
   // 初期プレビュー表示
   setTimeout(() => updateEditPreview(), 0);
+}
+
+function createEditRoleBlock(title, color) {
+  const block = document.createElement('div');
+  block.style.cssText = `
+    background: rgba(0,0,0,0.18);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 12px;
+    padding: 1.25rem 1.5rem 1rem;
+    margin-bottom: 1.25rem;
+  `;
+  block.innerHTML = `
+    <div style="font-size:0.8rem;font-weight:700;color:${color};text-transform:uppercase;letter-spacing:0.06em;margin-bottom:1rem;display:flex;align-items:center;gap:0.5rem;">
+      <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${color};"></span>
+      ${title}
+    </div>
+    <div class="role-block-inner"></div>
+  `;
+  return block;
 }
 
 function buildEditImagePasteUI(field) {

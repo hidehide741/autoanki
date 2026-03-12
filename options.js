@@ -50,14 +50,19 @@ function renderForm() {
   if (!genre) return;
   currentPreviewGenre = genre;
 
-  // 入力値を保持するオブジェクト
-  const previewValues = currentPreviewValues;
+  // role ごとのブロックコンテナを作成
+  const qBlock = createRoleBlock('問題（おもて）', '#6366f1');
+  const aBlock = createRoleBlock('答え（うら）', '#8b5cf6');
+  const qInner = qBlock.querySelector('.role-block-inner');
+  const aInner = aBlock.querySelector('.role-block-inner');
 
   genre.fields.forEach(field => {
+    const targetInner = field.role === 'answer' ? aInner : qInner;
+
     // image タイプはペーストUIを使う
     if (field.type === 'image') {
       pendingImages[field.key] = [];
-      el.formFields.appendChild(buildImagePasteUI(field));
+      targetInner.appendChild(buildImagePasteUI(field));
       return;
     }
 
@@ -66,7 +71,7 @@ function renderForm() {
       const div = document.createElement('div');
       div.className = 'form-group static-field';
       div.innerHTML = `<div style="padding: 0.6rem 0.8rem; background: rgba(99,102,241,0.1); border-left: 3px solid #a78bfa; border-radius: 4px; font-weight: 500; color: #a78bfa; font-size: 0.9rem;">${field.label}</div>`;
-      el.formFields.appendChild(div);
+      targetInner.appendChild(div);
       return;
     }
 
@@ -98,11 +103,33 @@ function renderForm() {
 
     div.appendChild(label);
     div.appendChild(input);
-    el.formFields.appendChild(div);
+    targetInner.appendChild(div);
   });
 
-  // 初期化時もプレビューをクリア
+  el.formFields.appendChild(qBlock);
+  el.formFields.appendChild(aBlock);
+
+  // 初期プレビュー
   updateCardPreview(genre, currentPreviewValues);
+}
+
+function createRoleBlock(title, color) {
+  const block = document.createElement('div');
+  block.style.cssText = `
+    background: rgba(0,0,0,0.18);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 12px;
+    padding: 1.25rem 1.5rem 1rem;
+    margin-bottom: 1.25rem;
+  `;
+  block.innerHTML = `
+    <div style="font-size:0.8rem;font-weight:700;color:${color};text-transform:uppercase;letter-spacing:0.06em;margin-bottom:1rem;display:flex;align-items:center;gap:0.5rem;">
+      <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${color};"></span>
+      ${title}
+    </div>
+    <div class="role-block-inner"></div>
+  `;
+  return block;
 }
 
 // プレビューパネルを更新する関数

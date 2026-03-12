@@ -343,17 +343,84 @@ function closeModal() {
   activeCardId = null;
 }
 
+let editPreviewValues = {};
+let editPreviewGenre = null;
+
+// ===== 編集プレビュー更新 =====
+function updateEditPreview() {
+  const panel = document.getElementById('edit-preview-panel');
+  if (!panel || !editPreviewGenre) return;
+
+  function buildSideHtml(role) {
+    const fields = editPreviewGenre.fields.filter(f => f.role === role);
+    let html = '';
+    fields.forEach(f => {
+      if (f.type === 'image') {
+        const imgs = pendingEditImages[f.key] || [];
+        if (imgs.length > 0) {
+          html += `<div style="display:flex;flex-wrap:wrap;gap:0.5rem;margin-bottom:0.6rem;">`;
+          imgs.forEach(img => {
+            const src = img.previewUrl || img.url || '';
+            html += `<img src="${esc(src)}" style="max-height:100px;max-width:140px;border-radius:6px;border:1px solid rgba(255,255,255,0.15);object-fit:cover;">`;
+          });
+          html += `</div>`;
+        }
+      } else if (f.type !== 'static') {
+        const val = editPreviewValues[f.key] || '';
+        html += `<div style="background:rgba(0,0,0,0.12);padding:0.9rem;border-radius:8px;margin-bottom:0.6rem;min-height:36px;font-size:0.92rem;">${val ? escHtml(val).replace(/\n/g,'<br>') : '<span style="color:#94a3b8;">（未入力）</span>'}</div>`;
+      }
+    });
+    if (!html) html = `<div style="background:rgba(0,0,0,0.08);padding:0.8rem;border-radius:8px;color:#94a3b8;font-size:0.85rem;">（フィールドがありません）</div>`;
+    return html;
+  }
+
+  const qHtml = buildSideHtml('question');
+  const aHtml = buildSideHtml('answer');
+
+  panel.innerHTML = `
+    <div style="display:flex;flex-direction:column;gap:1rem;">
+      <div>
+        <div style="color:#a78bfa;font-size:0.85rem;font-weight:600;margin-bottom:0.5rem;text-transform:uppercase;letter-spacing:0.04em;">問題</div>
+        ${qHtml}
+      </div>
+      <div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem;">
+          <div style="color:#a78bfa;font-size:0.85rem;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;">答え</div>
+          <button id="edit-preview-toggle" type="button" style="background:transparent;border:1px solid rgba(255,255,255,0.12);color:var(--text-secondary);padding:0.25rem 0.6rem;border-radius:6px;cursor:pointer;font-size:0.8rem;">表示</button>
+        </div>
+        <div id="edit-preview-answer-body" style="display:none;">${aHtml}</div>
+      </div>
+    </div>`;
+
+  const btn = document.getElementById('edit-preview-toggle');
+  const body = document.getElementById('edit-preview-answer-body');
+  if (btn && body) {
+    btn.addEventListener('click', () => {
+      const shown = body.style.display === 'block';
+      body.style.display = shown ? 'none' : 'block';
+      btn.textContent = shown ? '表示' : '非表示';
+      btn.style.color = shown ? 'var(--text-secondary)' : '#a78bfa';
+    });
+  }
+}
+
+function escHtml(str) {
+  return String(str).replace(/[&<>'"]/g, t => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[t]));
+}
+
 // ===== 編集モーダル =====
 function openEditModal(id) {
   const card = allCards.find(c => c.id === id);
   if (!card) return;
   activeCardId = id;
   pendingEditImages = {};
+  editPreviewValues = {};
 
   const genreDef = genres.find(g => g.id === card.genre);
+  editPreviewGenre = genreDef || null;
   const fields = genreDef?.fields || [
-    { key: 'question', label: '問題', type: 'textarea', required: true },
-    { key: 'answer',   label: '答え', type: 'textarea', required: false }
+    { key: 'question', label: '問題', type: 'textarea', required: true, role: 'question' },
+    { key: 'answer',   label: '答え', type: 'textarea', required: false, role: 'answer' }
   ];
 
   el.editFields.innerHTML = '';
@@ -434,6 +501,15 @@ function openEditModal(id) {
       input.value = '';
     }
 
+    // 初期値をプレビュー値に反映
+    editPreviewValues[field.key] = input.value;
+
+    // 入力イベントでプレビュー更新
+    input.addEventListener('input', () => {
+      editPreviewValues[field.key] = input.value;
+      updateEditPreview();
+    });
+
     div.appendChild(label);
     div.appendChild(input);
     el.editFields.appendChild(div);
@@ -442,6 +518,9 @@ function openEditModal(id) {
   el.editSaveMsg.classList.add('hidden');
   el.editOverlay.classList.remove('hidden');
   document.body.style.overflow = 'hidden';
+
+  // 初期プレビュー表示
+  setTimeout(() => updateEditPreview(), 0);
 }
 
 function buildEditImagePasteUI(field) {
@@ -482,6 +561,7 @@ function addEditImage(fieldKey, file) {
   const url = URL.createObjectURL(file);
   pendingEditImages[fieldKey].push({ file, previewUrl: url });
   renderEditPreviews(fieldKey);
+  updateEditPreview(); // カードプレビューも同期
 }
 
 function renderEditPreviews(fieldKey) {
@@ -503,6 +583,7 @@ function renderEditPreviews(fieldKey) {
       const idx = parseInt(e.target.dataset.idx, 10);
       pendingEditImages[fKey].splice(idx, 1);
       renderEditPreviews(fKey);
+      updateEditPreview(); // カードプレビューも同期
     });
     container.appendChild(wrap);
   });

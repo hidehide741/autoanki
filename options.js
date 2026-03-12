@@ -38,15 +38,20 @@ function renderTabs() {
   });
 }
 
+let currentPreviewGenre = null;
+let currentPreviewValues = {};
+
 function renderForm() {
   el.formFields.innerHTML = '';
   pendingImages = {};
+  currentPreviewValues = {};
 
   const genre = genres.find(g => g.id === selectedGenreId);
   if (!genre) return;
+  currentPreviewGenre = genre;
 
   // 入力値を保持するオブジェクト
-  const previewValues = {};
+  const previewValues = currentPreviewValues;
 
   genre.fields.forEach(field => {
     // image タイプはペーストUIを使う
@@ -87,8 +92,8 @@ function renderForm() {
 
     // 入力イベントでプレビュー更新
     input.addEventListener('input', () => {
-      previewValues[field.key] = input.value;
-      updateCardPreview(genre, previewValues);
+      currentPreviewValues[field.key] = input.value;
+      updateCardPreview(genre, currentPreviewValues);
     });
 
     div.appendChild(label);
@@ -97,7 +102,7 @@ function renderForm() {
   });
 
   // 初期化時もプレビューをクリア
-  updateCardPreview(genre, previewValues);
+  updateCardPreview(genre, currentPreviewValues);
 }
 
 // プレビューパネルを更新する関数
@@ -105,33 +110,57 @@ function updateCardPreview(genre, values) {
   const panel = document.getElementById('card-preview-panel');
   if (!panel) return;
 
-  // 問題・答えなどを分けて表示（roleで判定）
-  const qFields = genre.fields.filter(f => f.role === 'question');
-  const aFields = genre.fields.filter(f => f.role === 'answer');
+  // role ごとに HTML を組み立てる（テキスト＋画像両対応）
+  function buildSideHtml(role) {
+    const fields = genre.fields.filter(f => f.role === role);
+    let html = '';
+    fields.forEach(f => {
+      if (f.type === 'image') {
+        const imgs = pendingImages[f.key] || [];
+        if (imgs.length > 0) {
+          html += `<div style="display:flex;flex-wrap:wrap;gap:0.5rem;margin-bottom:0.6rem;">`;
+          imgs.forEach(img => {
+            html += `<img src="${img.previewUrl}" style="max-height:100px;max-width:140px;border-radius:6px;border:1px solid rgba(255,255,255,0.15);object-fit:cover;">`;
+          });
+          html += `</div>`;
+        }
+      } else if (f.type !== 'static') {
+        const val = values[f.key] || '';
+        html += `<div style="background:rgba(0,0,0,0.12);padding:0.9rem;border-radius:8px;margin-bottom:0.6rem;min-height:36px;font-size:0.92rem;">${val ? escapeHtml(val).replace(/\n/g,'<br>') : '<span style="color:#94a3b8;">（未入力）</span>'}</div>`;
+      }
+    });
+    if (!html) html = `<div style="background:rgba(0,0,0,0.08);padding:0.8rem;border-radius:8px;color:#94a3b8;font-size:0.85rem;">（フィールドがありません）</div>`;
+    return html;
+  }
 
-  let html = '';
-  if (qFields.length > 0) {
-    html += '<div style="margin-bottom:1.2rem;">';
-    html += '<div style="color:#a78bfa;font-size:0.9rem;margin-bottom:0.3rem;">問題</div>';
-    qFields.forEach(f => {
-      const val = values[f.key] || '';
-      html += `<div style=\"background:rgba(99,102,241,0.08);padding:0.7em 1em;border-radius:8px;margin-bottom:0.5em;\">${val ? escapeHtml(val) : '<span style=\"color:#94a3b8;\">（未入力）</span>'}</div>`;
+  const qBodyHtml = buildSideHtml('question');
+  const aBodyHtml = buildSideHtml('answer');
+
+  panel.innerHTML = `
+    <div style="display:flex;flex-direction:column;gap:1rem;">
+      <div>
+        <div style="color:#a78bfa;font-size:0.85rem;font-weight:600;margin-bottom:0.5rem;text-transform:uppercase;letter-spacing:0.04em;">問題</div>
+        ${qBodyHtml}
+      </div>
+      <div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem;">
+          <div style="color:#a78bfa;font-size:0.85rem;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;">答え</div>
+          <button id="preview-toggle-answer" type="button" style="background:transparent;border:1px solid rgba(255,255,255,0.12);color:var(--text-secondary);padding:0.25rem 0.6rem;border-radius:6px;cursor:pointer;font-size:0.8rem;">表示</button>
+        </div>
+        <div id="preview-answer-body" style="display:none;">${aBodyHtml}</div>
+      </div>
+    </div>`;
+
+  const toggleBtn = document.getElementById('preview-toggle-answer');
+  const answerDiv = document.getElementById('preview-answer-body');
+  if (toggleBtn && answerDiv) {
+    toggleBtn.addEventListener('click', () => {
+      const shown = answerDiv.style.display === 'block';
+      answerDiv.style.display = shown ? 'none' : 'block';
+      toggleBtn.textContent = shown ? '表示' : '非表示';
+      toggleBtn.style.color = shown ? 'var(--text-secondary)' : '#a78bfa';
     });
-    html += '</div>';
   }
-  if (aFields.length > 0) {
-    html += '<div>';
-    html += '<div style="color:#a78bfa;font-size:0.9rem;margin-bottom:0.3rem;">答え</div>';
-    aFields.forEach(f => {
-      const val = values[f.key] || '';
-      html += `<div style=\"background:rgba(99,102,241,0.08);padding:0.7em 1em;border-radius:8px;margin-bottom:0.5em;\">${val ? escapeHtml(val) : '<span style=\"color:#94a3b8;\">（未入力）</span>'}</div>`;
-    });
-    html += '</div>';
-  }
-  if (!html) {
-    html = '<p style="color: var(--text-secondary); font-size: 0.85rem; text-align: center;">入力内容のプレビューがここに表示されます</p>';
-  }
-  panel.innerHTML = html;
 }
 
 // HTMLエスケープ関数
@@ -187,6 +216,9 @@ function renderPreviews(fieldKey) {
   const container = document.querySelector(`.image-previews[data-field-key="${fieldKey}"]`);
   if (!container) return;
   container.innerHTML = '';
+
+  // カードプレビューも同期更新
+  if (currentPreviewGenre) updateCardPreview(currentPreviewGenre, currentPreviewValues);
 
   pendingImages[fieldKey].forEach((img, i) => {
     const wrap = document.createElement('div');

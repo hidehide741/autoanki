@@ -246,6 +246,11 @@
 
     .empty-state { text-align: center; padding: 3rem; color: var(--text-secondary); }
     .empty-icon { font-size: 2.5rem; margin-bottom: 0.75rem; }
+
+    /* 編集モーダル レスポンシブ */
+    @media (max-width: 900px) {
+      #edit-modal-inner { grid-template-columns: 1fr !important; }
+    }
   </style>
 </head>
 <body>
@@ -344,23 +349,42 @@
     </div>
   </div>
 
-  <!-- 編集モーダル -->
-  <div class="modal-overlay hidden" id="edit-modal-overlay">
-    <div class="modal-box">
-      <button class="modal-close" id="edit-modal-close">✕</button>
-      <h3 style="margin-bottom:1.25rem;font-size:1.1rem;">✏️ カードを編集</h3>
+  <!-- 編集モーダル（フルスクリーン風 6:4 レイアウト） -->
+  <div class="modal-overlay hidden" id="edit-modal-overlay" style="align-items:stretch;padding:1.5rem;">
+    <div id="edit-modal-inner" style="
+      display:grid;
+      grid-template-columns:6fr 4fr;
+      gap:1.5rem;
+      width:100%;
+      max-width:1100px;
+      max-height:90vh;
+      margin:auto;
+    ">
+      <!-- 左: 入力フォーム -->
+      <section class="glass-panel" style="padding:1.75rem 2rem;overflow-y:auto;position:relative;">
+        <button class="modal-close" id="edit-modal-close" style="position:absolute;top:1rem;right:1rem;">✕</button>
+        <h3 style="margin-bottom:1.5rem;font-size:1.1rem;border-bottom:1px solid var(--glass-border);padding-bottom:1rem;">✏️ カードを編集</h3>
 
-      <div id="edit-fields" style="display:flex;flex-direction:column;gap:1rem;">
-        <!-- JSで動的に生成 -->
-      </div>
+        <div id="edit-fields" style="display:flex;flex-direction:column;gap:1rem;">
+          <!-- JSで動的に生成 -->
+        </div>
+        <div id="edit-image-preview" style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-top:0.5rem;"></div>
 
-      <!-- 画像プレビュー -->
-      <div id="edit-image-preview" style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-top:0.5rem;"></div>
+        <div style="margin-top:1.5rem;display:flex;gap:0.75rem;justify-content:flex-end;align-items:center;">
+          <span id="edit-save-msg" class="success-msg hidden">✅ 保存しました！</span>
+          <button class="primary-btn" id="edit-save-btn">保存する</button>
+        </div>
+      </section>
 
-      <div style="margin-top:1.5rem;display:flex;gap:0.75rem;justify-content:flex-end;align-items:center;">
-        <span id="edit-save-msg" class="success-msg hidden">✅ 保存しました！</span>
-        <button class="primary-btn" id="edit-save-btn">保存する</button>
-      </div>
+      <!-- 右: プレビュー -->
+      <aside style="position:sticky;top:0;align-self:start;">
+        <section class="glass-panel" style="padding:1.5rem;">
+          <div style="font-size:0.85rem;font-weight:700;color:#a78bfa;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:1rem;">リアルタイムプレビュー</div>
+          <div id="edit-preview-panel" style="background:rgba(0,0,0,0.25);border:1px solid rgba(255,255,255,0.05);border-radius:12px;padding:1.25rem;">
+            <p style="color:var(--text-secondary);font-size:0.85rem;text-align:center;">入力内容がここに表示されます</p>
+          </div>
+        </section>
+      </aside>
     </div>
   </div>
 

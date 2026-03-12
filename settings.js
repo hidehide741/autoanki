@@ -301,7 +301,8 @@ function addFieldRow(container, label = '', type = 'textarea', required = false,
 
   row.addEventListener('dragstart', (e) => {
     e.dataTransfer.effectAllowed = 'move';
-    // 少し遅らせてドラッグ元を半透明に（ブラウザのゴーストと分離）
+    // 高さを保存してから要素を畳む（元のスペースを消す）
+    wrapper.dataset.dragHeight = wrapper.getBoundingClientRect().height;
     requestAnimationFrame(() => wrapper.classList.add('dragging'));
   });
 
@@ -334,9 +335,9 @@ function addFieldRow(container, label = '', type = 'textarea', required = false,
     dragOverWrapper = wrapper;
     insertAfter = goBelow;
 
-    // 全wrapperのスライド量を計算してtranslateYで動かす
+    // datasetに保存した高さを使用（畳まれてgetBoundingClientRectが0になるため）
     const allWrappers = Array.from(container.querySelectorAll('.field-row-wrapper'));
-    const draggingH   = dragging.getBoundingClientRect().height;
+    const draggingH   = parseFloat(dragging.dataset.dragHeight || 0);
     const draggingIdx = allWrappers.indexOf(dragging);
     const targetIdx   = allWrappers.indexOf(wrapper);
 

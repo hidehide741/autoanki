@@ -384,10 +384,10 @@ function renderPreview() {
   const collectPreviewData = (container) => {
     const data = [];
     container.querySelectorAll('.field-row-wrapper').forEach(wrapper => {
-      const { type } = collectFieldData(wrapper);
+      const { type, options } = collectFieldData(wrapper);
       const typeInfo = FIELD_TYPES.find(t => t.val === type);
       const typeName = typeInfo ? typeInfo.label : type;
-      data.push({ label: typeName, type });
+      data.push({ label: typeName, type, options });
     });
     return data;
   };
@@ -397,29 +397,113 @@ function renderPreview() {
 
   const renderSection = (title, data) => {
     if (data.length === 0) return '';
-    // フィールド名をボックス内部にプレースホルダー風で表示
+
     const dummyBox = (f) => {
-      const labelInner = `<span style="opacity:0.55;font-size:0.8rem;">${esc(f.label)}</span>`;
-      if (f.type === 'textarea' || f.type === 'freetext' || f.type === 'fillblank' || f.type === 'explanation') {
-        return `<div style="min-height:52px;background:rgba(0,0,0,0.2);border:1px dashed rgba(255,255,255,0.12);border-radius:5px;display:flex;align-items:center;justify-content:center;padding:0.4rem 0.75rem;color:var(--text-secondary);">${labelInner}</div>`;
-      } else if (f.type === 'image') {
-        return `<div style="height:64px;background:rgba(0,0,0,0.2);border:1px dashed rgba(255,255,255,0.12);border-radius:5px;display:flex;align-items:center;justify-content:center;gap:0.4rem;color:var(--text-secondary);">🖼️ ${labelInner}</div>`;
-      } else if (f.type === 'choice_single' || f.type === 'choice_multi') {
-        return `<div style="display:flex;flex-direction:column;gap:3px;">${['A','B','C'].map((l,i) => `<div style="height:22px;background:rgba(0,0,0,0.2);border:1px dashed rgba(255,255,255,0.1);border-radius:3px;display:flex;align-items:center;padding:0 6px;font-size:0.72rem;color:var(--text-secondary);">${i===0?'✅':(f.type==='choice_multi'?'☐':'○')} ${i===0?esc(f.label)+' (正解例)':'選択肢'}</div>`).join('')}</div>`;
-      } else if (f.type === 'difficulty') {
-        return `<div style="height:30px;background:rgba(0,0,0,0.2);border:1px dashed rgba(255,255,255,0.1);border-radius:5px;display:flex;align-items:center;padding:0 0.75rem;gap:0.3rem;font-size:1rem;">⭐⭐⭐☆☆ ${labelInner}</div>`;
-      } else if (f.type === 'tags') {
-        return `<div style="height:30px;background:rgba(0,0,0,0.2);border:1px dashed rgba(255,255,255,0.1);border-radius:5px;display:flex;align-items:center;padding:0 0.75rem;gap:0.4rem;"><span style="background:rgba(20,184,166,0.2);border:1px solid rgba(20,184,166,0.35);color:#14b8a6;padding:0.1rem 0.45rem;border-radius:10px;font-size:0.72rem;">${esc(f.label)}</span></div>`;
-      } else if (f.type === 'hint') {
-        return `<div style="height:30px;background:rgba(251,191,36,0.07);border:1px dashed rgba(251,191,36,0.3);border-radius:5px;display:flex;align-items:center;padding:0 0.75rem;gap:0.4rem;color:var(--text-secondary);">💡 ${labelInner}</div>`;
-      } else if (f.type === 'wrongexample') {
-        return `<div style="display:flex;flex-direction:column;gap:2px;">${['誤答例1','誤答例2'].map(w => `<div style="height:22px;background:rgba(239,68,68,0.07);border-left:2px solid rgba(239,68,68,0.4);border-radius:3px;padding:0 8px;display:flex;align-items:center;font-size:0.72rem;color:var(--text-secondary);">❌ ${w}</div>`).join('')}</div>`;
-      } else if (f.type === 'feedback') {
-        return `<div style="height:30px;background:rgba(34,197,94,0.07);border:1px dashed rgba(34,197,94,0.3);border-radius:5px;display:flex;align-items:center;padding:0 0.75rem;gap:0.4rem;color:var(--text-secondary);">💬 ${labelInner}</div>`;
-      } else {
-        return `<div style="height:30px;background:rgba(0,0,0,0.2);border:1px dashed rgba(255,255,255,0.12);border-radius:5px;display:flex;align-items:center;padding:0 0.75rem;color:var(--text-secondary);">${labelInner}</div>`;
+      const opts = f.options || {};
+
+      // --- 共通スタイル設定 ---
+      const align      = opts.align    || 'left';
+      const bold       = opts.bold     || false;
+      const sizeMap    = { sm: '0.72rem', md: '0.85rem', lg: '1.05rem' };
+      const fontSize   = sizeMap[opts.fontSize || 'md'];
+      const color      = opts.color    || '';
+
+      const justifyMap = { left: 'flex-start', center: 'center', right: 'flex-end' };
+      const jc         = justifyMap[align] || 'flex-start';
+
+      // ラベルに共通スタイルを適用
+      const labelStyle = [
+        `opacity:0.7`,
+        `font-size:${fontSize}`,
+        bold  ? `font-weight:700`    : '',
+        color ? `color:${color}`     : 'color:var(--text-secondary)',
+        `white-space:nowrap`,
+        `overflow:hidden`,
+        `text-overflow:ellipsis`,
+      ].filter(Boolean).join(';');
+
+      const label = `<span style="${labelStyle}">${esc(f.label)}</span>`;
+
+      // --- タイプ別ボックス ---
+      // 複数行系 (textarea, freetext, fillblank, explanation)
+      if (['textarea','freetext','fillblank','explanation'].includes(f.type)) {
+        const alignItems = align === 'center' ? 'center' : 'flex-start';
+        const fillBlankNote = f.type === 'fillblank'
+          ? `<span style="opacity:0.45;font-size:0.7rem;margin-left:0.4rem;">{{空欄}}形式</span>` : '';
+        return `<div style="min-height:52px;background:rgba(0,0,0,0.2);border:1px dashed rgba(255,255,255,0.12);border-radius:5px;display:flex;flex-direction:column;align-items:${jc === 'flex-end' ? 'flex-end' : (jc === 'center' ? 'center' : 'flex-start')};justify-content:${alignItems === 'center' ? 'center' : 'flex-start'};padding:0.4rem 0.75rem;gap:0.25rem;">${label}${fillBlankNote}</div>`;
       }
+
+      // 画像
+      if (f.type === 'image') {
+        const maxCount = opts.maxCount || '3';
+        const sizeLabel = { sm:'小(サムネ)', md:'中', lg:'大(full幅)' }[opts.size || 'md'];
+        return `<div style="height:64px;background:rgba(0,0,0,0.2);border:1px dashed rgba(255,255,255,0.12);border-radius:5px;display:flex;align-items:${align === 'center' ? 'center' : 'flex-start'};justify-content:${jc};padding:0 0.75rem;gap:0.5rem;"><span style="font-size:1.2rem;">🖼️</span><div style="display:flex;flex-direction:column;gap:2px;">${label}<span style="opacity:0.4;font-size:0.68rem;">最大${maxCount}枚 / ${sizeLabel}</span></div></div>`;
+      }
+
+      // 選択肢
+      if (f.type === 'choice_single' || f.type === 'choice_multi') {
+        const isH = opts.layout === 'horizontal';
+        const shuffle = opts.shuffle !== false;
+        const count = Math.min(Number(opts.defaultCount) || 3, 3);
+        const rows = Array.from({length: count}, (_, i) => {
+          const mark = i === 0 ? '✅' : (f.type === 'choice_multi' ? '☐' : '○');
+          return `<div style="height:20px;background:rgba(0,0,0,0.2);border:1px dashed rgba(255,255,255,0.1);border-radius:3px;display:flex;align-items:center;padding:0 6px;font-size:0.7rem;color:var(--text-secondary);${isH ? 'flex:1;' : ''}">${mark} ${i === 0 ? '正解' : `選択肢${i + 1}`}</div>`;
+        }).join('');
+        return `<div style="display:flex;flex-direction:column;gap:2px;"><div style="display:flex;${isH ? 'flex-direction:row;gap:4px;' : 'flex-direction:column;gap:2px;'}">${rows}</div><span style="opacity:0.4;font-size:0.68rem;margin-top:2px;">${isH ? '横並び' : '縦並び'}${shuffle ? ' / シャッフルあり' : ''}</span></div>`;
+      }
+
+      // 難易度
+      if (f.type === 'difficulty') {
+        const max    = Number(opts.maxStars   || 5);
+        const defVal = Number(opts.defaultVal || 3);
+        const stars  = Array.from({length: max}, (_, i) =>
+          `<span style="font-size:${fontSize};${color ? `color:${color}` : 'color:#fbbf24'};">${i < defVal ? '⭐' : '☆'}</span>`
+        ).join('');
+        return `<div style="min-height:30px;background:rgba(0,0,0,0.2);border:1px dashed rgba(255,255,255,0.1);border-radius:5px;display:flex;align-items:center;justify-content:${jc};padding:0 0.75rem;gap:0.2rem;flex-wrap:wrap;">${stars}<span style="opacity:0.45;font-size:0.68rem;margin-left:0.3rem;">${defVal}/${max}</span></div>`;
+      }
+
+      // タグ
+      if (f.type === 'tags') {
+        const tagColor = color || '#14b8a6';
+        return `<div style="min-height:30px;background:rgba(0,0,0,0.2);border:1px dashed rgba(255,255,255,0.1);border-radius:5px;display:flex;align-items:center;justify-content:${jc};padding:0 0.75rem;gap:0.3rem;flex-wrap:wrap;"><span style="background:rgba(20,184,166,0.2);border:1px solid rgba(20,184,166,0.35);color:${tagColor};padding:0.1rem 0.45rem;border-radius:10px;font-size:${fontSize};${bold ? 'font-weight:700;' : ''}">タグ例</span><span style="background:rgba(20,184,166,0.15);border:1px solid rgba(20,184,166,0.25);color:${tagColor};padding:0.1rem 0.45rem;border-radius:10px;font-size:${fontSize};opacity:0.6;">タグ2</span></div>`;
+      }
+
+      // ヒント
+      if (f.type === 'hint') {
+        const timing = opts.showTiming === 'always' ? '常時表示' : 'ボタン後';
+        const hintColor = color || '#fbbf24';
+        return `<div style="min-height:30px;background:rgba(251,191,36,0.07);border:1px dashed rgba(251,191,36,0.3);border-radius:5px;display:flex;align-items:center;justify-content:${jc};padding:0 0.75rem;gap:0.4rem;"><span style="font-size:${fontSize};${bold ? 'font-weight:700;' : ''}color:${hintColor};">💡 ${esc(f.label)}</span><span style="opacity:0.4;font-size:0.68rem;">${timing}</span></div>`;
+      }
+
+      // 誤答例
+      if (f.type === 'wrongexample') {
+        return `<div style="display:flex;flex-direction:column;gap:2px;">${['誤答例1','誤答例2'].map(w => `<div style="min-height:22px;background:rgba(239,68,68,0.07);border-left:2px solid rgba(239,68,68,0.4);border-radius:3px;padding:0 8px;display:flex;align-items:center;justify-content:${jc};font-size:${fontSize};color:var(--text-secondary);">❌ ${w}</div>`).join('')}</div>`;
+      }
+
+      // フィードバック
+      if (f.type === 'feedback') {
+        const fbColor = color || '#22c55e';
+        return `<div style="min-height:30px;background:rgba(34,197,94,0.07);border:1px dashed rgba(34,197,94,0.3);border-radius:5px;display:flex;align-items:center;justify-content:${jc};padding:0 0.75rem;gap:0.4rem;"><span style="font-size:${fontSize};${bold ? 'font-weight:700;' : ''}color:${fbColor};">💬 ${esc(f.label)}</span></div>`;
+      }
+
+      // 制限時間
+      if (f.type === 'timer') {
+        const sec = opts.defaultSec || 30;
+        const action = opts.timeupAction === 'auto' ? '自動送り' : '警告のみ';
+        return `<div style="min-height:30px;background:rgba(0,0,0,0.2);border:1px dashed rgba(255,255,255,0.12);border-radius:5px;display:flex;align-items:center;justify-content:${jc};padding:0 0.75rem;gap:0.5rem;"><span style="font-size:${fontSize};${color ? `color:${color}` : 'color:#f87171'};${bold ? 'font-weight:700;' : ''}">⏱ ${sec}秒</span><span style="opacity:0.4;font-size:0.68rem;">${action}</span></div>`;
+      }
+
+      // URL / 関連リンク
+      if (f.type === 'url') {
+        const linkLabel = opts.linkLabel || '参考資料を見る';
+        const urlColor = color || '#60a5fa';
+        return `<div style="min-height:30px;background:rgba(0,0,0,0.2);border:1px dashed rgba(255,255,255,0.12);border-radius:5px;display:flex;align-items:center;justify-content:${jc};padding:0 0.75rem;"><span style="font-size:${fontSize};${bold ? 'font-weight:700;' : ''}color:${urlColor};text-decoration:underline;">🔗 ${esc(linkLabel)}</span></div>`;
+      }
+
+      // デフォルト（text, number, date, static など）
+      return `<div style="min-height:30px;background:rgba(0,0,0,0.2);border:1px dashed rgba(255,255,255,0.12);border-radius:5px;display:flex;align-items:center;justify-content:${jc};padding:0 0.75rem;">${label}</div>`;
     };
+
     return `
       <div style="margin-bottom: 1rem;">
         <div style="font-size: 0.75rem; color: #a78bfa; font-weight: 600; margin-bottom: 0.5rem; text-transform: uppercase; border-bottom: 1px solid rgba(167,139,250,0.2);">${title}</div>

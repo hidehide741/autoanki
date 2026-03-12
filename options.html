@@ -95,25 +95,40 @@
     </aside>
 
     <main class="main-content">
-      <section class="section glass-panel">
-        <h2 class="section-title">新しいカードを追加</h2>
+      <div class="card-editor-grid">
+        <!-- 左カラム: 入力フォームパネル -->
+        <section class="section glass-panel editor-left" style="margin-bottom: 0; padding: 1.5rem 2rem;">
+          <div class="section-header" style="border-bottom: 1px solid var(--glass-border); padding-bottom: 1rem; margin-bottom: 2rem;">
+            <h2 class="section-title" style="margin:0; border:none; padding:0;">新しいカードを追加</h2>
+          </div>
 
-        <!-- ジャンルタブ -->
-        <div class="genre-tabs" id="genre-tabs">
-          <!-- JSで動的生成 -->
-        </div>
-
-        <!-- 動的フォーム -->
-        <form id="add-card-form" class="dynamic-form">
-          <div id="form-fields">
+          <!-- ジャンルタブ -->
+          <div class="genre-tabs" id="genre-tabs">
             <!-- JSで動的生成 -->
           </div>
-          <div class="form-actions">
-            <button type="submit" class="primary-btn">追加する</button>
-            <div id="add-success-msg" class="success-msg hidden">✅ カードを追加しました！</div>
-          </div>
-        </form>
-      </section>
+
+          <!-- 動的フォーム -->
+          <form id="add-card-form" class="dynamic-form">
+            <div id="form-fields">
+              <!-- JSで動的生成 -->
+            </div>
+            <div class="form-actions">
+              <button type="submit" class="primary-btn">追加する</button>
+              <div id="add-success-msg" class="success-msg hidden">✅ カードを追加しました！</div>
+            </div>
+          </form>
+        </section>
+
+        <!-- 右カラム: プレビューパネル -->
+        <aside class="editor-right" style="position: sticky; top: 2rem;">
+          <section class="section glass-panel" style="margin-bottom: 0; padding: 1.5rem;">
+            <div class="field-section-label" style="margin-bottom: 1rem; color: var(--text-secondary);">リアルタイムプレビュー</div>
+            <div class="preview-box" id="card-preview-panel" style="background: rgba(0,0,0,0.25); border-color: rgba(255,255,255,0.05);">
+              <p style="color: var(--text-secondary); font-size: 0.85rem; text-align: center;">入力内容のプレビューがここに表示されます</p>
+            </div>
+          </section>
+        </aside>
+      </div>
     </main>
   </div>
 

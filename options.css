@@ -1,3 +1,22 @@
+/* カード作成画面 2カラムレイアウト */
+.card-editor-grid {
+  display: grid;
+  grid-template-columns: 6fr 4fr;
+  gap: 2.5rem;
+  align-items: start;
+}
+@media (max-width: 900px) {
+  .card-editor-grid { grid-template-columns: 1fr; }
+  .editor-right { position: static !important; }
+}
+
+/* プレビュー用ボックス（settings.htmlから流用） */
+.preview-box {
+  background: rgba(15,23,42,0.8);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  padding: 1.5rem;
+}
 :root {
   --bg-color-1: #0f172a;
   --bg-color-2: #1e1b4b;

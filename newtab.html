@@ -58,11 +58,8 @@
               <div class="progress-bar-fill" id="progress-bar" style="width: 0%"></div>
             </div>
 
-            <!-- 問題テキスト -->
-            <h2 id="question-text" class="question"></h2>
-
-            <!-- 複数画像（最大3枚） -->
-            <div id="question-images" class="hidden"></div>
+            <!-- 動的コンテンツ：問題エリア -->
+            <div id="question-area"></div>
 
             <!-- 答えを見るボタン -->
             <button id="show-answer-btn" class="primary-btn">答えを見る&nbsp;&nbsp;<span style="opacity:0.6;font-size:0.85em;">(Space)</span></button>
@@ -70,7 +67,8 @@
             <!-- 答えセクション -->
             <div id="answer-section" class="answer-section hidden">
               <div class="divider"></div>
-              <p id="answer-text" class="answer"></p>
+              <!-- 動的コンテンツ：回答エリア -->
+              <div id="answer-area"></div>
 
               <div class="rating-buttons">
                 <button class="rating-btn btn-again" data-quality="1">
@@ -95,6 +93,26 @@
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+
+        <!-- カードなし画面 -->
+        <div id="empty-container" class="glass-card done-card hidden">
+          <div class="done-icon">📭</div>
+          <h1 class="done-title">カードがありません</h1>
+          <p class="done-message">まずは問題を作成してみましょう！</p>
+          <div class="done-links">
+            <a href="options.html" class="link-btn">➕ 問題を追加</a>
+          </div>
+        </div>
+
+        <!-- エラー画面 -->
+        <div id="error-container" class="glass-card done-card hidden">
+          <div class="done-icon">⚠️</div>
+          <h1 class="done-title" style="font-size:1.4rem;">読み込みエラー</h1>
+          <p class="done-message" id="error-message">データの取得に失敗しました。<br>ネットワーク接続を確認してください。</p>
+          <div class="done-links">
+            <button class="link-btn" onclick="location.reload()">🔄 再読み込み</button>
           </div>
         </div>
 

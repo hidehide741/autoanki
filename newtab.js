@@ -19,8 +19,11 @@ const el = {
   progressBar:   document.getElementById('progress-bar'),
   doneToday:     document.getElementById('done-today'),
   doneStreak:    document.getElementById('done-streak'),
-  questionArea:  document.getElementById('question-area'),
-  answerArea:    document.getElementById('answer-area'),
+  questionArea:    document.getElementById('question-area'),
+  answerArea:      document.getElementById('answer-area'),
+  emptyContainer:  document.getElementById('empty-container'),
+  errorContainer:  document.getElementById('error-container'),
+  errorMessage:    document.getElementById('error-message'),
 };
 
 // 初期化
@@ -41,14 +44,21 @@ async function loadNextCard() {
   try {
     const result = await StorageManager.getDueCardOrStatus();
     
+    if (result.status === 'empty') {
+      showEmptyMode();
+      isProcessing = false;
+      return;
+    }
+
     if (result.status === 'cooldown') {
       if (StorageManager.isExtension) {
-        window.location.replace('https://www.google.com/');
-        return;
+        const remainMs = await StorageManager.getCooldownRemainingMs();
+        showCooldownMode(remainMs);
       } else {
         showDoneMode();
-        return;
       }
+      isProcessing = false;
+      return;
     }
 
     currentCard = result.card;
@@ -72,18 +82,20 @@ async function loadNextCard() {
       // アニメーションのリセット
       el.cardContainer.classList.remove('hidden', 'fade-out');
       el.doneContainer.classList.add('hidden');
+      if (el.emptyContainer) el.emptyContainer.classList.add('hidden');
+      if (el.errorContainer) el.errorContainer.classList.add('hidden');
       el.cardContainer.style.animation = 'none';
       setTimeout(() => {
         el.cardContainer.style.animation = 'floatIn 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards';
         isProcessing = false;
       }, 10);
     } else {
-      await StorageManager.updateLastAnswerTime();
       showDoneMode();
       isProcessing = false;
     }
   } catch (err) {
     console.error('loadNextCard Failed:', err);
+    showErrorMode(err.message);
     isProcessing = false;
   }
 }
@@ -178,9 +190,48 @@ function showAnswerMode() {
 
 function showDoneMode() {
   el.cardContainer.classList.add('hidden');
+  if (el.emptyContainer) el.emptyContainer.classList.add('hidden');
+  if (el.errorContainer) el.errorContainer.classList.add('hidden');
   el.doneContainer.classList.remove('hidden');
   if (el.doneToday)  el.doneToday.textContent  = el.todayCount?.textContent  || '0';
   if (el.doneStreak) el.doneStreak.textContent = el.streakCount?.textContent || '0';
+}
+
+function showEmptyMode() {
+  el.cardContainer.classList.add('hidden');
+  el.doneContainer.classList.add('hidden');
+  if (el.errorContainer) el.errorContainer.classList.add('hidden');
+  if (el.emptyContainer) el.emptyContainer.classList.remove('hidden');
+}
+
+function showErrorMode(msg = '') {
+  el.cardContainer.classList.add('hidden');
+  el.doneContainer.classList.add('hidden');
+  if (el.emptyContainer) el.emptyContainer.classList.add('hidden');
+  if (el.errorContainer) el.errorContainer.classList.remove('hidden');
+  if (el.errorMessage && msg) el.errorMessage.textContent = msg;
+}
+
+function showCooldownMode(remainMs) {
+  const mins = Math.max(1, Math.ceil(remainMs / 60000));
+  el.cardContainer.classList.add('hidden');
+  if (el.emptyContainer) el.emptyContainer.classList.add('hidden');
+  if (el.errorContainer) el.errorContainer.classList.add('hidden');
+  el.doneContainer.classList.remove('hidden');
+  if (el.doneToday)  el.doneToday.textContent  = el.todayCount?.textContent  || '0';
+  if (el.doneStreak) el.doneStreak.textContent = el.streakCount?.textContent || '0';
+  // cooldown 残り時間を表示
+  const existing = el.doneContainer.querySelector('.cooldown-notice');
+  const text = `⏳ 次の問題まで約 ${mins} 分`;
+  if (!existing) {
+    const notice = document.createElement('p');
+    notice.className = 'cooldown-notice';
+    notice.style.cssText = 'font-size:0.9rem;opacity:0.7;margin-top:0.75rem;';
+    notice.textContent = text;
+    el.doneContainer.appendChild(notice);
+  } else {
+    existing.textContent = text;
+  }
 }
 
 async function handleRating(quality) {
@@ -192,8 +243,8 @@ async function handleRating(quality) {
   try {
     await StorageManager.updateCard(currentCard.id, parseInt(quality, 10));
     await updateStats();
-    setTimeout(() => {
-      showDoneMode();
+    setTimeout(async () => {
+      await loadNextCard();
     }, 300);
   } catch (err) {
     console.error('handleRating Failed:', err);
@@ -217,11 +268,11 @@ function setupEventListeners() {
     if(!el.cardContainer.classList.contains('hidden')) {
       el.cardContainer.classList.add('fade-out');
       await StorageManager.updateLastAnswerTime();
-      setTimeout(() => {
-        showDoneMode();
+      setTimeout(async () => {
+        await loadNextCard();
       }, 300);
     } else {
-      showDoneMode();
+      await loadNextCard();
     }
   });
 

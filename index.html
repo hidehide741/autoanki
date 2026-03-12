@@ -96,6 +96,26 @@
           </div>
         </div>
 
+        <!-- カードなし画面 -->
+        <div id="empty-container" class="glass-card done-card hidden">
+          <div class="done-icon">📭</div>
+          <h1 class="done-title">カードがありません</h1>
+          <p class="done-message">まずは問題を作成してみましょう！</p>
+          <div class="done-links">
+            <a href="options.html" class="link-btn">➕ 問題を追加</a>
+          </div>
+        </div>
+
+        <!-- エラー画面 -->
+        <div id="error-container" class="glass-card done-card hidden">
+          <div class="done-icon">⚠️</div>
+          <h1 class="done-title" style="font-size:1.4rem;">読み込みエラー</h1>
+          <p class="done-message" id="error-message">データの取得に失敗しました。<br>ネットワーク接続を確認してください。</p>
+          <div class="done-links">
+            <button class="link-btn" onclick="location.reload()">🔄 再読み込み</button>
+          </div>
+        </div>
+
         <!-- 完了画面 -->
         <div id="done-container" class="glass-card done-card hidden">
           <div class="done-icon">🎉</div>

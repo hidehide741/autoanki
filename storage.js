@@ -394,6 +394,14 @@ const StorageManager = {
     await LocalStore.set('lastAnswerTime', Date.now());
   },
 
+  async getCooldownRemainingMs() {
+    const COOLDOWN_MS = 15 * 60 * 1000;
+    const lastAnswerTime = await LocalStore.get('lastAnswerTime');
+    if (!lastAnswerTime) return 0;
+    const remaining = COOLDOWN_MS - (Date.now() - lastAnswerTime);
+    return remaining > 0 ? remaining : 0;
+  },
+
   async incrementStats() {
     let stats = await LocalStore.get('stats');
     if (!stats) return;

@@ -174,13 +174,27 @@ function addFieldRow(container, label = '', type = 'textarea', required = false)
   row.draggable = true; // ドラッグ可能にする
   row.innerHTML = `
     <div class="drag-handle" title="ドラッグして並び替え">⋮⋮</div>
-    <input type="text" class="field-label" value="${esc(label)}" placeholder="ラベル名 (例: 例文)">
+    <input type="text" class="field-label" value="${esc(label)}" placeholder="ラベル名 (例: 例文)" ${type === 'static' ? '' : 'disabled'}>
     <select class="field-type">
       ${FIELD_TYPES.map(t => `<option value="${t.val}" ${t.val === type ? 'selected' : ''}>${t.label}</option>`).join('')}
     </select>
     <label class="required-toggle"><input type="checkbox" class="field-required" ${required ? 'checked' : ''}>必須</label>
     <button type="button" class="btn-remove" title="削除">×</button>
   `;
+
+  // フィールドタイプ変更時、staticならlabel input有効、それ以外は無効
+  const typeSelect = row.querySelector('.field-type');
+  const labelInput = row.querySelector('.field-label');
+  typeSelect.addEventListener('change', () => {
+    if (typeSelect.value === 'static') {
+      labelInput.disabled = false;
+      labelInput.placeholder = '表示するテキスト';
+    } else {
+      labelInput.disabled = true;
+      labelInput.placeholder = '（ラベルは自動）';
+    }
+    renderPreview();
+  });
 
   // === ドラッグ＆ドロップのイベント制御 ===
   row.addEventListener('dragstart', (e) => {

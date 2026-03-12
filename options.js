@@ -56,7 +56,7 @@ const FIELD_DETAIL_DEFS = {
   difficulty:    [{ key: 'maxStars', label: '最大値', type: 'select', choices: [['3','3段階'],['5','5段階'],['10','10段階']], default: '5' }, { key: 'defaultVal', label: 'デフォルト値', type: 'number', min:1, max:10, default: 3 }],
   timer:         [{ key: 'defaultSec', label: 'デフォルト秒数', type: 'number', min:5, max:600, default: 30 }, { key: 'timeupAction', label: 'タイムアップ時', type: 'select', choices: [['warn','警告のみ'],['auto','自動送り']], default: 'warn' }],
   url:           [{ key: 'linkLabel', label: 'リンクラベル', type: 'text', default: '参考資料を見る' }],
-  static:        [{ key: 'border', label: '枚を表示', type: 'toggle', default: true }],
+  static:        [{ key: 'border', label: '枞を表示', type: 'toggle', default: true }],
 };
 
 const el = {
@@ -1333,7 +1333,11 @@ function updateCardPreview(genre, values) {
 
     if (f.type === 'static') {
       const v = (values[f.key] !== undefined && values[f.key] !== '') ? values[f.key] : f.label;
-      return valignWrap(`<div style="padding:0.5rem 0.9rem;margin:0.3rem 0 0.6rem;background:rgba(99,102,241,0.1);border-radius:7px;border-left:4px solid #a78bfa;${boldSt||'font-weight:600;'}font-size:${fsSz||'0.95rem'};color:${opts.color||'#a78bfa'};${alignSt}">${escapeHtml(v)}</div>`);
+      const showBorder = opts.border !== false; // default: true
+      const borderStyle = showBorder
+        ? 'background:rgba(99,102,241,0.1);border-left:4px solid #a78bfa;border-radius:7px;'
+        : 'background:transparent;border:none;border-radius:0;';
+      return valignWrap(`<div style="padding:0.5rem 0.9rem;margin:0.3rem 0 0.6rem;${borderStyle}${boldSt||'font-weight:600;'}font-size:${fsSz||'0.95rem'};color:${opts.color||'#ffffff'};${alignSt}">${escapeHtml(v)}</div>`);
     }
 
     if (f.type === 'image') {

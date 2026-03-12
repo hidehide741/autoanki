@@ -295,16 +295,73 @@ function addFieldRow(container, label = '', type = 'textarea', required = false,
     row.querySelector('.detail-toggle-btn').style.background = isOpen ? 'rgba(99,102,241,0.12)' : 'rgba(99,102,241,0.3)';
   });
 
-  // ドラッグ＆ドロップ
-  row.addEventListener('dragstart', (e) => { wrapper.classList.add('dragging'); e.dataTransfer.effectAllowed = 'move'; });
-  row.addEventListener('dragend',   () => { wrapper.classList.remove('dragging'); renderPreview(); });
+  // ドラッグ＆ドロップ（スライドアニメーション方式）
+  let dragOverWrapper = null; // 現在ホバー中のwrapper
+  let insertAfter = false;    // そのwrapperの下に挿入するか
+
+  row.addEventListener('dragstart', (e) => {
+    e.dataTransfer.effectAllowed = 'move';
+    // 少し遅らせてドラッグ元を半透明に（ブラウザのゴーストと分離）
+    requestAnimationFrame(() => wrapper.classList.add('dragging'));
+  });
+
+  row.addEventListener('dragend', () => {
+    wrapper.classList.remove('dragging');
+    // 全wrapperのtranslateとスペースをリセット
+    container.querySelectorAll('.field-row-wrapper').forEach(w => {
+      w.style.transform = '';
+      w.style.transition = '';
+      w.classList.remove('drop-above', 'drop-below');
+    });
+    // 最終位置にDOM挿入
+    if (dragOverWrapper && dragOverWrapper !== wrapper) {
+      container.insertBefore(wrapper, insertAfter ? dragOverWrapper.nextSibling : dragOverWrapper);
+    }
+    dragOverWrapper = null;
+    renderPreview();
+  });
+
   wrapper.addEventListener('dragover', (e) => {
     e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
     const dragging = container.querySelector('.field-row-wrapper.dragging');
     if (!dragging || dragging === wrapper) return;
+
     const rect = wrapper.getBoundingClientRect();
-    const next = (e.clientY - rect.top) > (rect.height / 2);
-    container.insertBefore(dragging, next ? wrapper.nextSibling : wrapper);
+    const midY = rect.top + rect.height / 2;
+    const goBelow = e.clientY > midY;
+
+    dragOverWrapper = wrapper;
+    insertAfter = goBelow;
+
+    // 全wrapperのスライド量を計算してtranslateYで動かす
+    const allWrappers = Array.from(container.querySelectorAll('.field-row-wrapper'));
+    const draggingH   = dragging.getBoundingClientRect().height;
+    const draggingIdx = allWrappers.indexOf(dragging);
+    const targetIdx   = allWrappers.indexOf(wrapper);
+
+    allWrappers.forEach((w, i) => {
+      if (w === dragging) { w.style.transition = ''; w.style.transform = ''; return; }
+      w.style.transition = 'transform 0.18s ease';
+      w.classList.remove('drop-above', 'drop-below');
+
+      let shift = 0;
+      if (draggingIdx < targetIdx) {
+        // 下に移動中：ドラッグ元より下 & ターゲット以上のアイテムを上にずらす
+        if (i > draggingIdx && (goBelow ? i <= targetIdx : i < targetIdx)) shift = -draggingH;
+      } else {
+        // 上に移動中：ターゲット以上 & ドラッグ元より上のアイテムを下にずらす
+        if (i < draggingIdx && (goBelow ? i > targetIdx : i >= targetIdx)) shift = draggingH;
+      }
+      w.style.transform = shift ? `translateY(${shift}px)` : '';
+    });
+
+    // ターゲットにドロップ位置インジケーター
+    wrapper.classList.add(goBelow ? 'drop-below' : 'drop-above');
+  });
+
+  wrapper.addEventListener('dragleave', () => {
+    wrapper.classList.remove('drop-above', 'drop-below');
   });
 
   row.querySelector('.btn-remove').addEventListener('click', () => { wrapper.remove(); renderPreview(); });

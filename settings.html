@@ -113,12 +113,22 @@
       transition: background 0.2s;
     }
     .field-row-wrapper.dragging {
-      opacity: 0.5;
-      background: rgba(99,102,241,0.1);
-      border: 1px dashed rgba(99,102,241,0.5);
+      opacity: 0.35;
+      background: rgba(99,102,241,0.08);
+      border: 1px dashed rgba(99,102,241,0.4);
       border-radius: 8px;
+      pointer-events: none;
     }
     .field-row-wrapper.dragging .field-row { background: transparent; }
+    /* ドロップ位置インジケーター */
+    .field-row-wrapper.drop-above {
+      box-shadow: 0 -3px 0 0 #6366f1;
+      border-radius: 8px;
+    }
+    .field-row-wrapper.drop-below {
+      box-shadow: 0 3px 0 0 #6366f1;
+      border-radius: 8px;
+    }
     .drag-handle {
       cursor: grab;
       display: flex;
@@ -230,7 +240,9 @@
 <body>
   <div class="background-animation"></div>
 
-  <div class="layout">
+  <div class="layout sidebar-fixed" id="app-layout">
+    <!-- サイドバーオーバーレイ -->
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
     <!-- サイドバー -->
     <aside class="sidebar">
       <div class="logo">
@@ -245,9 +257,9 @@
         <a href="settings.html"  class="nav-btn active">⚙️ 設定</a>
         <a href="memo.html"      class="nav-btn">🗒️ メモ</a>
       </div>
+      <button class="sidebar-toggle-btn" id="sidebar-toggle-btn" title="サイドバー固定トグル">☰</button>
     </aside>
 
-    <!-- メインコンテンツ -->
     <main class="main-content">
       <!-- ジャンル一覧 -->
       <section class="section glass-panel" id="genre-list-section">
@@ -312,6 +324,32 @@
     <span id="toast-msg">保存しました</span>
   </div>
 
-  <script src="settings.js?v=20260313d" type="module"></script>
+  <script src="settings.js?v=20260313e" type="module"></script>
+  <script>
+    (function(){
+      const layout=document.getElementById('app-layout'),btn=document.getElementById('sidebar-toggle-btn'),overlay=document.getElementById('sidebar-overlay');
+      const saved=localStorage.getItem('sidebar-mode')||'fixed';
+      layout.className=layout.className.replace(/sidebar-fixed|sidebar-float/g,'').trim();
+      layout.classList.add('sidebar-'+saved);
+      function applyMode(){
+        if(layout.classList.contains('sidebar-fixed'))btn.title='サイドバーを隠す';
+        else btn.title='メニューを開く';
+      }
+      applyMode();
+      btn.addEventListener('click',function(){
+        if(layout.classList.contains('sidebar-fixed')){
+          layout.classList.replace('sidebar-fixed','sidebar-float');
+          localStorage.setItem('sidebar-mode','float');
+        } else if(layout.classList.contains('sidebar-open')){
+          layout.classList.remove('sidebar-open');
+        } else if(layout.classList.contains('sidebar-float')){
+          layout.classList.replace('sidebar-float','sidebar-fixed');
+          localStorage.setItem('sidebar-mode','fixed');
+        }
+        applyMode();
+      });
+      overlay.addEventListener('click',function(){layout.classList.remove('sidebar-open');});
+    })();
+  </script>
 </body>
 </html>

@@ -43,12 +43,16 @@ async function updateStats() {
 
 // カードの読み込み
 async function loadNextCard() {
+  // Chromeが自動で新しいタブを開いた場合のみ true（referrerが空 = 新規タブ）
+  // サイドバーのリンクから来た場合は referrer に遷移元URLが入るので false
+  const isActualNewTab = StorageManager.isExtension && !document.referrer;
+
   try {
     const result = await StorageManager.getDueCardOrStatus();
     
     if (result.status === 'empty') {
-      if (StorageManager.isExtension) {
-        // 拡張機能モード: 1回だけ「問題なし」表示、2回目以降はGoogle
+      if (isActualNewTab) {
+        // 新規タブのみ: 1回だけ「問題なし」表示、2回目以降はGoogle
         const alreadyNotified = await StorageManager.getEmptyNotified();
         if (alreadyNotified) {
           window.location.replace('https://www.google.com/');
@@ -62,8 +66,8 @@ async function loadNextCard() {
     }
 
     if (result.status === 'cooldown') {
-      if (StorageManager.isExtension) {
-        // 拡張機能モード: 15分クールタイム中はGoogle
+      if (isActualNewTab) {
+        // 新規タブのみ: 15分クールタイム中はGoogle
         window.location.replace('https://www.google.com/');
         return;
       } else {

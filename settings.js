@@ -224,10 +224,6 @@ function addFieldRow(container, label = '', type = 'textarea', required = false)
     row.remove();
     renderPreview();
   });
-  row.querySelectorAll('input, select').forEach(input => {
-    input.addEventListener('change', renderPreview);
-    if (input.tagName === 'INPUT') input.addEventListener('input', renderPreview);
-  });
 
   container.appendChild(row);
   renderPreview();

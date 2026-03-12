@@ -353,11 +353,25 @@ const StorageManager = {
 
   // カードの学習結果を記録し、次の復習日時を計算 (SM-2類似アルゴリズム)
   async updateCard(cardId, quality) {
-    const cards = await this.getAllCards();
-    const cardIndex = cards.findIndex(c => c.id === cardId);
-    if (cardIndex === -1) return;
-
-    const card = cards[cardIndex];
+    // 全件取得ではなくID指定の1件だけ取得する（ブラウザフリーズ防止）
+    let card;
+    try {
+      const res = await fetch(`${API_BASE}?id=eq.${cardId}&select=*`, { headers: HEADERS });
+      if (!res.ok) throw new Error('Fetch Error');
+      const rows = await res.json();
+      if (rows.length === 0) return;
+      const c = rows[0];
+      card = {
+        id: c.id, question: c.question, answer: c.answer, image: c.image, genre: c.genre,
+        nextReviewDate: parseInt(c.next_review_date, 10),
+        interval: parseInt(c.interval, 10),
+        repetition: c.repetition,
+        easiness: c.easiness
+      };
+    } catch (e) {
+      console.error('updateCard fetch failed:', e);
+      return;
+    }
 
     if (quality < 3) {
       // 忘れていた場合、リセット

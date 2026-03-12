@@ -199,7 +199,7 @@ function renderTable() {
     });
     tr.querySelector('.edit-btn').addEventListener('click', (e) => {
       e.stopPropagation();
-      openEditModal(card.id);
+      window.location.href = `options.html?edit=${encodeURIComponent(card.id)}`;
     });
     tr.querySelector('.delete-btn').addEventListener('click', (e) => {
       e.stopPropagation();

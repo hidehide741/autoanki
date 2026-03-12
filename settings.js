@@ -149,7 +149,7 @@ function loadGenreIntoForm(id) {
 
   genre.fields.forEach(f => {
     const container = f.role === 'question' ? el.qContainer : el.aContainer;
-    addFieldRow(container, f.label, f.type, f.required);
+    addFieldRow(container, f.label, f.type, f.required, f.options || {});
   });
 
   // 保存ボタン・キャンセルボタンの切り替え
@@ -179,65 +179,156 @@ const FIELD_TYPES = [
   { val: 'static',        label: '🔖 固定テキスト（表示専用）' }
 ];
 
-function addFieldRow(container, label = '', type = 'textarea', required = false) {
+function addFieldRow(container, label = '', type = 'textarea', required = false, options = {}) {
+  // 詳細設定の定義（タイプごと）
+  const DETAIL_DEFS = {
+    _common: [
+      { key: 'align',    label: '文字揃え',   type: 'select', choices: [['left','左寄り'],['center','中央'],['right','右寄り']], default: 'left' },
+      { key: 'bold',     label: '太字',       type: 'toggle', default: false },
+      { key: 'fontSize', label: '文字サイズ', type: 'select', choices: [['sm','小'],['md','中'],['lg','大']], default: 'md' },
+      { key: 'color',    label: '文字色',     type: 'color',  choices: ['#ffffff','#a78bfa','#60a5fa','#34d399','#fbbf24','#f87171'], default: '' },
+    ],
+    textarea:      [{ key: 'rows',      label: '表示行数',   type: 'number', min:1, max:10, default: 3 }, { key: 'maxlen', label: '最大文字数', type: 'number', min:0, default: 0, hint:'0=無制限' }],
+    text:          [{ key: 'maxlen',    label: '最大文字数', type: 'number', min:0, default: 0, hint:'0=無制限' }],
+    freetext:      [{ key: 'rows',      label: '表示行数',   type: 'number', min:1, max:10, default: 3 }],
+    explanation:   [{ key: 'rows',      label: '表示行数',   type: 'number', min:1, max:10, default: 3 }],
+    fillblank:     [{ key: 'blankStyle',label: '空欄スタイル', type: 'select', choices: [['underline','下線'],['box','ボックス'],['highlight','ハイライト']], default: 'underline' }, { key: 'showHint', label: '正解ヒント表示', type: 'toggle', default: false }],
+    choice_single: [{ key: 'layout',   label: '並び方',     type: 'select', choices: [['vertical','縦'],['horizontal','横']], default: 'vertical' }, { key: 'shuffle', label: 'シャッフル', type: 'toggle', default: true }, { key: 'defaultCount', label: 'デフォルト選択肢数', type: 'number', min:2, max:6, default: 3 }],
+    choice_multi:  [{ key: 'layout',   label: '並び方',     type: 'select', choices: [['vertical','縦'],['horizontal','横']], default: 'vertical' }, { key: 'shuffle', label: 'シャッフル', type: 'toggle', default: true }, { key: 'defaultCount', label: 'デフォルト選択肢数', type: 'number', min:2, max:6, default: 3 }],
+    image:         [{ key: 'maxCount', label: '最大枚数',   type: 'select', choices: [['1','1枚'],['2','2枚'],['3','3枚']], default: '3' }, { key: 'size', label: '表示サイズ', type: 'select', choices: [['sm','小(サムネ)'],['md','中'],['lg','大(full幅)']], default: 'md' }],
+    hint:          [{ key: 'showTiming',label: '表示タイミング', type: 'select', choices: [['button','ボタン後'],['always','常時']], default: 'button' }],
+    difficulty:    [{ key: 'maxStars', label: '最大値',     type: 'select', choices: [['3','3段階'],['5','5段階'],['10','10段階']], default: '5' }, { key: 'defaultVal', label: 'デフォルト値', type: 'number', min:1, max:10, default: 3 }],
+    timer:         [{ key: 'defaultSec',label: 'デフォルト秒数', type: 'number', min:5, max:600, default: 30 }, { key: 'timeupAction', label: 'タイムアップ時', type: 'select', choices: [['warn','警告のみ'],['auto','自動送り']], default: 'warn' }],
+    url:           [{ key: 'linkLabel', label: 'リンクラベル', type: 'text', default: '参考資料を見る' }],
+  };
+
+  const typeDefs = DETAIL_DEFS[type] || [];
+  const allDefs = [...DETAIL_DEFS._common, ...typeDefs];
+
   const row = document.createElement('div');
   row.className = 'field-row';
-  row.draggable = true; // ドラッグ可能にする
+  row.draggable = true;
+
+  // メイン行HTML
   row.innerHTML = `
     <div class="drag-handle" title="ドラッグして並び替え">⋮⋮</div>
-    <input type="text" class="field-label" value="${esc(label)}" placeholder="ラベル名 (例: 例文)" ${type === 'static' ? '' : 'disabled'}>
     <select class="field-type">
       ${FIELD_TYPES.map(t => `<option value="${t.val}" ${t.val === type ? 'selected' : ''}>${t.label}</option>`).join('')}
     </select>
+    <button type="button" class="detail-toggle-btn" title="詳細設定" style="background:rgba(99,102,241,0.12);border:1px solid rgba(99,102,241,0.25);color:#a78bfa;border-radius:6px;padding:0.3rem 0.6rem;cursor:pointer;font-size:0.8rem;white-space:nowrap;">⚙ 詳細</button>
     <label class="required-toggle"><input type="checkbox" class="field-required" ${required ? 'checked' : ''}>必須</label>
     <button type="button" class="btn-remove" title="削除">×</button>
   `;
 
-  // フィールドタイプ変更時、staticならlabel input有効、それ以外は無効
+  // 詳細設定パネル（アコーディオン）
+  const detailPanel = document.createElement('div');
+  detailPanel.className = 'detail-panel';
+  detailPanel.style.cssText = 'display:none;grid-column:1/-1;background:rgba(0,0,0,0.25);border:1px solid rgba(99,102,241,0.2);border-radius:8px;padding:0.75rem 1rem;margin-top:0.25rem;';
+
+  const buildDetailPanel = (currentType, currentOptions) => {
+    const typeDefs2 = DETAIL_DEFS[currentType] || [];
+    const allDefs2 = [...DETAIL_DEFS._common, ...typeDefs2];
+    detailPanel.innerHTML = `
+      <div style="font-size:0.75rem;color:#a78bfa;font-weight:600;margin-bottom:0.6rem;letter-spacing:0.04em;">⚙ 詳細設定</div>
+      <div class="detail-fields" style="display:flex;flex-wrap:wrap;gap:0.5rem 1.5rem;"></div>
+    `;
+    const fieldsContainer = detailPanel.querySelector('.detail-fields');
+    allDefs2.forEach(def => {
+      const val = currentOptions[def.key] !== undefined ? currentOptions[def.key] : def.default;
+      const wrap = document.createElement('label');
+      wrap.style.cssText = 'display:flex;align-items:center;gap:0.4rem;font-size:0.82rem;color:var(--text-secondary);cursor:pointer;';
+      if (def.type === 'toggle') {
+        wrap.innerHTML = `<input type="checkbox" class="detail-input" data-key="${def.key}" ${val ? 'checked' : ''} style="accent-color:#6366f1;width:14px;height:14px;"> ${def.label}`;
+      } else if (def.type === 'select') {
+        wrap.innerHTML = `${def.label}: <select class="detail-input" data-key="${def.key}" style="background:rgba(0,0,0,0.3);border:1px solid var(--glass-border);color:var(--text-primary);padding:0.25rem 0.5rem;border-radius:5px;font-size:0.8rem;">${def.choices.map(([v,l]) => `<option value="${v}" ${String(val)===v?'selected':''}>${l}</option>`).join('')}</select>`;
+      } else if (def.type === 'number') {
+        wrap.innerHTML = `${def.label}${def.hint?` <span style="opacity:0.5;font-size:0.75rem;">(${def.hint})</span>`:''}: <input type="number" class="detail-input" data-key="${def.key}" value="${val}" min="${def.min||0}" max="${def.max||9999}" style="background:rgba(0,0,0,0.3);border:1px solid var(--glass-border);color:var(--text-primary);padding:0.25rem 0.5rem;border-radius:5px;width:70px;font-size:0.8rem;">`;
+      } else if (def.type === 'color') {
+        const swatches = def.choices.map(c => `<button type="button" class="color-swatch" data-color="${c}" style="width:18px;height:18px;border-radius:50%;background:${c};border:2px solid ${String(val)===c?'#fff':'transparent'};cursor:pointer;flex-shrink:0;"></button>`).join('');
+        wrap.innerHTML = `${def.label}: <span class="color-swatches" style="display:flex;gap:4px;align-items:center;">${swatches}<button type="button" class="color-swatch" data-color="" style="width:18px;height:18px;border-radius:50%;background:rgba(255,255,255,0.1);border:2px solid ${!val?'#fff':'transparent'};cursor:pointer;font-size:0.65rem;display:flex;align-items:center;justify-content:center;">✕</button></span><input type="hidden" class="detail-input" data-key="${def.key}" value="${val}">`;
+      } else if (def.type === 'text') {
+        wrap.innerHTML = `${def.label}: <input type="text" class="detail-input" data-key="${def.key}" value="${esc(String(val))}" style="background:rgba(0,0,0,0.3);border:1px solid var(--glass-border);color:var(--text-primary);padding:0.25rem 0.5rem;border-radius:5px;font-size:0.8rem;min-width:120px;">`;
+      }
+      fieldsContainer.appendChild(wrap);
+    });
+    // カラースウォッチのクリック処理
+    detailPanel.querySelectorAll('.color-swatches').forEach(group => {
+      group.querySelectorAll('.color-swatch').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const color = btn.dataset.color;
+          group.querySelectorAll('.color-swatch').forEach(b => b.style.borderColor = 'transparent');
+          btn.style.borderColor = '#fff';
+          const hiddenInput = group.parentElement.querySelector('.detail-input[data-key="color"]');
+          if (hiddenInput) hiddenInput.value = color;
+          renderPreview();
+        });
+      });
+    });
+    detailPanel.querySelectorAll('.detail-input').forEach(inp => {
+      inp.addEventListener('change', renderPreview);
+      inp.addEventListener('input', renderPreview);
+    });
+  };
+
+  buildDetailPanel(type, options);
+
+  // wrapper: メイン行 + 詳細パネルをまとめる
+  const wrapper = document.createElement('div');
+  wrapper.className = 'field-row-wrapper';
+  wrapper.style.cssText = 'margin-bottom:0.75rem;';
+  wrapper.appendChild(row);
+  wrapper.appendChild(detailPanel);
+
+  // フィールドタイプ変更時に詳細パネルを再構築
   const typeSelect = row.querySelector('.field-type');
-  const labelInput = row.querySelector('.field-label');
   typeSelect.addEventListener('change', () => {
-    if (typeSelect.value === 'static') {
-      labelInput.disabled = false;
-      labelInput.placeholder = '表示するテキスト';
-    } else {
-      labelInput.disabled = true;
-      labelInput.placeholder = '（ラベルは自動）';
-    }
+    buildDetailPanel(typeSelect.value, {});
     renderPreview();
   });
 
-  // === ドラッグ＆ドロップのイベント制御 ===
-  row.addEventListener('dragstart', (e) => {
-    row.classList.add('dragging');
-    e.dataTransfer.effectAllowed = 'move';
+  // 詳細ボタンのトグル
+  row.querySelector('.detail-toggle-btn').addEventListener('click', () => {
+    const isOpen = detailPanel.style.display !== 'none';
+    detailPanel.style.display = isOpen ? 'none' : 'block';
+    row.querySelector('.detail-toggle-btn').style.background = isOpen ? 'rgba(99,102,241,0.12)' : 'rgba(99,102,241,0.3)';
   });
 
-  row.addEventListener('dragend', () => {
-    row.classList.remove('dragging');
-    renderPreview();
-  });
-
-  row.addEventListener('dragover', (e) => {
+  // ドラッグ＆ドロップ
+  row.addEventListener('dragstart', (e) => { wrapper.classList.add('dragging'); e.dataTransfer.effectAllowed = 'move'; });
+  row.addEventListener('dragend',   () => { wrapper.classList.remove('dragging'); renderPreview(); });
+  wrapper.addEventListener('dragover', (e) => {
     e.preventDefault();
-    const draggingRow = container.querySelector('.dragging');
-    if (!draggingRow || draggingRow === row) return;
-
-    // マウス位置によって上か下に挿入
-    const rect = row.getBoundingClientRect();
+    const dragging = container.querySelector('.field-row-wrapper.dragging');
+    if (!dragging || dragging === wrapper) return;
+    const rect = wrapper.getBoundingClientRect();
     const next = (e.clientY - rect.top) > (rect.height / 2);
-    container.insertBefore(draggingRow, next ? row.nextSibling : row);
+    container.insertBefore(dragging, next ? wrapper.nextSibling : wrapper);
   });
 
-  // ======================================
+  row.querySelector('.btn-remove').addEventListener('click', () => { wrapper.remove(); renderPreview(); });
 
-  row.querySelector('.btn-remove').addEventListener('click', () => {
-    row.remove();
-    renderPreview();
-  });
-
-  container.appendChild(row);
+  container.appendChild(wrapper);
   renderPreview();
+}
+
+// フィールド行から設定値を収集するヘルパー
+function collectFieldData(wrapper) {
+  const row = wrapper.querySelector('.field-row');
+  const typeSelect = row.querySelector('.field-type');
+  const type = typeSelect.value;
+  const required = row.querySelector('.field-required').checked;
+  const typeInfo = FIELD_TYPES.find(t => t.val === type);
+  // ラベルは種類名から自動生成（絵文字除去）
+  const label = typeInfo ? typeInfo.label.replace(/^\S+\s/, '') : type;
+  const options = {};
+  wrapper.querySelectorAll('.detail-input').forEach(inp => {
+    const key = inp.dataset.key;
+    if (!key) return;
+    if (inp.type === 'checkbox') options[key] = inp.checked;
+    else if (inp.type === 'number') options[key] = Number(inp.value);
+    else options[key] = inp.value;
+  });
+  return { type, required, label, options };
 }
 
 async function saveGenre() {
@@ -249,13 +340,10 @@ async function saveGenre() {
   let qIdx = 0;
   let aIdx = 0;
   const collectFields = (container, role) => {
-    container.querySelectorAll('.field-row').forEach(row => {
-      const label = row.querySelector('.field-label').value.trim();
-      const type  = row.querySelector('.field-type').value;
-      const req   = row.querySelector('.field-required').checked;
-      if (!label) return;
+    container.querySelectorAll('.field-row-wrapper').forEach(wrapper => {
+      const { type, required, label, options } = collectFieldData(wrapper);
       const key = (role === 'question' ? `q_${qIdx++}` : `a_${aIdx++}`);
-      fields.push({ key, label, type, required: req, role });
+      fields.push({ key, label, type, required, role, options });
     });
   };
 
@@ -295,10 +383,11 @@ async function saveGenre() {
 function renderPreview() {
   const collectPreviewData = (container) => {
     const data = [];
-    container.querySelectorAll('.field-row').forEach(row => {
-      const label = row.querySelector('.field-label').value.trim() || 'ラベル';
-      const type  = row.querySelector('.field-type').value;
-      data.push({ label, type });
+    container.querySelectorAll('.field-row-wrapper').forEach(wrapper => {
+      const { type } = collectFieldData(wrapper);
+      const typeInfo = FIELD_TYPES.find(t => t.val === type);
+      const typeName = typeInfo ? typeInfo.label : type;
+      data.push({ label: typeName, type });
     });
     return data;
   };

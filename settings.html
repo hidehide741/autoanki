@@ -104,20 +104,21 @@
 
     .field-row {
       display: grid;
-      grid-template-columns: 32px 1fr 175px auto auto;
+      grid-template-columns: 32px 1fr 90px auto auto;
       gap: 0.6rem;
       align-items: center;
-      margin-bottom: 0.75rem;
       background: rgba(255,255,255,0.03);
       padding: 0.4rem;
       border-radius: 8px;
-      transition: transform 0.2s, background 0.2s;
+      transition: background 0.2s;
     }
-    .field-row.dragging {
+    .field-row-wrapper.dragging {
       opacity: 0.5;
       background: rgba(99,102,241,0.1);
       border: 1px dashed rgba(99,102,241,0.5);
+      border-radius: 8px;
     }
+    .field-row-wrapper.dragging .field-row { background: transparent; }
     .drag-handle {
       cursor: grab;
       display: flex;
@@ -311,6 +312,6 @@
     <span id="toast-msg">保存しました</span>
   </div>
 
-  <script src="settings.js?v=20260313" type="module"></script>
+  <script src="settings.js?v=20260313b" type="module"></script>
 </body>
 </html>

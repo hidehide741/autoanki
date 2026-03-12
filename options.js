@@ -141,7 +141,7 @@ function switchGenreWithWarning(genre) {
   renderForm();
 }
 
-// ===== フィールドツールバーラッパー（⚙ 詳細・× 削除） =====
+// ===== フィールドツールバーラッパー（⚙ 詳細・× 削除・☷☷ D&D） =====
 function wrapFieldWithToolbar(field, formGroupDiv) {
   const container = document.createElement('div');
   container.className = 'field-container';
@@ -151,9 +151,30 @@ function wrapFieldWithToolbar(field, formGroupDiv) {
   container.dataset.fieldLabel = field.label;
   container.dataset.fieldRequired = field.required ? '1' : '0';
   container.style.cssText = 'margin-bottom:1.25rem;';
+  container.draggable = true;
 
   const toolbar = document.createElement('div');
-  toolbar.style.cssText = 'display:flex;justify-content:flex-end;gap:0.35rem;margin-bottom:0.3rem;';
+  toolbar.style.cssText = 'display:flex;justify-content:space-between;align-items:center;gap:0.35rem;margin-bottom:0.3rem;';
+
+  // 左側: ドラッグハンドル + フィールド名
+  const leftSide = document.createElement('div');
+  leftSide.style.cssText = 'display:flex;align-items:center;gap:0.4rem;overflow:hidden;';
+
+  const dragHandle = document.createElement('span');
+  dragHandle.className = 'fc-drag-handle';
+  dragHandle.title = 'ドラッグして並び替え';
+  dragHandle.textContent = '⋯⋯';
+
+  const typeLabel = document.createElement('span');
+  typeLabel.style.cssText = 'font-size:0.72rem;color:var(--text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;';
+  typeLabel.textContent = (FIELD_TYPES.find(t => t.val === field.type)?.label || field.type).replace(/^\S+\s/, '') + ' 「' + field.label + '」';
+
+  leftSide.appendChild(dragHandle);
+  leftSide.appendChild(typeLabel);
+
+  // 右側: 詳細ボタン + 削除ボタン
+  const rightSide = document.createElement('div');
+  rightSide.style.cssText = 'display:flex;align-items:center;gap:0.35rem;flex-shrink:0;';
 
   const detailBtn = document.createElement('button');
   detailBtn.type = 'button';
@@ -166,8 +187,11 @@ function wrapFieldWithToolbar(field, formGroupDiv) {
   removeBtn.title = 'このフィールドを削除';
   removeBtn.style.cssText = 'background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);color:#f87171;border-radius:5px;width:26px;height:26px;cursor:pointer;font-size:0.9rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background 0.15s;';
 
-  toolbar.appendChild(detailBtn);
-  toolbar.appendChild(removeBtn);
+  rightSide.appendChild(detailBtn);
+  rightSide.appendChild(removeBtn);
+
+  toolbar.appendChild(leftSide);
+  toolbar.appendChild(rightSide);
 
   const detailPanel = createFieldDetailPanel(field);
   detailPanel.style.cssText = 'display:none;background:rgba(0,0,0,0.25);border:1px solid rgba(99,102,241,0.2);border-radius:8px;padding:0.75rem 1rem;margin-bottom:0.5rem;';
@@ -182,6 +206,59 @@ function wrapFieldWithToolbar(field, formGroupDiv) {
     container.remove();
     activeGenre.fields = activeGenre.fields.filter(f => f.key !== field.key);
     updateCardPreview(activeGenre, currentPreviewValues);
+  });
+
+  // ===== D&D 処理 =====
+  // ドラッグ開始：container 自体をドラッグソースに
+  container.addEventListener('dragstart', (e) => {
+    // ドラッグハンドルかどうかはチェック不要（container全体が draggable）
+    _formDragSrc = container;
+    e.dataTransfer.effectAllowed = 'move';
+    const rect = container.getBoundingClientRect();
+    const ghost = container.cloneNode(true);
+    ghost.style.cssText = `position:fixed;top:-9999px;left:-9999px;width:${rect.width}px;pointer-events:none;opacity:0.8;`;
+    document.body.appendChild(ghost);
+    e.dataTransfer.setDragImage(ghost, e.clientX - rect.left, e.clientY - rect.top);
+    requestAnimationFrame(() => ghost.remove());
+    requestAnimationFrame(() => container.classList.add('fc-dragging'));
+  });
+
+  container.addEventListener('dragend', () => {
+    if (_formDragSrc) _formDragSrc.classList.remove('fc-dragging');
+    document.querySelectorAll('.field-container').forEach(c => c.classList.remove('fc-drop-above','fc-drop-below'));
+    _formDragSrc = null;
+    // DOM 順序から activeGenre.fields を再構築
+    syncFieldsFromDom();
+    updateCardPreview(activeGenre, currentPreviewValues);
+  });
+
+  container.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    if (!_formDragSrc || _formDragSrc === container) return;
+    // 別ロールブロック間の移動は不可
+    if (_formDragSrc.dataset.fieldRole !== container.dataset.fieldRole) return;
+    document.querySelectorAll('.field-container').forEach(c => c.classList.remove('fc-drop-above','fc-drop-below'));
+    const rect = container.getBoundingClientRect();
+    const goBelow = e.clientY > rect.top + rect.height / 2;
+    container.classList.add(goBelow ? 'fc-drop-below' : 'fc-drop-above');
+    // 実際に DOM を入れ替え（リアルタイムに動く）
+    const parent = container.parentElement;
+    if (goBelow) {
+      // 「フィールドを追加」ボタンの维思笠（.add-field-wrap）の直前に插入
+      const addWrap = parent.querySelector('.add-field-wrap');
+      const refNode = container.nextSibling;
+      if (refNode && refNode !== _formDragSrc) {
+        parent.insertBefore(_formDragSrc, refNode === addWrap ? addWrap : refNode);
+      } else if (!refNode || refNode === addWrap) {
+        parent.insertBefore(_formDragSrc, addWrap || null);
+      }
+    } else {
+      parent.insertBefore(_formDragSrc, container);
+    }
+  });
+
+  container.addEventListener('dragleave', (e) => {
+    if (!container.contains(e.relatedTarget)) container.classList.remove('fc-drop-above','fc-drop-below');
   });
 
   container.appendChild(toolbar);
@@ -259,6 +336,20 @@ function createFieldDetailPanel(field) {
     updateCardPreview(activeGenre, currentPreviewValues);
   });
   return panel;
+}
+
+// ===== DOM 順序から activeGenre.fields を再構築 =====
+function syncFieldsFromDom() {
+  if (!activeGenre) return;
+  const keyMap = Object.fromEntries(activeGenre.fields.map(f => [f.key, f]));
+  const newFields = [];
+  document.querySelectorAll('#form-fields .field-container').forEach(c => {
+    const f = keyMap[c.dataset.fieldKey];
+    if (f) newFields.push(f);
+  });
+  // DOM に出ていないフィールド（万一）は末尾に追加
+  activeGenre.fields.forEach(f => { if (!newFields.includes(f)) newFields.push(f); });
+  activeGenre.fields = newFields;
 }
 
 // ===== フィールド追加ボタン & 新フィールド追加 =====
@@ -453,6 +544,7 @@ function renderStep1() {
 // ===== STEP 2: フィールド微調整 =====
 // settings.jsのaddFieldRow相当の実装（options.js内完結版）
 let _s2DragSrcWrapper = null;
+let _formDragSrc = null; // renderForm フィールドの D&D 用
 
 function s2AddFieldRow(container, type = 'textarea', required = false, options = {}) {
   const DETAIL_DEFS = {

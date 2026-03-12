@@ -175,6 +175,31 @@
       color: #a78bfa;
       font-weight: 600;
     }
+    .field-container.fc-dragging {
+      opacity: 0.35;
+      background: rgba(99,102,241,0.06);
+      border-radius: 10px;
+    }
+    .field-container.fc-drop-above {
+      border-top: 2px solid #6366f1;
+      margin-top: -2px;
+    }
+    .field-container.fc-drop-below {
+      border-bottom: 2px solid #6366f1;
+    }
+    .fc-drag-handle {
+      cursor: grab;
+      color: rgba(255,255,255,0.2);
+      font-size: 1rem;
+      padding: 0.1rem 0.25rem;
+      border-radius: 4px;
+      user-select: none;
+      transition: color 0.15s;
+      line-height: 1;
+      letter-spacing: -1px;
+    }
+    .fc-drag-handle:hover { color: rgba(255,255,255,0.6); }
+    .fc-drag-handle:active { cursor: grabbing; }
   </style>
 </head>
 <body>

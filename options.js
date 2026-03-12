@@ -66,11 +66,28 @@ function renderForm() {
       return;
     }
 
-    // static (固定テキスト) タイプはラベルのみを表示
+    // static (固定テキスト) タイプはユーザーが自由にテキストを入力できる input を表示
     if (field.type === 'static') {
       const div = document.createElement('div');
-      div.className = 'form-group static-field';
-      div.innerHTML = `<div style="padding: 0.6rem 0.8rem; background: rgba(99,102,241,0.1); border-left: 3px solid #a78bfa; border-radius: 4px; font-weight: 500; color: #a78bfa; font-size: 0.9rem;">${field.label}</div>`;
+      div.className = 'form-group';
+      const label = document.createElement('label');
+      label.htmlFor = `field-${field.key}`;
+      label.innerHTML = `🔖 ラベルテキスト`;
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.id = `field-${field.key}`;
+      input.name = field.key;
+      input.placeholder = `${field.label}`;
+      input.value = field.label; // 初期値は設定時のラベル
+      input.style.cssText = 'border-left: 3px solid #a78bfa; color: #a78bfa;';
+      input.addEventListener('input', () => {
+        currentPreviewValues[field.key] = input.value;
+        updateCardPreview(genre, currentPreviewValues);
+      });
+      // 初期値をプレビュー値にも反映
+      currentPreviewValues[field.key] = input.value;
+      div.appendChild(label);
+      div.appendChild(input);
       targetInner.appendChild(div);
       return;
     }
@@ -142,7 +159,11 @@ function updateCardPreview(genre, values) {
     const fields = genre.fields.filter(f => f.role === role);
     let html = '';
     fields.forEach(f => {
-      if (f.type === 'image') {
+      if (f.type === 'static') {
+        // 固定テキスト：ユーザーが入力した値（なければ field.label）をラベルとして表示
+        const staticVal = (values[f.key] !== undefined && values[f.key] !== '') ? values[f.key] : f.label;
+        html += `<div style="padding:0.6rem 1rem;margin:0.4rem 0 0.6rem 0;background:rgba(99,102,241,0.1);border-radius:8px;border-left:4px solid #a78bfa;font-weight:600;font-size:1rem;color:#a78bfa;">${escapeHtml(staticVal)}</div>`;
+      } else if (f.type === 'image') {
         const imgs = pendingImages[f.key] || [];
         if (imgs.length > 0) {
           html += `<div style="display:flex;flex-wrap:wrap;gap:0.5rem;margin-bottom:0.6rem;">`;
@@ -151,9 +172,9 @@ function updateCardPreview(genre, values) {
           });
           html += `</div>`;
         }
-      } else if (f.type !== 'static') {
+      } else {
         const val = values[f.key] || '';
-        html += `<div style="background:rgba(0,0,0,0.12);padding:0.9rem;border-radius:8px;margin-bottom:0.6rem;min-height:36px;font-size:0.92rem;">${val ? escapeHtml(val).replace(/\n/g,'<br>') : '<span style="color:#94a3b8;">（未入力）</span>'}</div>`;
+        html += `<div style="background:rgba(0,0,0,0.12);padding:0.9rem;border-radius:8px;margin-bottom:0.6rem;min-height:36px;font-size:0.92rem;">${val ? escapeHtml(val).replace(/\n/g,'<br>') : '<span style=\"color:#94a3b8;\">（未入力）</span>'}</div>`;
       }
     });
     if (!html) html = `<div style="background:rgba(0,0,0,0.08);padding:0.8rem;border-radius:8px;color:#94a3b8;font-size:0.85rem;">（フィールドがありません）</div>`;
@@ -317,11 +338,13 @@ function setupListeners() {
       
       genre.fields.forEach(f => {
         const val = values[f.key];
-        if (!val) return;
+        // static は値が空のとき field.label を使用、それ以外は値がなければスキップ
+        const saveVal = f.type === 'static' ? (val || f.label) : val;
+        if (!saveVal) return;
         if (f.role === 'question') {
-          qParts.push(`[${f.label}]\n${val}`);
+          qParts.push(`[${f.label}]\n${saveVal}`);
         } else if (f.role === 'answer') {
-          aParts.push(`[${f.label}]\n${val}`);
+          aParts.push(`[${f.label}]\n${saveVal}`);
         }
       });
 

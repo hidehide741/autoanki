@@ -133,10 +133,20 @@ function showQuestionMode(genreDef) {
     const rawContent = (field.role === 'question' ? currentCard.question : currentCard.answer) || '';
     
     if (field.type === 'static') {
+      // rawContent から [ラベル]\n値 の形式で値を読み出す
+      let staticVal = field.label; // デフォルトはジャンル定義のラベル
+      const searchStr = `[${field.label}]\n`;
+      const startIdx = rawContent.indexOf(searchStr);
+      if (startIdx !== -1) {
+        const contentStart = startIdx + searchStr.length;
+        const nextIdx = rawContent.indexOf('\n\n[', contentStart);
+        const extracted = (nextIdx !== -1 ? rawContent.substring(contentStart, nextIdx) : rawContent.substring(contentStart)).trim();
+        if (extracted) staticVal = extracted;
+      }
       const staticEl = document.createElement('div');
       staticEl.className = 'static-text-display';
-      staticEl.style.cssText = 'padding: 0.75rem 1rem; margin: 1rem 0; background: rgba(99,102,241,0.08); border-radius: 8px; border-left: 4px solid #a78bfa; font-weight: 600; font-size: 1.1rem; color: #a78bfa;';
-      staticEl.textContent = field.label;
+      staticEl.style.cssText = 'padding: 0.6rem 1rem; margin: 0.75rem 0; background: rgba(99,102,241,0.1); border-radius: 8px; border-left: 4px solid #a78bfa; font-weight: 600; font-size: 1rem; color: #a78bfa;';
+      staticEl.textContent = staticVal;
       container.appendChild(staticEl);
     } else if (field.type === 'image') {
       // role と fieldKey モードの両方に対応

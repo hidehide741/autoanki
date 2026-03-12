@@ -43,7 +43,7 @@ const FIELD_DETAIL_DEFS = {
     { key: 'valign',   label: '文字揃え(縦)',   type: 'select', choices: [['top','上'],['middle','中'],['bottom','下']], default: 'middle' },
     { key: 'bold',     label: '太字',           type: 'toggle', default: false },
     { key: 'fontSize', label: '文字サイズ',     type: 'select', choices: [['sm','小'],['md','中'],['lg','大']], default: 'md' },
-    { key: 'color',    label: '文字色',         type: 'color',  choices: ['#ffffff','#a78bfa','#60a5fa','#34d399','#fbbf24','#f87171'], default: '' },
+    { key: 'color',    label: '文字色',         type: 'color',  choices: ['#ffffff','#a78bfa','#60a5fa','#34d399','#fbbf24','#f87171','#000000'], default: '' },
   ],
   textarea:      [{ key: 'rows', label: '表示行数', type: 'number', min:1, max:10, default: 3 }],
   freetext:      [{ key: 'rows', label: '表示行数', type: 'number', min:1, max:10, default: 3 }],
@@ -56,7 +56,7 @@ const FIELD_DETAIL_DEFS = {
   difficulty:    [{ key: 'maxStars', label: '最大値', type: 'select', choices: [['3','3段階'],['5','5段階'],['10','10段階']], default: '5' }, { key: 'defaultVal', label: 'デフォルト値', type: 'number', min:1, max:10, default: 3 }],
   timer:         [{ key: 'defaultSec', label: 'デフォルト秒数', type: 'number', min:5, max:600, default: 30 }, { key: 'timeupAction', label: 'タイムアップ時', type: 'select', choices: [['warn','警告のみ'],['auto','自動送り']], default: 'warn' }],
   url:           [{ key: 'linkLabel', label: 'リンクラベル', type: 'text', default: '参考資料を見る' }],
-  static:        [{ key: 'border', label: '枞を表示', type: 'toggle', default: true }],
+  static:        [{ key: 'border', label: '枠を表示', type: 'toggle', default: true }],
 };
 
 const el = {
@@ -298,7 +298,7 @@ function createFieldDetailPanel(field) {
     } else if (def.type === 'number') {
       wrap.innerHTML = `${def.label}: <input type="number" class="detail-input" data-key="${def.key}" value="${val}" min="${def.min||0}" max="${def.max||9999}" style="background:rgba(0,0,0,0.3);border:1px solid var(--glass-border);color:var(--text-primary);padding:0.25rem 0.5rem;border-radius:5px;width:70px;font-size:0.8rem;">`;
     } else if (def.type === 'color') {
-      const swatches = def.choices.map(c => `<button type="button" class="color-swatch" data-color="${c}" style="width:18px;height:18px;border-radius:50%;background:${c};border:2px solid ${String(val)===c?'#fff':'transparent'};cursor:pointer;flex-shrink:0;"></button>`).join('');
+      const swatches = def.choices.map(c => `<button type="button" class="color-swatch" data-color="${c}" style="width:18px;height:18px;border-radius:50%;background:${c};border:2px solid ${String(val)===c?'#fff':'rgba(255,255,255,0.25)'};cursor:pointer;flex-shrink:0;"></button>`).join('');
       wrap.innerHTML = `${def.label}: <span class="color-swatches" style="display:flex;gap:4px;align-items:center;">${swatches}</span><input type="hidden" class="detail-input" data-key="${def.key}" value="${val}">`;
     } else if (def.type === 'text') {
       wrap.innerHTML = `${def.label}: <input type="text" class="detail-input" data-key="${def.key}" value="${esc(String(val))}" style="background:rgba(0,0,0,0.3);border:1px solid var(--glass-border);color:var(--text-primary);padding:0.25rem 0.5rem;border-radius:5px;font-size:0.8rem;min-width:120px;">`;
@@ -308,6 +308,23 @@ function createFieldDetailPanel(field) {
 
   panel.appendChild(header);
   panel.appendChild(fieldsRow);
+
+  // カラースウォッチのクリック処理（hidden inputを直接更新 + field.options反映）
+  panel.querySelectorAll('.color-swatches').forEach(group => {
+    group.querySelectorAll('.color-swatch').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const color = btn.dataset.color;
+        group.querySelectorAll('.color-swatch').forEach(b => b.style.borderColor = 'rgba(255,255,255,0.25)');
+        btn.style.borderColor = '#fff';
+        const hiddenInput = group.parentElement.querySelector('.detail-input[data-key="color"]');
+        if (hiddenInput) hiddenInput.value = color;
+        if (!field.options) field.options = {};
+        field.options.color = color;
+        updateCardPreview(activeGenre, currentPreviewValues);
+      });
+    });
+  });
+
   // 変更時に field.options を即時反映 + プレビュー更新
   panel.addEventListener('change', () => {
     panel.querySelectorAll('.detail-input').forEach(inp => {
@@ -1311,7 +1328,7 @@ function updateCardPreview(genre, values) {
 
     // 基本テキストスタイル（text / textarea / freetext / number / date 等）
     const baseTextStyle = isQuestion
-      ? `font-size:${fsSz||'1.1rem'};font-weight:${opts.bold===false?'400':opts.bold?'700':'700'};line-height:1.55;letter-spacing:-0.01em;${
+      ? `font-size:${fsSz||'1.1rem'};font-weight:${opts.bold?'700':'400'};line-height:1.55;letter-spacing:-0.01em;${
           opts.color
             ? `color:${opts.color};-webkit-text-fill-color:${opts.color};background:none;-webkit-background-clip:initial;background-clip:initial;`
             : 'background:linear-gradient(135deg,#f1f5f9,#cbd5e1);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;'
@@ -1324,9 +1341,9 @@ function updateCardPreview(genre, values) {
       const v = (values[f.key] !== undefined && values[f.key] !== '') ? values[f.key] : f.label;
       const showBorder = opts.border !== false; // default: true
       const borderStyle = showBorder
-        ? 'background:rgba(99,102,241,0.1);border-left:4px solid #a78bfa;border-radius:7px;'
+        ? 'background:rgba(99,102,241,0.08);border:1px solid rgba(167,139,250,0.35);border-radius:6px;'
         : 'background:transparent;border:none;border-radius:0;';
-      return valignWrap(`<div style="padding:0.5rem 0.9rem;margin:0.3rem 0 0.6rem;${borderStyle}${boldSt||'font-weight:600;'}font-size:${fsSz||'0.95rem'};color:${opts.color||'#ffffff'};${alignSt}">${escapeHtml(v)}</div>`);
+      return valignWrap(`<div style="padding:0.4rem 0.75rem;margin:0.3rem 0 0.6rem;${borderStyle}${boldSt||'font-weight:600;'}font-size:${fsSz||'0.95rem'};color:${opts.color||'#a78bfa'};${alignSt}">${escapeHtml(v)}</div>`);
     }
 
     if (f.type === 'image') {

@@ -257,7 +257,8 @@ function renderPreviews(fieldKey) {
     wrap.querySelector('.remove-img-btn').addEventListener('click', (e) => {
       const fKey = e.target.dataset.fieldKey;
       const idx = parseInt(e.target.dataset.idx, 10);
-      pendingImages[fKey].splice(idx, 1);
+      const removed = pendingImages[fKey].splice(idx, 1);
+      if (removed[0]?.previewUrl) URL.revokeObjectURL(removed[0].previewUrl);
       renderPreviews(fKey);
     });
     container.appendChild(wrap);
@@ -358,8 +359,11 @@ function setupListeners() {
 
       // フォームリセット
       el.addForm.querySelectorAll('input:not([type="file"]), textarea').forEach(i => i.value = '');
+      // blob URL を解放してメモリリークを防止
+      Object.values(pendingImages).forEach(imgs =>
+        imgs.forEach(img => img.previewUrl && URL.revokeObjectURL(img.previewUrl))
+      );
       pendingImages = {};
-      Object.keys(pendingImages).forEach(key => renderPreviews(key)); // 念のため初期化
       renderForm(); // フォームを再生成してリセット
 
       el.successMsg.classList.remove('hidden');

@@ -611,7 +611,8 @@ function renderEditPreviews(fieldKey) {
     wrap.querySelector('.remove-edit-img-btn').addEventListener('click', e => {
       const fKey = e.target.dataset.fieldKey;
       const idx = parseInt(e.target.dataset.idx, 10);
-      pendingEditImages[fKey].splice(idx, 1);
+      const removed = pendingEditImages[fKey].splice(idx, 1);
+      if (removed[0]?.previewUrl?.startsWith('blob:')) URL.revokeObjectURL(removed[0].previewUrl);
       renderEditPreviews(fKey);
       updateEditPreview(); // カードプレビューも同期
     });
@@ -627,6 +628,10 @@ function renderEditPreviews(fieldKey) {
 function closeEditModal() {
   el.editOverlay.classList.add('hidden');
   document.body.style.overflow = '';
+  // blob URL を解放してメモリリークを防止
+  Object.values(pendingEditImages).forEach(imgs =>
+    imgs.forEach(img => img.previewUrl?.startsWith('blob:') && URL.revokeObjectURL(img.previewUrl))
+  );
   pendingEditImages = {};
 }
 

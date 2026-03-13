@@ -1,4 +1,5 @@
 import StorageManager, { uploadImageToSupabase } from './storage.js';
+import { renderFieldHtml as _renderFieldHtml, escapeHtml } from './renderCard.js';
 
 const MAX_IMAGES = 3;
 
@@ -1315,8 +1316,13 @@ function updateCardPreview(genre, values) {
   const panel = document.getElementById('card-preview-panel');
   if (!panel) return;
 
-  // 1フィールドを実際のカード表示と同じ方法でHTMLに変換
+  // 1フィールドを renderCard.js の共通ロジックでHTMLに変換（newtab.js と完全同一）
   function renderFieldHtml(f, isQuestion) {
+    const imageList = (pendingImages[f.key] || []).map(img => ({ url: img.previewUrl || img.existingUrl || '' }));
+    return _renderFieldHtml(f, isQuestion, (field) => values[field.key] || '', imageList);
+  }
+  /* ===== 旧実装（renderCard.js に移行済み）=====
+  function _legacy_renderFieldHtml(f, isQuestion) {
     const opts     = f.options || {};
     const fsSz     = opts.fontSize === 'sm' ? '0.82rem' : opts.fontSize === 'lg' ? '1.25rem' : null;
     const alignSt  = opts.align ? `text-align:${opts.align};` : '';
@@ -1456,7 +1462,7 @@ function updateCardPreview(genre, values) {
     const val = values[f.key] || '';
     if (!val) return '';
     return valignWrap(`<p style="${baseTextStyle}">${escapeHtml(val).replace(/\n/g,'<br>')}</p>`);
-  }
+  } ===== 旧実装ここまで ===== */
 
   // 問題・答えそれぞれのフィールドをHTML化
   const qFields = genre.fields.filter(f => f.role === 'question');
@@ -1521,14 +1527,7 @@ function updateCardPreview(genre, values) {
 }
 
 // HTMLエスケープ関数
-function escapeHtml(str) {
-  return str.replace(/[&<>'"]/g, function(tag) {
-    const chars = {
-      '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
-    };
-    return chars[tag] || tag;
-  });
-}
+// escapeHtml は renderCard.js からインポート済み
 
 function buildImagePasteUI(field) {
   const wrapper = document.createElement('div');

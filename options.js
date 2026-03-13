@@ -24,6 +24,8 @@ let editingCardOriginal = null;
 let currentStep = 1;          // 1=型選択, 2=微調整, 3=入力
 let activeGenre = null;       // ステップ2・3で使う「現在の型」(fields配列を含む)
 let activeGenreId = null;     // 選択したジャンルのid（保存時に使う）
+let _qRoleInner = null;       // renderForm の問題ブロック inner 参照
+let _aRoleInner = null;       // renderForm の答えブロック inner 参照
 
 // settings.jsと共通のフィールドタイプ定義
 const FIELD_TYPES = [
@@ -425,7 +427,26 @@ function addNewFormField(inner, role, type) {
   }
 
   if (type === 'choice_single' || type === 'choice_multi') {
-    inner.insertBefore(wrapFieldWithToolbar(newField, buildChoiceFieldUI(newField, activeGenre)), inner.lastChild);
+    const choiceUI = buildChoiceFieldUI(newField, activeGenre);
+    const choiceContainer = wrapFieldWithToolbar(newField, choiceUI);
+    inner.insertBefore(choiceContainer, inner.lastChild);
+    // 問題側のみ: 答えブロックにミラーを自動挿入し、両方の × を連動
+    if (role === 'question' && _aRoleInner) {
+      const mirrorBlock = buildChoiceMirrorBlock(newField);
+      _aRoleInner.insertBefore(mirrorBlock, _aRoleInner.lastChild);
+      const origBtn = choiceContainer.querySelector('button[title="このフィールドを削除"]');
+      const newBtn = origBtn.cloneNode(true);
+      origBtn.parentNode.replaceChild(newBtn, origBtn);
+      const onDelete = () => {
+        if (!confirm('選択肢フィールドを削除すると、問題・答えの両方から消えます。\nよろしいですか？')) return;
+        choiceContainer.remove();
+        mirrorBlock.remove();
+        activeGenre.fields = activeGenre.fields.filter(f => f.key !== newField.key);
+        updateCardPreview(activeGenre, currentPreviewValues);
+      };
+      newBtn.addEventListener('click', onDelete);
+      mirrorBlock.querySelector('.choice-mirror-remove-btn').addEventListener('click', onDelete);
+    }
     return;
   }
 
@@ -983,6 +1004,9 @@ function buildChoiceFieldUI(field, genre) {
       .filter(i => i !== -1);
     currentPreviewValues[field.key] = JSON.stringify({ options: opts, correct });
     updateCardPreview(genre, currentPreviewValues);
+    // 答え側ミラーブロックをリアルタイム更新
+    const mirror = document.querySelector(`#form-fields .choice-mirror-block[data-mirror-for="${field.key}"]`);
+    if (mirror && mirror.updateDisplay) mirror.updateDisplay(opts, correct);
   };
 
   const applyMarkStyle = (btn, isCorrect) => {
@@ -1076,6 +1100,69 @@ function buildChoiceFieldUI(field, genre) {
   return div;
 }
 
+// ===== 答え側に自動挿入される選択肢ミラーブロック（読み取り専用・○×表示） =====
+function buildChoiceMirrorBlock(field) {
+  const wrapper = document.createElement('div');
+  wrapper.className = 'choice-mirror-block';
+  wrapper.dataset.mirrorFor = field.key;
+  wrapper.style.cssText = 'margin-bottom:1.25rem;';
+
+  // ツールバー
+  const toolbar = document.createElement('div');
+  toolbar.style.cssText = 'display:flex;justify-content:space-between;align-items:center;gap:0.35rem;margin-bottom:0.3rem;';
+
+  const leftSide = document.createElement('div');
+  leftSide.style.cssText = 'display:flex;align-items:center;gap:0.4rem;overflow:hidden;';
+  leftSide.innerHTML = `
+    <span style="font-size:0.72rem;color:var(--text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">☑️ 選択肢 「${escapeHtml(field.label)}」</span>
+    <span style="font-size:0.62rem;background:rgba(99,102,241,0.2);color:#a78bfa;border:1px solid rgba(99,102,241,0.3);border-radius:4px;padding:0.05rem 0.4rem;white-space:nowrap;flex-shrink:0;">問題側から自動反映</span>
+  `;
+
+  const removeBtn = document.createElement('button');
+  removeBtn.type = 'button';
+  removeBtn.className = 'choice-mirror-remove-btn';
+  removeBtn.textContent = '×';
+  removeBtn.title = '選択肢フィールドを削除（問題側も同時に削除）';
+  removeBtn.style.cssText = 'background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);color:#f87171;border-radius:5px;width:26px;height:26px;cursor:pointer;font-size:0.9rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background 0.15s;';
+
+  toolbar.appendChild(leftSide);
+  toolbar.appendChild(removeBtn);
+
+  // 表示エリア（○/× で選択肢を表示）
+  const display = document.createElement('div');
+  display.style.cssText = 'background:rgba(0,0,0,0.15);border:1px solid rgba(99,102,241,0.2);border-radius:8px;padding:0.75rem 1rem;min-height:3rem;';
+  display.innerHTML = '<div style="color:#64748b;font-size:0.85rem;">（選択肢を入力してください）</div>';
+
+  const hint = document.createElement('div');
+  hint.style.cssText = 'font-size:0.72rem;color:#64748b;margin-top:0.35rem;';
+  hint.textContent = '問題欄で選択肢を編集すると、ここに○×が自動反映されます';
+
+  wrapper.appendChild(toolbar);
+  wrapper.appendChild(display);
+  wrapper.appendChild(hint);
+
+  // updateDisplay: buildChoiceFieldUI の updateChoicePreview から呼ばれる
+  wrapper.updateDisplay = (opts, correct) => {
+    if (!opts || !opts.length) {
+      display.innerHTML = '<div style="color:#64748b;font-size:0.85rem;">（選択肢を入力してください）</div>';
+      return;
+    }
+    const isH = field.options?.layout === 'horizontal';
+    display.innerHTML = `<div style="display:flex;${isH ? 'flex-direction:row;flex-wrap:wrap;' : 'flex-direction:column;'}gap:0.35rem;">${
+      opts.map((opt, i) => {
+        const isCorrect = (correct || []).includes(i);
+        const bg     = isCorrect ? 'rgba(34,197,94,0.12)'  : 'rgba(239,68,68,0.07)';
+        const border = isCorrect ? 'rgba(34,197,94,0.35)'  : 'rgba(239,68,68,0.25)';
+        const color  = isCorrect ? '#4ade80' : '#fca5a5';
+        const mark   = isCorrect ? '○' : '×';
+        return `<div style="padding:0.35rem 0.75rem;border-radius:7px;background:${bg};border:1px solid ${border};color:${color};font-size:0.88rem;display:flex;align-items:center;gap:0.45rem;"><span style="font-weight:700;">${mark}</span><span>${opt ? escapeHtml(opt) : '<span style="color:#64748b;font-style:italic;">（未入力）</span>'}</span></div>`;
+      }).join('')
+    }</div>`;
+  };
+
+  return wrapper;
+}
+
 function renderForm() {
   el.formFields.innerHTML = '';
   pendingImages = {};
@@ -1090,7 +1177,10 @@ function renderForm() {
   const aBlock = createRoleBlock('答え（うら）', '#8b5cf6');
   const qInner = qBlock.querySelector('.role-block-inner');
   const aInner = aBlock.querySelector('.role-block-inner');
+  _qRoleInner = qInner;
+  _aRoleInner = aInner;
 
+  const questionChoiceMirrors = []; // 問題側選択肢 → 後でaInnerにミラーを挿入
   genre.fields.forEach(field => {
     // role 未定義の場合: key名で判定（'answer'/'a_'始まり→answer、それ以外→question）
     if (!field.role) {
@@ -1160,7 +1250,13 @@ function renderForm() {
 
     // ===== 選択肢 (choice_single / choice_multi) =====
     if (field.type === 'choice_single' || field.type === 'choice_multi') {
-      targetInner.appendChild(wrapFieldWithToolbar(field, buildChoiceFieldUI(field, genre)));
+      const choiceContainer = wrapFieldWithToolbar(field, buildChoiceFieldUI(field, genre));
+      if (field.role === 'question') {
+        qInner.appendChild(choiceContainer);
+        questionChoiceMirrors.push({ field, choiceContainer });
+      } else {
+        targetInner.appendChild(choiceContainer);
+      }
       return;
     }
 
@@ -1345,6 +1441,33 @@ function renderForm() {
     div.appendChild(label);
     div.appendChild(input);
     targetInner.appendChild(wrapFieldWithToolbar(field, div));
+  });
+
+  // 問題側選択肢のミラーブロックをaInnerに追加（答えフィールドの後、追加ボタンの前）
+  questionChoiceMirrors.forEach(({ field, choiceContainer }) => {
+    const mirrorBlock = buildChoiceMirrorBlock(field);
+    aInner.appendChild(mirrorBlock);
+    // × ボタンを問題・答え両方連動に差し替え
+    const origBtn = choiceContainer.querySelector('button[title="このフィールドを削除"]');
+    const newBtn = origBtn.cloneNode(true);
+    origBtn.parentNode.replaceChild(newBtn, origBtn);
+    const onDelete = () => {
+      if (!confirm('選択肢フィールドを削除すると、問題・答えの両方から消えます。\nよろしいですか？')) return;
+      choiceContainer.remove();
+      mirrorBlock.remove();
+      activeGenre.fields = activeGenre.fields.filter(f => f.key !== field.key);
+      updateCardPreview(activeGenre, currentPreviewValues);
+    };
+    newBtn.addEventListener('click', onDelete);
+    mirrorBlock.querySelector('.choice-mirror-remove-btn').addEventListener('click', onDelete);
+    // 初期選択肢データをミラーに反映（buildChoiceFieldUI内でupdateChoicePreviewが呼ばれ已にcurrentPreviewValuesに格納済み）
+    const initVal = currentPreviewValues[field.key];
+    if (initVal) {
+      try {
+        const { options: opts, correct } = JSON.parse(initVal);
+        mirrorBlock.updateDisplay(opts, correct);
+      } catch {}
+    }
   });
 
   // 「＋ フィールドを追加」ボタンを各ロールブロックに追加

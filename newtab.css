@@ -502,6 +502,81 @@ body {
   transition: width 0.4s ease;
 }
 
+/* ===== キーボードショートカットヒント ===== */
+.kbd-hint {
+  font-size: 0.65rem;
+  color: var(--text-secondary);
+  opacity: 0.5;
+  font-family: monospace;
+}
+
+/* ===== フォーカススタイル ===== */
+:focus-visible {
+  outline: 2px solid rgba(99,102,241,0.6);
+  outline-offset: 2px;
+}
+button:focus-visible, a:focus-visible {
+  outline: 2px solid rgba(99,102,241,0.6);
+  outline-offset: 2px;
+}
+
+/* ===== モバイルハンバーガー ===== */
+.mobile-menu-btn {
+  display: none;
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  z-index: 999;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #6366f1, #4f46e5);
+  border: none;
+  color: white;
+  font-size: 1.4rem;
+  cursor: pointer;
+  box-shadow: 0 4px 20px rgba(99,102,241,0.5);
+  align-items: center;
+  justify-content: center;
+}
+.mobile-nav-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.7);
+  backdrop-filter: blur(4px);
+  z-index: 998;
+}
+.mobile-nav-overlay.show { display: block; }
+.mobile-nav-panel {
+  display: none;
+  position: fixed;
+  bottom: 5rem;
+  right: 1.5rem;
+  z-index: 999;
+  background: rgba(15,23,42,0.95);
+  backdrop-filter: blur(16px);
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  padding: 1rem;
+  min-width: 200px;
+  box-shadow: 0 15px 40px rgba(0,0,0,0.5);
+}
+.mobile-nav-panel.show { display: flex; flex-direction: column; gap: 0.3rem; }
+.mobile-nav-panel a {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.7rem 1rem;
+  border-radius: 8px;
+  color: var(--text-primary);
+  text-decoration: none;
+  font-size: 0.9rem;
+  transition: background 0.15s;
+}
+.mobile-nav-panel a:hover { background: rgba(255,255,255,0.08); }
+.mobile-nav-panel a.active { background: rgba(99,102,241,0.2); color: #818cf8; }
+
 /* ===== レスポンシブ ===== */
 @media (max-width: 768px) {
   .sidebar { display: none; }
@@ -510,4 +585,5 @@ body {
   .rating-buttons { grid-template-columns: repeat(2, 1fr); }
   .top-bar { padding: 1rem; }
   .container { padding: 1rem; }
+  .mobile-menu-btn { display: flex; }
 }

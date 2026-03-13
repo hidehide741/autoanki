@@ -2,6 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="icon" href="favicon.png" type="image/png">
   <title>AutoAnki - 問題DB</title>
   <link rel="stylesheet" href="options.css">
@@ -44,6 +45,26 @@
       white-space: nowrap;
       margin-left: auto;
     }
+
+    /* ===== ツールバーボタン ===== */
+    .icon-btn-toolbar {
+      background: rgba(99,102,241,0.1);
+      border: 1px solid rgba(99,102,241,0.25);
+      color: #a78bfa;
+      padding: 0.45rem 0.85rem;
+      border-radius: 8px;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 0.82rem;
+      white-space: nowrap;
+      transition: all 0.15s;
+    }
+    .icon-btn-toolbar:hover { background: rgba(99,102,241,0.2); }
+    .icon-btn-toolbar.danger { background: rgba(239,68,68,0.1); border-color: rgba(239,68,68,0.25); color: #f87171; }
+    .icon-btn-toolbar.danger:hover { background: rgba(239,68,68,0.2); }
+
+    /* ===== 一括選択チェックボックス ===== */
+    .row-checkbox { accent-color: #6366f1; width: 16px; height: 16px; cursor: pointer; }
 
     /* ===== テーブル ===== */
     .db-table-wrap {
@@ -265,7 +286,7 @@
       </div>
       <div class="nav-links">
         <a href="dashboard.html" class="nav-btn"><span class="nav-icon">📊</span><span class="nav-text"> ダッシュボード</span></a>
-        <a href="index.html"     class="nav-btn"><span class="nav-icon">▶️</span><span class="nav-text"> 問題を解く</span></a>
+        <a href="newtab.html"     class="nav-btn"><span class="nav-icon">▶️</span><span class="nav-text"> 問題を解く</span></a>
         <a href="options.html"   class="nav-btn"><span class="nav-icon">➕</span><span class="nav-text"> 問題作成</span></a>
         <a href="cardlist.html"  class="nav-btn active"><span class="nav-icon">📋</span><span class="nav-text"> 問題DB</span></a>
         <a href="settings.html"  class="nav-btn"><span class="nav-icon">⚙️</span><span class="nav-text"> 設定</span></a>
@@ -285,6 +306,9 @@
             <option value="">すべてのジャンル</option>
           </select>
           <span class="count-badge" id="count-badge">読み込み中…</span>
+          <button class="icon-btn-toolbar" id="export-btn" title="エクスポート">📥 エクスポート</button>
+          <button class="icon-btn-toolbar" id="import-btn" title="インポート">📤 インポート</button>
+          <button class="icon-btn-toolbar danger" id="bulk-delete-btn" title="一括削除" style="display:none;">🗑️ 一括削除 (<span id="bulk-count">0</span>)</button>
         </div>
 
         <!-- テーブル -->
@@ -292,6 +316,7 @@
           <table class="db-table" id="db-table">
             <thead>
               <tr>
+                <th style="width:36px;cursor:default;"><input type="checkbox" class="row-checkbox" id="select-all-checkbox" title="全選択"></th>
                 <th data-col="thumb" style="width:56px;cursor:default;"></th>
                 <th data-col="question">問題 <span class="sort-indicator">↕</span></th>
                 <th data-col="genre">ジャンル <span class="sort-indicator">↕</span></th>

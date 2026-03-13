@@ -4,6 +4,8 @@ import { renderFieldHtml as _renderFieldHtml } from './renderCard.js';
 let currentCard = null;
 let answerShown = false;
 let isProcessing = false; // 二重送信防止用
+let cachedGenres = null;  // ジャンルキャッシュ
+let activeTimers = [];    // アクティブなタイマー
 
 // DOM要素（DOMContentLoaded後に init() で初期化）
 let el = {};
@@ -72,7 +74,8 @@ async function loadNextCard() {
         window.location.replace('https://www.google.com/');
         return;
       } else {
-        showDoneMode();
+        const remainMs = await StorageManager.getCooldownRemainingMs();
+        showCooldownMode(remainMs);
       }
       isProcessing = false;
       return;
@@ -85,7 +88,7 @@ async function loadNextCard() {
       if (StorageManager.isExtension) {
         await StorageManager.setEmptyNotified(false);
       }
-      const genres = await StorageManager.getGenres();
+      const genres = cachedGenres || (cachedGenres = await StorageManager.getGenres());
       const genreDef = genres.find(g => g.id === currentCard.genre);
       
       showQuestionMode(genreDef);
@@ -125,6 +128,10 @@ function showQuestionMode(genreDef) {
   answerShown = false;
   el.answerSection.classList.add('hidden');
   el.showAnswerBtn.classList.remove('hidden');
+
+  // 前回のタイマーをクリア
+  activeTimers.forEach(id => clearInterval(id));
+  activeTimers = [];
 
   const fields = genreDef?.fields || [
     { key: 'question', label: '問題', type: 'textarea', role: 'question' },
@@ -175,6 +182,25 @@ function showQuestionMode(genreDef) {
   el.questionArea.innerHTML = qFields.map(f => renderFieldHtml(f, true)).join('');
   el.answerArea.innerHTML   = aFields.map(f => renderFieldHtml(f, false)).join('') +
                                qChoiceFields.map(f => renderFieldHtml(f, false)).join('');
+
+  // F6: タイマーカウントダウン開始
+  el.questionArea.querySelectorAll('.timer-field').forEach(timerEl => {
+    let sec = parseInt(timerEl.dataset.seconds, 10) || 30;
+    const display = timerEl.querySelector('.timer-display');
+    if (!display) return;
+    const id = setInterval(() => {
+      sec--;
+      if (sec <= 0) {
+        clearInterval(id);
+        display.textContent = 'タイムアップ！';
+        timerEl.style.borderColor = '#ef4444';
+        timerEl.style.background = 'rgba(239,68,68,0.2)';
+      } else {
+        display.textContent = `${sec}秒`;
+      }
+    }, 1000);
+    activeTimers.push(id);
+  });
 }
 
 function showAnswerMode() {

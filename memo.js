@@ -3,6 +3,7 @@ import StorageManager from './storage.js';
 let allMemos = [];
 let activeMemoId = null;
 let saveTimeout = null;
+let hasUnsavedChanges = false;
 
 const el = {
   memoList: document.getElementById('memo-list'),
@@ -111,21 +112,31 @@ async function performSave() {
   el.saveStatus.textContent = '保存中...';
   el.saveStatus.style.color = 'var(--accent)';
 
-  try {
-    await StorageManager.saveMemo(memo);
-    el.saveStatus.textContent = '保存完了';
-    el.saveStatus.style.color = 'var(--text-secondary)';
-    renderMemoList(); // リストのタイトルや日付を更新
-  } catch (err) {
-    el.saveStatus.textContent = '保存失敗';
-    el.saveStatus.style.color = '#ef4444';
-    console.error('Save failed:', err);
+  const maxRetries = 2;
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      await StorageManager.saveMemo(memo);
+      el.saveStatus.textContent = '保存完了';
+      el.saveStatus.style.color = 'var(--text-secondary)';
+      hasUnsavedChanges = false;
+      renderMemoList();
+      return;
+    } catch (err) {
+      console.error(`Save failed (attempt ${attempt + 1}):`, err);
+      if (attempt < maxRetries) {
+        await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
+      }
+    }
   }
+  el.saveStatus.textContent = '保存失敗（リトライ済）';
+  el.saveStatus.style.color = '#ef4444';
+  hasUnsavedChanges = true;
 }
 
 function handleInput() {
   if (!activeMemoId) return;
   
+  hasUnsavedChanges = true;
   el.saveStatus.textContent = '変更あり...';
   el.saveStatus.style.color = 'var(--text-secondary)';
   
@@ -149,6 +160,14 @@ function setupListeners() {
   
   el.titleInput.addEventListener('input', handleInput);
   el.contentInput.addEventListener('input', handleInput);
+
+  // B5: 未保存の変更がある場合に画面遷移を警告
+  window.addEventListener('beforeunload', (e) => {
+    if (hasUnsavedChanges) {
+      e.preventDefault();
+      e.returnValue = '';
+    }
+  });
 }
 
 function showToast(msg) {

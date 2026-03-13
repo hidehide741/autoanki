@@ -490,11 +490,22 @@ function renderPreview() {
         const isH = opts.layout === 'horizontal';
         const shuffle = opts.shuffle !== false;
         const count = Math.min(Number(opts.defaultCount) || 3, 3);
+        const isReflected = f._isReflected; // 答え側への自動反映
         const rows = Array.from({length: count}, (_, i) => {
+          if (isReflected) {
+            // 答え側: ○/× 表示
+            const isCorrect = i === 0;
+            const bgColor = isCorrect ? 'rgba(34,197,94,0.12)' : 'rgba(239,68,68,0.07)';
+            const borderColor = isCorrect ? 'rgba(34,197,94,0.35)' : 'rgba(239,68,68,0.25)';
+            const textColor = isCorrect ? '#4ade80' : '#fca5a5';
+            const mark = isCorrect ? '○' : '×';
+            return `<div style="height:20px;background:${bgColor};border:1px solid ${borderColor};border-radius:3px;display:flex;align-items:center;padding:0 6px;font-size:0.7rem;color:${textColor};${isH ? 'flex:1;' : ''}">${mark} ${isCorrect ? '正解' : `選択肢${i + 1}`}</div>`;
+          }
+          // 問題側: 中立表示
           const mark = i === 0 ? '✅' : '☐';
           return `<div style="height:20px;background:rgba(0,0,0,0.2);border:1px dashed rgba(255,255,255,0.1);border-radius:3px;display:flex;align-items:center;padding:0 6px;font-size:0.7rem;color:var(--text-secondary);${isH ? 'flex:1;' : ''}">${mark} ${i === 0 ? '正解' : `選択肢${i + 1}`}</div>`;
         }).join('');
-        return `<div style="display:flex;flex-direction:column;gap:2px;"><div style="display:flex;${isH ? 'flex-direction:row;gap:4px;' : 'flex-direction:column;gap:2px;'}">${rows}</div><span style="opacity:0.4;font-size:0.68rem;margin-top:2px;">${isH ? '横並び' : '縦並び'}${shuffle ? ' / シャッフルあり' : ''}</span></div>`;
+        return `<div style="display:flex;flex-direction:column;gap:2px;"><div style="display:flex;${isH ? 'flex-direction:row;gap:4px;' : 'flex-direction:column;gap:2px;'}">${rows}</div><span style="opacity:0.4;font-size:0.68rem;margin-top:2px;">${isH ? '横並び' : '縦並び'}${shuffle ? ' / シャッフルあり' : ''}${isReflected ? ' / 問題側から自動反映' : ''}</span></div>`;
       }
 
       // 難易度
@@ -567,11 +578,19 @@ function renderPreview() {
     `;
   };
 
+  // 問題側の選択肢フィールドを答え側にも自動反映（○×表示）
+  const qChoiceData = qData.filter(f => f.type === 'choice_multi' || f.type === 'choice_single');
+  const aDataWithChoices = [...aData, ...qChoiceData.map(f => ({
+    ...f,
+    label: f.label + '（○× 自動反映）',
+    _isReflected: true
+  }))];
+
   el.previewPanel.innerHTML = `
     <div style="color: var(--text-secondary); font-size: 0.75rem; margin-bottom: 0.75rem; font-weight: 500;">カードプレビュー</div>
     <div style="background: rgba(15,23,42,0.6); padding: 1.25rem; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1);">
       ${renderSection('FRONT (問題)', qData)}
-      ${renderSection('BACK (回答)', aData)}
+      ${renderSection('BACK (回答)', aDataWithChoices)}
     </div>
   `;
 }

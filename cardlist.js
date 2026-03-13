@@ -1,5 +1,5 @@
 import StorageManager, { uploadImageToSupabase } from './storage.js';
-import { renderFieldHtml as _renderFieldHtml } from './renderCard.js';
+import { renderFieldHtml as _renderFieldHtml, escapeHtml } from './renderCard.js';
 
 const PAGE_SIZE = 25;
 
@@ -39,7 +39,12 @@ const el = {
   editFields:   document.getElementById('edit-fields'),
   editImgPrev:  document.getElementById('edit-image-preview'),
   editSaveBtn:  document.getElementById('edit-save-btn'),
-  editSaveMsg:  document.getElementById('edit-save-msg')
+  editSaveMsg:  document.getElementById('edit-save-msg'),
+  exportBtn:    document.getElementById('export-btn'),
+  importBtn:    document.getElementById('import-btn'),
+  bulkDeleteBtn: document.getElementById('bulk-delete-btn'),
+  bulkCount:    document.getElementById('bulk-count'),
+  selectAll:    document.getElementById('select-all-checkbox')
 };
 
 // ===== 初期化 =====
@@ -178,6 +183,7 @@ function renderTable() {
     // テーブル用にはラベルを除去して最初の1行程度を表示
     const displayQ = (card.question || '').replace(/^\[.*?\]\n/, '').split('\n')[0];
     tr.innerHTML = `
+      <td><input type="checkbox" class="row-checkbox" data-id="${card.id}"></td>
       ${thumbHtml}
       <td class="cell-question"><div class="cell-text" title="${esc(card.question)}">${esc(displayQ || '無題')}</div></td>
       <td><span class="genre-badge">${esc(genreName(card.genre))}</span></td>
@@ -191,9 +197,11 @@ function renderTable() {
     `;
 
     tr.addEventListener('click', (e) => {
-      if (e.target.closest('.delete-btn') || e.target.closest('.edit-btn') || e.target.closest('.view-btn')) return;
+      if (e.target.closest('.delete-btn') || e.target.closest('.edit-btn') || e.target.closest('.view-btn') || e.target.closest('.row-checkbox')) return;
       openModal(card.id);
     });
+    // チェックボックス変更時に一括UI更新
+    tr.querySelector('.row-checkbox').addEventListener('change', updateBulkUI);
     tr.querySelector('.view-btn').addEventListener('click', (e) => {
       e.stopPropagation();
       openModal(card.id);
@@ -318,7 +326,7 @@ function openModal(id) {
   el.statNext.textContent     = card.nextReviewDate ? (isDue ? '🎯 今すぐ' : fmtDate(card.nextReviewDate)) : '未設定';
   el.statNext.style.color     = isDue ? '#10b981' : '#a78bfa';
   el.statInterval.textContent = fmtInterval(card.interval);
-  el.statEase.textContent     = card.easeFactor != null ? card.easeFactor.toFixed(2) : '—';
+  el.statEase.textContent     = card.easiness != null ? card.easiness.toFixed(2) : '—';
 
   el.modalOverlay.classList.remove('hidden');
   document.body.style.overflow = 'hidden';
@@ -449,7 +457,7 @@ function openEditModal(id) {
       const div = document.createElement('div');
       div.className = 'form-group static-field';
       div.style.marginBottom = '1rem';
-      div.innerHTML = `<div style="padding: 0.6rem 0.8rem; background: rgba(99,102,241,0.1); border-left: 3px solid #a78bfa; border-radius: 4px; font-weight: 500; color: #a78bfa; font-size: 0.9rem;">${field.label}</div>`;
+      div.innerHTML = `<div style="padding: 0.6rem 0.8rem; background: rgba(99,102,241,0.1); border-left: 3px solid #a78bfa; border-radius: 4px; font-weight: 500; color: #a78bfa; font-size: 0.9rem;">${escapeHtml(field.label)}</div>`;
       targetInner.appendChild(div);
       return;
     }
@@ -465,7 +473,7 @@ function openEditModal(id) {
 
     const label = document.createElement('label');
     label.htmlFor = `edit-field-${field.key}`;
-    label.innerHTML = field.label + (field.required
+    label.innerHTML = escapeHtml(field.label) + (field.required
       ? '<span class="required-badge">必須</span>'
       : '');
 
@@ -743,6 +751,18 @@ function setupListeners() {
     }
   });
   document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeModal(); closeEditModal(); } });
+
+  // エクスポート/インポート
+  el.exportBtn?.addEventListener('click', exportCards);
+  el.importBtn?.addEventListener('click', importCards);
+
+  // 一括削除
+  el.bulkDeleteBtn?.addEventListener('click', bulkDelete);
+  el.selectAll?.addEventListener('change', () => {
+    const checked = el.selectAll.checked;
+    document.querySelectorAll('.row-checkbox[data-id]').forEach(cb => { cb.checked = checked; });
+    updateBulkUI();
+  });
 }
 
 // ===== ユーティリティ =====
@@ -761,8 +781,70 @@ function fmtDate(ts) {
   return new Date(ts).toLocaleDateString('ja-JP', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
 }
 function esc(str) {
-  if (!str) return '';
-  return String(str).replace(/[&<>'"/]/g, t => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;','/':'&#47;'}[t]));
+  return escapeHtml(str || '');
+}
+
+// ===== 一括選択UI =====
+function updateBulkUI() {
+  const checked = document.querySelectorAll('.row-checkbox[data-id]:checked');
+  const count = checked.length;
+  if (el.bulkDeleteBtn) {
+    el.bulkDeleteBtn.style.display = count > 0 ? 'inline-flex' : 'none';
+  }
+  if (el.bulkCount) el.bulkCount.textContent = count;
+}
+
+async function bulkDelete() {
+  const ids = Array.from(document.querySelectorAll('.row-checkbox[data-id]:checked')).map(cb => cb.dataset.id);
+  if (!ids.length) return;
+  if (!confirm(`${ids.length} 件のカードを削除しますか？この操作は取り消せません。`)) return;
+  for (const id of ids) {
+    await StorageManager.deleteCard(id);
+  }
+  allCards = allCards.filter(c => !ids.includes(c.id));
+  applyAndRender();
+  if (el.selectAll) el.selectAll.checked = false;
+  updateBulkUI();
+}
+
+// ===== エクスポート/インポート =====
+function exportCards() {
+  const data = JSON.stringify(allCards, null, 2);
+  const blob = new Blob([data], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `autoanki_cards_${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function importCards() {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.json';
+  input.addEventListener('change', async () => {
+    const file = input.files[0];
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const cards = JSON.parse(text);
+      if (!Array.isArray(cards)) throw new Error('無効なデータ形式です');
+      if (!confirm(`${cards.length} 件のカードをインポートしますか？`)) return;
+      let count = 0;
+      for (const card of cards) {
+        if (!card.question || !card.answer) continue;
+        await StorageManager.addCard(card.question, card.answer, card.image || null, card.genre || 'other');
+        count++;
+      }
+      alert(`${count} 件のカードをインポートしました`);
+      allCards = await StorageManager.getAllCards();
+      applyAndRender();
+    } catch (err) {
+      alert('インポートエラー: ' + err.message);
+    }
+  });
+  input.click();
 }
 
 document.addEventListener('DOMContentLoaded', init);

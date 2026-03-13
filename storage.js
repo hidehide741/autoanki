@@ -65,6 +65,38 @@ const HEADERS = {
   'Authorization': `Bearer ${SUPABASE_KEY}`
 };
 
+// ===== オフラインキュー =====
+const OfflineQueue = {
+  QUEUE_KEY: 'offline_queue',
+  async getQueue() {
+    return (await LocalStore.get(this.QUEUE_KEY)) || [];
+  },
+  async enqueue(op) {
+    const queue = await this.getQueue();
+    queue.push({ ...op, timestamp: Date.now() });
+    await LocalStore.set(this.QUEUE_KEY, queue);
+  },
+  async replay() {
+    const queue = await this.getQueue();
+    if (!queue.length) return;
+    const remaining = [];
+    for (const op of queue) {
+      try {
+        const res = await fetch(op.url, { method: op.method, headers: HEADERS, body: op.body || undefined });
+        if (!res.ok) throw new Error(res.status);
+      } catch {
+        remaining.push(op);
+      }
+    }
+    await LocalStore.set(this.QUEUE_KEY, remaining);
+  }
+};
+
+// オンライン復帰時にキューを再生
+if (typeof window !== 'undefined') {
+  window.addEventListener('online', () => OfflineQueue.replay());
+}
+
 // Supabase Storage へ画像ファイルをアップロードし、Public URL を返す
 async function uploadImageToSupabase(file) {
   const ext = file.type === 'image/png' ? 'png' : file.type === 'image/webp' ? 'webp' : 'jpg';
@@ -190,7 +222,7 @@ const StorageManager = {
 
   async deleteGenre(genreId) {
     try {
-      const res = await fetch(`${GENRE_API_BASE}?id=eq.${genreId}`, {
+      const res = await fetch(`${GENRE_API_BASE}?id=eq.${encodeURIComponent(genreId)}`, {
         method: 'DELETE',
         headers: HEADERS
       });
@@ -201,12 +233,23 @@ const StorageManager = {
   },
   // ==================================
 
-  // サーバーから全カードを取得
+  // サーバーから全カードを取得（ページネーション付き）
   async getAllCards() {
     try {
-      const res = await fetch(`${API_BASE}?select=*`, { headers: HEADERS });
-      if (!res.ok) throw new Error('Supabase API Error');
-      const cards = await res.json();
+      let allData = [];
+      let offset = 0;
+      const limit = 1000;
+      while (true) {
+        const res = await fetch(`${API_BASE}?select=*&order=id.asc&offset=${offset}&limit=${limit}`, {
+          headers: { ...HEADERS, 'Range-Unit': 'items', 'Range': `${offset}-${offset + limit - 1}` }
+        });
+        if (!res.ok) throw new Error('Supabase API Error');
+        const batch = await res.json();
+        allData = allData.concat(batch);
+        if (batch.length < limit) break;
+        offset += limit;
+      }
+      const cards = allData;
       // DBのカラム名(snake_case)をJSのオブジェクト名(camelCase)にマッピング
       return cards.map(c => ({
         id: c.id,
@@ -226,41 +269,41 @@ const StorageManager = {
   },
 
   async saveCardUpdate(card) {
+    const url = `${API_BASE}?id=eq.${encodeURIComponent(card.id)}`;
+    const body = JSON.stringify({
+      question: card.question,
+      answer: card.answer,
+      image: card.image,
+      genre: card.genre,
+      next_review_date: card.nextReviewDate,
+      interval: card.interval,
+      repetition: card.repetition,
+      easiness: card.easiness
+    });
     try {
-      const res = await fetch(`${API_BASE}?id=eq.${encodeURIComponent(card.id)}`, {
-        method: 'PATCH',
-        headers: HEADERS,
-        body: JSON.stringify({
-          question: card.question,
-          answer: card.answer,
-          image: card.image,
-          genre: card.genre,
-          next_review_date: card.nextReviewDate,
-          interval: card.interval,
-          repetition: card.repetition,
-          easiness: card.easiness
-        })
-      });
+      const res = await fetch(url, { method: 'PATCH', headers: HEADERS, body });
       if (!res.ok) {
         const errText = await res.text();
         console.error("クラウドへのデータ保存に失敗しました。", res.status, errText);
+        throw new Error(errText);
       }
     } catch (e) {
-      console.error("クラウドへのデータ保存に失敗しました。", e);
+      console.error("オフラインキューに追加:", e);
+      await OfflineQueue.enqueue({ url, method: 'PATCH', body });
     }
   },
 
   // カードを新規追加 (Supabase REST API の POST を使用)
   async addCard(question, answer, image = null, genre = 'other') {
     const now = Date.now();
-    const id = 'card-' + now + '-' + Math.random().toString(36).substr(2, 6);
+    const id = 'card-' + now + '-' + Math.random().toString(36).substr(2, 9);
     const body = {
       id,
       question,
       answer,
       image,
       genre,
-      next_review_date: now,          // 今すぐ出題
+      next_review_date: now,
       interval:         86400000,     // 初期インターバル 1日
       repetition:       0,
       easiness:         2.5
@@ -268,14 +311,13 @@ const StorageManager = {
     try {
       const res = await fetch(API_BASE, {
         method: 'POST',
-        headers: { ...HEADERS, 'Prefer': 'return=representation' },
+        headers: { ...HEADERS, 'Prefer': 'return=minimal' },
         body: JSON.stringify(body)
       });
       if (!res.ok) {
         const err = await res.text();
         throw new Error(`カード追加失敗: ${err}`);
       }
-      return await res.json();
     } catch (e) {
       console.error("カードの追加に失敗しました。", e);
       throw e;
@@ -490,51 +532,9 @@ const StorageManager = {
     return stats || { todayReviews: 0, streak: 0 };
   },
 
-  // カード管理用メソッド（追加・削除）-> Supabaseへ
-  async addCard(question, answer, imagePath = null, genre = 'その他', extraFields = {}) {
-    const newCard = {
-      id: 'card-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9),
-      question,
-      answer,
-      nextReviewDate: Date.now(),
-      interval: 0,
-      repetition: 0,
-      easiness: 2.5,
-      genre
-    };
-    
-    if (imagePath) {
-      newCard.image = imagePath;
-    }
-
-    // Supabaseへ挿入
-    try {
-      await fetch(API_BASE, {
-        method: 'POST',
-        headers: {
-          ...HEADERS,
-          'Prefer': 'return=minimal'
-        },
-        body: JSON.stringify({
-          id: newCard.id,
-          question: newCard.question,
-          answer: newCard.answer,
-          image: newCard.image,
-          next_review_date: newCard.nextReviewDate,
-          interval: newCard.interval,
-          repetition: newCard.repetition,
-          easiness: newCard.easiness,
-          genre: newCard.genre
-        })
-      });
-    } catch (e) {
-      console.error("カードの追加に失敗しました。", e);
-    }
-  },
-
   async deleteCard(cardId) {
     try {
-      await fetch(`${API_BASE}?id=eq.${cardId}`, {
+      await fetch(`${API_BASE}?id=eq.${encodeURIComponent(cardId)}`, {
         method: 'DELETE',
         headers: HEADERS
       });
@@ -597,7 +597,7 @@ const StorageManager = {
 
   async deleteMemo(memoId) {
     try {
-      const res = await fetch(`${MEMO_API_BASE}?id=eq.${memoId}`, {
+      const res = await fetch(`${MEMO_API_BASE}?id=eq.${encodeURIComponent(memoId)}`, {
         method: 'DELETE',
         headers: HEADERS
       });

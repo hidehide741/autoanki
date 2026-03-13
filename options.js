@@ -5,6 +5,16 @@ const MAX_IMAGES = 3;
 
 // HTML エスケープ（renderCard.js からインポートした escapeHtml のエイリアス）
 const esc = escapeHtml;
+
+// デバウンスユーティリティ
+function debounce(fn, ms) {
+  let timer;
+  return function (...args) {
+    clearTimeout(timer);
+    timer = setTimeout(() => fn.apply(this, args), ms);
+  };
+}
+
 let genres = [];
 let pendingImages = {};
 let editingCardId = null;
@@ -432,28 +442,28 @@ function addNewFormField(inner, role, type) {
     const ta = document.createElement('textarea');
     ta.rows = 3; ta.id = `field-${newField.key}`; ta.name = newField.key;
     ta.placeholder = '例: 日本の首都は{{東京}}です';
-    ta.addEventListener('input', () => { currentPreviewValues[newField.key] = ta.value; updateCardPreview(activeGenre, currentPreviewValues); });
+    ta.addEventListener('input', () => { currentPreviewValues[newField.key] = ta.value; updateCardPreviewDebounced(activeGenre, currentPreviewValues); });
     div.appendChild(labelEl); div.appendChild(guide); div.appendChild(ta);
   } else if (type === 'static') {
     const inp = document.createElement('input');
     inp.type = 'text'; inp.id = `field-${newField.key}`; inp.name = newField.key;
     inp.value = label; inp.placeholder = label;
     inp.style.cssText = 'border-left:3px solid #a78bfa;color:#a78bfa;';
-    inp.addEventListener('input', () => { currentPreviewValues[newField.key] = inp.value; updateCardPreview(activeGenre, currentPreviewValues); });
+    inp.addEventListener('input', () => { currentPreviewValues[newField.key] = inp.value; updateCardPreviewDebounced(activeGenre, currentPreviewValues); });
     currentPreviewValues[newField.key] = inp.value;
     div.appendChild(labelEl); div.appendChild(inp);
   } else if (['textarea', 'freetext', 'explanation'].includes(type)) {
     const ta = document.createElement('textarea');
     ta.rows = 3; ta.id = `field-${newField.key}`; ta.name = newField.key;
     ta.placeholder = `${label}を入力…`;
-    ta.addEventListener('input', () => { currentPreviewValues[newField.key] = ta.value; updateCardPreview(activeGenre, currentPreviewValues); });
+    ta.addEventListener('input', () => { currentPreviewValues[newField.key] = ta.value; updateCardPreviewDebounced(activeGenre, currentPreviewValues); });
     div.appendChild(labelEl); div.appendChild(ta);
   } else {
     const inp = document.createElement('input');
     inp.type = ['number','date','url'].includes(type) ? type : (type === 'timer' ? 'number' : 'text');
     inp.id = `field-${newField.key}`; inp.name = newField.key;
     inp.placeholder = `${label}を入力…`;
-    inp.addEventListener('input', () => { currentPreviewValues[newField.key] = inp.value; updateCardPreview(activeGenre, currentPreviewValues); });
+    inp.addEventListener('input', () => { currentPreviewValues[newField.key] = inp.value; updateCardPreviewDebounced(activeGenre, currentPreviewValues); });
     div.appendChild(labelEl); div.appendChild(inp);
   }
 
@@ -960,7 +970,7 @@ function buildChoiceFieldUI(field, genre) {
   div.id = `field-container-${field.key}`;
 
   const label = document.createElement('label');
-  label.innerHTML = `☑️ ${field.label}${field.required ? '<span class="required-badge">必須</span>' : ''}`;
+  label.innerHTML = `☑️ ${escapeHtml(field.label)}${field.required ? '<span class="required-badge">必須</span>' : ''}`;
 
   const choiceList = document.createElement('div');
   choiceList.className = 'choice-list';
@@ -1126,7 +1136,7 @@ function renderForm() {
       const div = document.createElement('div');
       div.className = 'form-group';
       const label = document.createElement('label');
-      label.innerHTML = `🔍 ${field.label}${field.required ? '<span class="required-badge">必須</span>' : ''}`;
+      label.innerHTML = `🔍 ${escapeHtml(field.label)}${field.required ? '<span class="required-badge">必須</span>' : ''}`;
       const guide = document.createElement('div');
       guide.style.cssText = 'font-size:0.8rem;color:#fbbf24;margin-bottom:0.5rem;background:rgba(251,191,36,0.08);padding:0.4rem 0.75rem;border-radius:6px;';
       guide.innerHTML = '空欄にしたい部分を <code style="background:rgba(0,0,0,0.3);padding:0.1rem 0.3rem;border-radius:3px;color:#fde68a;">{{正解}}</code> で囲む &nbsp; 例: <code style="background:rgba(0,0,0,0.3);padding:0.1rem 0.3rem;border-radius:3px;color:#fde68a;">日本の首都は{{東京}}です</code>';
@@ -1159,7 +1169,7 @@ function renderForm() {
       const div = document.createElement('div');
       div.className = 'form-group';
       const label = document.createElement('label');
-      label.innerHTML = `🏷️ ${field.label}`;
+      label.innerHTML = `🏷️ ${escapeHtml(field.label)}`;
       const guide = document.createElement('div');
       guide.style.cssText = 'font-size:0.78rem;color:var(--text-secondary);margin-bottom:0.4rem;';
       guide.textContent = 'カンマ区切りで複数タグを入力（例: 英語, 文法, 基礎）';
@@ -1191,7 +1201,7 @@ function renderForm() {
       const div = document.createElement('div');
       div.className = 'form-group';
       const label = document.createElement('label');
-      label.innerHTML = `⭐ ${field.label}`;
+      label.innerHTML = `⭐ ${escapeHtml(field.label)}`;
       const starContainer = document.createElement('div');
       starContainer.style.cssText = 'display:flex;gap:0.3rem;margin-top:0.3rem;align-items:center;';
       const hiddenInput = document.createElement('input');
@@ -1253,7 +1263,7 @@ function renderForm() {
       div.className = 'form-group';
       div.id = `field-container-${field.key}`;
       const label = document.createElement('label');
-      label.innerHTML = `❌ ${field.label}`;
+      label.innerHTML = `❌ ${escapeHtml(field.label)}`;
       const weList = document.createElement('div');
       weList.className = 'wrongexample-list';
       weList.style.cssText = 'display:flex;flex-direction:column;gap:0.5rem;margin-bottom:0.5rem;';
@@ -1306,7 +1316,7 @@ function renderForm() {
     const fieldIcon = typeIcons[field.type] || '';
     const label = document.createElement('label');
     label.htmlFor = `field-${field.key}`;
-    label.innerHTML = (fieldIcon ? fieldIcon + ' ' : '') + field.label + (field.required ? '<span class="required-badge">必須</span>' : '');
+    label.innerHTML = (fieldIcon ? fieldIcon + ' ' : '') + escapeHtml(field.label) + (field.required ? '<span class="required-badge">必須</span>' : '');
 
     let input;
     if (['textarea', 'freetext', 'explanation'].includes(field.type)) {
@@ -1369,6 +1379,7 @@ function createRoleBlock(title, color) {
 
 // ===== プレビューパネル：実際のカード表示と同じ見た目で描画 =====
 let _previewAnswerShown = false; // 答えエリアの表示状態を保持
+const updateCardPreviewDebounced = debounce((genre, values) => updateCardPreview(genre, values), 150);
 function updateCardPreview(genre, values) {
   const panel = document.getElementById('card-preview-panel');
   if (!panel) return;
@@ -1609,6 +1620,14 @@ function setupGlobalListeners() {
 
       if (qParts.length === 0 || aParts.length === 0) {
         throw new Error('問題と答えをそれぞれ1つ以上入力してください。');
+      }
+
+      // 必須フィールドのバリデーション
+      const missingFields = genre.fields
+        .filter(f => f.required && !values[f.key])
+        .map(f => f.label);
+      if (missingFields.length > 0) {
+        throw new Error('必須フィールドを入力してください: ' + missingFields.join(', '));
       }
 
       const question = qParts.join('\n\n');

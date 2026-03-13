@@ -155,13 +155,22 @@ export function renderFieldHtml(f, isQuestion, getValue, imageList = []) {
 
   if (f.type === 'timer') {
     const sec = parseInt(opts.defaultSec || getValue(f) || 30);
-    return `<div style="display:inline-flex;align-items:center;gap:0.4rem;background:rgba(248,113,113,0.1);border:1px solid rgba(248,113,113,0.25);border-radius:8px;padding:0.3rem 0.75rem;margin-bottom:0.75rem;font-size:0.92rem;color:#f87171;">⏱ ${sec}秒</div>`;
+    return `<div class="timer-field" data-seconds="${sec}" style="display:inline-flex;align-items:center;gap:0.4rem;background:rgba(248,113,113,0.1);border:1px solid rgba(248,113,113,0.25);border-radius:8px;padding:0.3rem 0.75rem;margin-bottom:0.75rem;font-size:0.92rem;color:#f87171;">⏱ <span class="timer-display">${sec}秒</span></div>`;
   }
 
   if (f.type === 'url') {
     const val = getValue(f) || '';
     const label = opts.linkLabel || '参考資料を見る';
     if (!val) return '';
+    // XSS対策: http(s) のみ許可
+    try {
+      const urlObj = new URL(val);
+      if (urlObj.protocol !== 'https:' && urlObj.protocol !== 'http:') {
+        return `<div style="margin-bottom:0.75rem;color:#f87171;font-size:0.85rem;">⚠ 無効なURLプロトコルです</div>`;
+      }
+    } catch {
+      return `<div style="margin-bottom:0.75rem;color:#f87171;font-size:0.85rem;">⚠ 無効なURL形式です</div>`;
+    }
     return `<div style="margin-bottom:0.75rem;"><a href="${esc(val)}" target="_blank" rel="noopener noreferrer" style="color:#60a5fa;text-decoration:underline;font-size:0.92rem;">🔗 ${esc(label)}</a></div>`;
   }
 

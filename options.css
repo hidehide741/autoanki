@@ -49,12 +49,17 @@ body {
 /* Background */
 .background-animation {
   position: fixed;
-  top: -50%;
-  left: -50%;
-  width: 200%;
-  height: 200%;
-  background: radial-gradient(circle at 100% 0%, var(--bg-color-2) 0%, var(--bg-color-1) 100%);
+  inset: 0;
+  background:
+    radial-gradient(ellipse 80% 60% at 20% 20%, rgba(99,102,241,0.12) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 80% at 80% 80%, rgba(139,92,246,0.10) 0%, transparent 60%),
+    var(--bg-color-1);
+  animation: bgShift 20s ease-in-out infinite alternate;
   z-index: -1;
+}
+@keyframes bgShift {
+  0%   { background-position: 20% 20%, 80% 80%; }
+  100% { background-position: 30% 10%, 70% 90%; }
 }
 
 .layout {
@@ -297,10 +302,12 @@ td {
     flex-direction: column;
   }
   .sidebar {
-    width: 100%;
-    height: auto;
-    position: static;
+    display: none;
   }
+  .main-content {
+    padding: 1rem;
+  }
+  .mobile-menu-btn { display: flex; }
 }
 
 /* nav-btn アイコン/テキスト */
@@ -364,3 +371,70 @@ td {
   align-self: center;
 }
 .sidebar-overlay { display: none; }
+
+/* ===== フォーカススタイル ===== */
+:focus-visible {
+  outline: 2px solid rgba(99,102,241,0.6);
+  outline-offset: 2px;
+}
+button:focus-visible, a:focus-visible {
+  outline: 2px solid rgba(99,102,241,0.6);
+  outline-offset: 2px;
+}
+
+/* ===== モバイルハンバーガー ===== */
+.mobile-menu-btn {
+  display: none;
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  z-index: 999;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #6366f1, #4f46e5);
+  border: none;
+  color: white;
+  font-size: 1.4rem;
+  cursor: pointer;
+  box-shadow: 0 4px 20px rgba(99,102,241,0.5);
+  align-items: center;
+  justify-content: center;
+}
+.mobile-nav-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.7);
+  backdrop-filter: blur(4px);
+  z-index: 998;
+}
+.mobile-nav-overlay.show { display: block; }
+.mobile-nav-panel {
+  display: none;
+  position: fixed;
+  bottom: 5rem;
+  right: 1.5rem;
+  z-index: 999;
+  background: rgba(15,23,42,0.95);
+  backdrop-filter: blur(16px);
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  padding: 1rem;
+  min-width: 200px;
+  box-shadow: 0 15px 40px rgba(0,0,0,0.5);
+}
+.mobile-nav-panel.show { display: flex; flex-direction: column; gap: 0.3rem; }
+.mobile-nav-panel a {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.7rem 1rem;
+  border-radius: 8px;
+  color: var(--text-primary);
+  text-decoration: none;
+  font-size: 0.9rem;
+  transition: background 0.15s;
+}
+.mobile-nav-panel a:hover { background: rgba(255,255,255,0.08); }
+.mobile-nav-panel a.active { background: rgba(99,102,241,0.2); color: #818cf8; }

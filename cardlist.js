@@ -293,24 +293,26 @@ function openModal(id) {
     return '';
   }
 
-  fields.filter(f => f.role === 'question').forEach(f => {
-    const imageList = images.filter(img => img.fieldKey ? img.fieldKey === f.key : img.role === f.role);
-    const html = _renderFieldHtml(f, true, getFieldValue, imageList);
-    if (html) {
-      const wrap = document.createElement('div');
-      wrap.innerHTML = html;
-      el.modalQ.appendChild(wrap);
-    }
-  });
-  fields.filter(f => f.role === 'answer').forEach(f => {
-    const imageList = images.filter(img => img.fieldKey ? img.fieldKey === f.key : img.role === f.role);
-    const html = _renderFieldHtml(f, false, getFieldValue, imageList);
-    if (html) {
-      const wrap = document.createElement('div');
-      wrap.innerHTML = html;
-      el.modalAnswer.appendChild(wrap);
-    }
-  });
+  const qFields = fields.filter(f => f.role === 'question');
+  const aFields = fields.filter(f => f.role === 'answer');
+  const qChoiceFields = qFields.filter(f => f.type === 'choice_multi' || f.type === 'choice_single');
+
+  const renderToContainer = (fieldList, isQ, container) => {
+    fieldList.forEach(f => {
+      const imageList = images.filter(img => img.fieldKey ? img.fieldKey === f.key : img.role === f.role);
+      const html = _renderFieldHtml(f, isQ, getFieldValue, imageList);
+      if (html) {
+        const wrap = document.createElement('div');
+        wrap.innerHTML = html;
+        container.appendChild(wrap);
+      }
+    });
+  };
+
+  renderToContainer(qFields, true, el.modalQ);
+  renderToContainer(aFields, false, el.modalAnswer);
+  // 問題側の選択肢を答え側にも自動反映（○×表示）
+  renderToContainer(qChoiceFields, false, el.modalAnswer);
 
   const isDue = card.nextReviewDate && card.nextReviewDate <= Date.now();
   el.statNext.textContent     = card.nextReviewDate ? (isDue ? '🎯 今すぐ' : fmtDate(card.nextReviewDate)) : '未設定';

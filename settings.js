@@ -163,8 +163,7 @@ const FIELD_TYPES = [
   { val: 'textarea',      label: '📄 複数行テキスト' },
   { val: 'freetext',      label: '✏️ 記述式（自由記述）' },
   { val: 'fillblank',     label: '🔍 穴埋め（{{空欄}}形式）' },
-  { val: 'choice_single', label: '🔘 選択肢（単一選択）' },
-  { val: 'choice_multi',  label: '☑️ 選択肢（複数選択）' },
+  { val: 'choice_multi',  label: '☑️ 選択肢' },
   { val: 'hint',          label: '💡 ヒント' },
   { val: 'tags',          label: '🏷️ タグ' },
   { val: 'difficulty',    label: '⭐ 難易度（1〜5）' },
@@ -197,7 +196,6 @@ function addFieldRow(container, label = '', type = 'textarea', required = false,
     freetext:      [{ key: 'rows',      label: '表示行数',   type: 'number', min:1, max:10, default: 3 }],
     explanation:   [{ key: 'rows',      label: '表示行数',   type: 'number', min:1, max:10, default: 3 }],
     fillblank:     [{ key: 'blankStyle',label: '空欄スタイル', type: 'select', choices: [['underline','下線'],['box','ボックス'],['highlight','ハイライト']], default: 'underline' }, { key: 'showHint', label: '正解ヒント表示', type: 'toggle', default: false }],
-    choice_single: [{ key: 'layout',   label: '並び方',     type: 'select', choices: [['vertical','縦'],['horizontal','横']], default: 'vertical' }, { key: 'shuffle', label: 'シャッフル', type: 'toggle', default: true }, { key: 'defaultCount', label: 'デフォルト選択肢数', type: 'number', min:2, max:6, default: 3 }],
     choice_multi:  [{ key: 'layout',   label: '並び方',     type: 'select', choices: [['vertical','縦'],['horizontal','横']], default: 'vertical' }, { key: 'shuffle', label: 'シャッフル', type: 'toggle', default: true }, { key: 'defaultCount', label: 'デフォルト選択肢数', type: 'number', min:2, max:6, default: 3 }],
     image:         [{ key: 'maxCount', label: '最大枚数',   type: 'select', choices: [['1','1枚'],['2','2枚'],['3','3枚']], default: '3' }, { key: 'size', label: '表示サイズ', type: 'select', choices: [['sm','小(サムネ)'],['md','中'],['lg','大(full幅)']], default: 'md' }],
     hint:          [{ key: 'showTiming',label: '表示タイミング', type: 'select', choices: [['button','ボタン後'],['always','常時']], default: 'button' }],
@@ -493,7 +491,7 @@ function renderPreview() {
         const shuffle = opts.shuffle !== false;
         const count = Math.min(Number(opts.defaultCount) || 3, 3);
         const rows = Array.from({length: count}, (_, i) => {
-          const mark = i === 0 ? '✅' : (f.type === 'choice_multi' ? '☐' : '○');
+          const mark = i === 0 ? '✅' : '☐';
           return `<div style="height:20px;background:rgba(0,0,0,0.2);border:1px dashed rgba(255,255,255,0.1);border-radius:3px;display:flex;align-items:center;padding:0 6px;font-size:0.7rem;color:var(--text-secondary);${isH ? 'flex:1;' : ''}">${mark} ${i === 0 ? '正解' : `選択肢${i + 1}`}</div>`;
         }).join('');
         return `<div style="display:flex;flex-direction:column;gap:2px;"><div style="display:flex;${isH ? 'flex-direction:row;gap:4px;' : 'flex-direction:column;gap:2px;'}">${rows}</div><span style="opacity:0.4;font-size:0.68rem;margin-top:2px;">${isH ? '横並び' : '縦並び'}${shuffle ? ' / シャッフルあり' : ''}</span></div>`;

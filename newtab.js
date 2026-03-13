@@ -167,8 +167,14 @@ function showQuestionMode(genreDef) {
   }
 
   // プレビューと同じ構造でレンダリング
-  el.questionArea.innerHTML = fields.filter(f => f.role === 'question').map(f => renderFieldHtml(f, true)).join('');
-  el.answerArea.innerHTML   = fields.filter(f => f.role === 'answer').map(f => renderFieldHtml(f, false)).join('');
+  const qFields = fields.filter(f => f.role === 'question');
+  const aFields = fields.filter(f => f.role === 'answer');
+  // 問題側の選択肢フィールドを答え側にも自動反映（○×表示）
+  const qChoiceFields = qFields.filter(f => f.type === 'choice_multi' || f.type === 'choice_single');
+
+  el.questionArea.innerHTML = qFields.map(f => renderFieldHtml(f, true)).join('');
+  el.answerArea.innerHTML   = aFields.map(f => renderFieldHtml(f, false)).join('') +
+                               qChoiceFields.map(f => renderFieldHtml(f, false)).join('');
 }
 
 function showAnswerMode() {

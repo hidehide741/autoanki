@@ -21,8 +21,7 @@ const FIELD_TYPES = [
   { val: 'textarea',      label: '📄 複数行テキスト' },
   { val: 'freetext',      label: '✏️ 記述式（自由記述）' },
   { val: 'fillblank',     label: '🔍 穴埋め（{{空欄}}形式）' },
-  { val: 'choice_single', label: '🔘 選択肢（単一選択）' },
-  { val: 'choice_multi',  label: '☑️ 選択肢（複数選択）' },
+  { val: 'choice_multi',  label: '☑️ 選択肢' },
   { val: 'hint',          label: '💡 ヒント' },
   { val: 'tags',          label: '🏷️ タグ' },
   { val: 'difficulty',    label: '⭐ 難易度（1〜5）' },
@@ -50,7 +49,6 @@ const FIELD_DETAIL_DEFS = {
   freetext:      [{ key: 'rows', label: '表示行数', type: 'number', min:1, max:10, default: 3 }],
   explanation:   [{ key: 'rows', label: '表示行数', type: 'number', min:1, max:10, default: 3 }],
   fillblank:     [{ key: 'blankStyle', label: '空欄スタイル', type: 'select', choices: [['underline','下線'],['box','ボックス'],['highlight','ハイライト']], default: 'underline' }, { key: 'showHint', label: 'ヒント表示', type: 'toggle', default: false }],
-  choice_single: [{ key: 'layout', label: '並び方', type: 'select', choices: [['vertical','縦'],['horizontal','横']], default: 'vertical' }, { key: 'shuffle', label: 'シャッフル', type: 'toggle', default: true }, { key: 'defaultCount', label: 'デフォルト選択肢数', type: 'number', min:2, max:6, default: 3 }],
   choice_multi:  [{ key: 'layout', label: '並び方', type: 'select', choices: [['vertical','縦'],['horizontal','横']], default: 'vertical' }, { key: 'shuffle', label: 'シャッフル', type: 'toggle', default: true }, { key: 'defaultCount', label: 'デフォルト選択肢数', type: 'number', min:2, max:6, default: 3 }],
   image:         [{ key: 'maxCount', label: '最大枚数', type: 'select', choices: [['1','1枚'],['2','2枚'],['3','3枚']], default: '3' }, { key: 'size', label: '表示サイズ', type: 'select', choices: [['sm','小'],['md','中'],['lg','大']], default: 'md' }],
   hint:          [{ key: 'showTiming', label: '表示タイミング', type: 'select', choices: [['button','ボタン後'],['always','常時']], default: 'button' }],
@@ -575,7 +573,6 @@ function s2AddFieldRow(container, type = 'textarea', required = false, options =
     freetext:      [{ key: 'rows', label: '表示行数', type: 'number', min:1, max:10, default: 3 }],
     explanation:   [{ key: 'rows', label: '表示行数', type: 'number', min:1, max:10, default: 3 }],
     fillblank:     [{ key: 'blankStyle', label: '空欄スタイル', type: 'select', choices: [['underline','下線'],['box','ボックス'],['highlight','ハイライト']], default: 'underline' }, { key: 'showHint', label: 'ヒント表示', type: 'toggle', default: false }],
-    choice_single: [{ key: 'layout', label: '並び方', type: 'select', choices: [['vertical','縦'],['horizontal','横']], default: 'vertical' }, { key: 'shuffle', label: 'シャッフル', type: 'toggle', default: true }, { key: 'defaultCount', label: 'デフォルト選択肢数', type: 'number', min:2, max:6, default: 3 }],
     choice_multi:  [{ key: 'layout', label: '並び方', type: 'select', choices: [['vertical','縦'],['horizontal','横']], default: 'vertical' }, { key: 'shuffle', label: 'シャッフル', type: 'toggle', default: true }, { key: 'defaultCount', label: 'デフォルト選択肢数', type: 'number', min:2, max:6, default: 3 }],
     image:         [{ key: 'maxCount', label: '最大枚数', type: 'select', choices: [['1','1枚'],['2','2枚'],['3','3枚']], default: '3' }, { key: 'size', label: '表示サイズ', type: 'select', choices: [['sm','小'],['md','中'],['lg','大']], default: 'md' }],
     hint:          [{ key: 'showTiming', label: '表示タイミング', type: 'select', choices: [['button','ボタン後'],['always','常時']], default: 'button' }],
@@ -958,13 +955,12 @@ function fillFormWithCard(card) {
 
 // ===== 選択肢フィールドUI構築（renderForm / addNewFormField 共通） =====
 function buildChoiceFieldUI(field, genre) {
-  const isMulti = field.type === 'choice_multi';
   const div = document.createElement('div');
   div.className = 'form-group';
   div.id = `field-container-${field.key}`;
 
   const label = document.createElement('label');
-  label.innerHTML = `${isMulti ? '☑️' : '🔘'} ${field.label}${field.required ? '<span class="required-badge">必須</span>' : ''}`;
+  label.innerHTML = `☑️ ${field.label}${field.required ? '<span class="required-badge">必須</span>' : ''}`;
 
   const choiceList = document.createElement('div');
   choiceList.className = 'choice-list';
@@ -992,19 +988,11 @@ function buildChoiceFieldUI(field, genre) {
     markBtn.className = 'choice-correct-btn';
     markBtn.dataset.correct = isCorrect ? '1' : '0';
     markBtn.textContent = isCorrect ? '○' : '×';
-    markBtn.title = isMulti ? '○=正解 / ×=不正解（複数可）' : '○=正解 / ×=不正解（1つのみ）';
+    markBtn.title = '○=正解 / ×=不正解（複数可）';
     applyMarkStyle(markBtn, isCorrect);
 
     markBtn.addEventListener('click', () => {
       const wasCorrect = markBtn.dataset.correct === '1';
-      if (!wasCorrect && !isMulti) {
-        // choice_single: 他の○をすべて×にリセット
-        choiceList.querySelectorAll('.choice-correct-btn').forEach(btn => {
-          btn.dataset.correct = '0';
-          btn.textContent = '×';
-          applyMarkStyle(btn, false);
-        });
-      }
       const newState = !wasCorrect;
       markBtn.dataset.correct = newState ? '1' : '0';
       markBtn.textContent = newState ? '○' : '×';
@@ -1069,7 +1057,7 @@ function buildChoiceFieldUI(field, genre) {
 
   const choiceHint = document.createElement('div');
   choiceHint.style.cssText = 'font-size:0.78rem;color:var(--text-secondary);margin-top:0.3rem;';
-  choiceHint.textContent = isMulti ? '○=正解（複数可） / ×=不正解　でマーク' : '○=正解 / ×=不正解　でマーク（正解は1つ）';
+  choiceHint.textContent = '○=正解（複数可） / ×=不正解　でマーク';
 
   div.appendChild(label);
   div.appendChild(choiceList);
@@ -1401,11 +1389,15 @@ function updateCardPreview(genre, values) {
   // 問題・答えそれぞれのフィールドをHTML化
   const qFields = genre.fields.filter(f => f.role === 'question');
   const aFields = genre.fields.filter(f => f.role === 'answer');
+  // 問題側の選択肢フィールドを答え側にも自動反映（○×表示）
+  const qChoiceFields = qFields.filter(f => f.type === 'choice_multi' || f.type === 'choice_single');
 
   const qHtml = qFields.map(f => renderFieldHtml(f, true)).join('') ||
     '<p style="color:#475569;font-size:0.9rem;">（問題フィールドなし）</p>';
-  const aHtml = aFields.map(f => renderFieldHtml(f, false)).join('') ||
-    '<p style="color:#475569;font-size:0.9rem;">（答えフィールドなし）</p>';
+  const aHtml = (
+    aFields.map(f => renderFieldHtml(f, false)).join('') +
+    qChoiceFields.map(f => renderFieldHtml(f, false)).join('')
+  ) || '<p style="color:#475569;font-size:0.9rem;">（答えフィールドなし）</p>';
 
   // カード本体HTML（newtab.htmlの.glass-cardに近いスタイル）
   panel.innerHTML = `
@@ -1606,6 +1598,10 @@ function setupGlobalListeners() {
         if (!saveVal) return;
         if (f.role === 'question') {
           qParts.push(`[${f.label}]\n${saveVal}`);
+          // 選択肢フィールドは答え側にも自動保存（○×表示用）
+          if (f.type === 'choice_multi' || f.type === 'choice_single') {
+            aParts.push(`[${f.label}]\n${saveVal}`);
+          }
         } else if (f.role === 'answer') {
           aParts.push(`[${f.label}]\n${saveVal}`);
         }

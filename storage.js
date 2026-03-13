@@ -227,7 +227,7 @@ const StorageManager = {
 
   async saveCardUpdate(card) {
     try {
-      await fetch(`${API_BASE}?id=eq.${card.id}`, {
+      const res = await fetch(`${API_BASE}?id=eq.${encodeURIComponent(card.id)}`, {
         method: 'PATCH',
         headers: HEADERS,
         body: JSON.stringify({
@@ -241,6 +241,10 @@ const StorageManager = {
           easiness: card.easiness
         })
       });
+      if (!res.ok) {
+        const errText = await res.text();
+        console.error("クラウドへのデータ保存に失敗しました。", res.status, errText);
+      }
     } catch (e) {
       console.error("クラウドへのデータ保存に失敗しました。", e);
     }
@@ -410,12 +414,19 @@ const StorageManager = {
     try {
       const body = { question, answer };
       if (image !== undefined) body.image = image;
-      const res = await fetch(`${API_BASE}?id=eq.${cardId}`, {
+      console.log('[updateCardContent] cardId:', cardId, 'body:', body);
+      const res = await fetch(`${API_BASE}?id=eq.${encodeURIComponent(cardId)}`, {
         method: 'PATCH',
-        headers: HEADERS,
+        headers: { ...HEADERS, 'Prefer': 'return=representation' },
         body: JSON.stringify(body)
       });
+      console.log('[updateCardContent] response status:', res.status);
       if (!res.ok) throw new Error(await res.text());
+      const updated = await res.json();
+      console.log('[updateCardContent] updated rows:', updated);
+      if (!updated || updated.length === 0) {
+        throw new Error(`カードが見つかりませんでした（ID: ${cardId}）`);
+      }
     } catch (e) {
       console.error('カード内容の更新に失敗しました', e);
       throw e;

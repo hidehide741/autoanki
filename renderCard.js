@@ -82,10 +82,17 @@ export function renderFieldHtml(f, isQuestion, getValue, imageList = []) {
       const layout = opts.layout === 'horizontal' ? 'flex-direction:row;flex-wrap:wrap;' : 'flex-direction:column;';
       const choiceItems = (data.options || []).map((opt, i) => {
         const isCorrect = (data.correct || []).includes(i);
-        return `<div style="padding:0.45rem 0.85rem;border-radius:8px;font-size:0.92rem;background:${isCorrect ? 'rgba(34,197,94,0.12)' : 'rgba(255,255,255,0.04)'};border:1px solid ${isCorrect ? 'rgba(34,197,94,0.35)' : 'rgba(255,255,255,0.07)'};color:${isCorrect ? '#4ade80' : '#e2e8f0'};display:flex;align-items:center;gap:0.5rem;">
-          <span style="opacity:0.8;">${isCorrect ? '✅' : (f.type === 'choice_multi' ? '☐' : '○')}</span>
-          ${esc(opt) || '<span style="color:#64748b;">（未入力）</span>'}
-        </div>`;
+        let itemStyle, markSpan;
+        if (isQuestion) {
+          // 問題面: 正誤を明かさず中立表示
+          itemStyle = `padding:0.45rem 0.85rem;border-radius:8px;font-size:0.92rem;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);color:#e2e8f0;display:flex;align-items:center;gap:0.5rem;`;
+          markSpan = `<span style="opacity:0.45;min-width:1.4em;font-size:0.95em;">${i + 1}.</span>`;
+        } else {
+          // 答え面: ○=正解, ×=不正解
+          itemStyle = `padding:0.45rem 0.85rem;border-radius:8px;font-size:0.92rem;background:${isCorrect ? 'rgba(34,197,94,0.12)' : 'rgba(239,68,68,0.07)'};border:1px solid ${isCorrect ? 'rgba(34,197,94,0.35)' : 'rgba(239,68,68,0.25)'};color:${isCorrect ? '#4ade80' : '#fca5a5'};display:flex;align-items:center;gap:0.5rem;`;
+          markSpan = `<span style="font-weight:700;min-width:1.4em;">${isCorrect ? '○' : '×'}</span>`;
+        }
+        return `<div style="${itemStyle}">${markSpan}${esc(opt) || '<span style="color:#64748b;">（未入力）</span>'}</div>`;
       }).join('');
       return valignWrap(`<div style="display:flex;${layout}gap:0.35rem;margin-bottom:0.75rem;">${choiceItems}</div>`);
     } catch { return ''; }

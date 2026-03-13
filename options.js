@@ -335,9 +335,14 @@ function createFieldDetailPanel(field) {
       const k = inp.dataset.key;
       if (!k) return;
       if (!field.options) field.options = {};
-      field.options[k] = inp.type === 'checkbox' ? inp.checked
-                       : inp.type === 'number'   ? Number(inp.value)
-                       :                           inp.value;
+      const newVal = inp.type === 'checkbox' ? inp.checked
+                   : inp.type === 'number'   ? Number(inp.value)
+                   :                           inp.value;
+      field.options[k] = newVal;
+      // 選択肢数が変更されたら選択肢リストを更新
+      if (k === 'defaultCount' && typeof field._updateChoiceCount === 'function') {
+        field._updateChoiceCount(Number(newVal));
+      }
     });
     updateCardPreview(activeGenre, currentPreviewValues);
   });
@@ -408,6 +413,11 @@ function addNewFormField(inner, role, type) {
   if (type === 'image') {
     if (!pendingImages[newField.key]) pendingImages[newField.key] = [];
     inner.insertBefore(wrapFieldWithToolbar(newField, buildImagePasteUI(newField)), inner.lastChild);
+    return;
+  }
+
+  if (type === 'choice_single' || type === 'choice_multi') {
+    inner.insertBefore(wrapFieldWithToolbar(newField, buildChoiceFieldUI(newField, activeGenre)), inner.lastChild);
     return;
   }
 
@@ -946,6 +956,128 @@ function fillFormWithCard(card) {
   updateCardPreview(genre, currentPreviewValues);
 }
 
+// ===== 選択肢フィールドUI構築（renderForm / addNewFormField 共通） =====
+function buildChoiceFieldUI(field, genre) {
+  const isMulti = field.type === 'choice_multi';
+  const div = document.createElement('div');
+  div.className = 'form-group';
+  div.id = `field-container-${field.key}`;
+
+  const label = document.createElement('label');
+  label.innerHTML = `${isMulti ? '☑️' : '🔘'} ${field.label}${field.required ? '<span class="required-badge">必須</span>' : ''}`;
+
+  const choiceList = document.createElement('div');
+  choiceList.className = 'choice-list';
+  choiceList.style.cssText = 'display:flex;flex-direction:column;gap:0.5rem;margin-bottom:0.5rem;';
+
+  const updateChoicePreview = () => {
+    const opts = Array.from(choiceList.querySelectorAll('.choice-option-input')).map(i => i.value.trim());
+    const correct = Array.from(choiceList.querySelectorAll('.choice-correct-btn'))
+      .map((btn, i) => btn.dataset.correct === '1' ? i : -1)
+      .filter(i => i !== -1);
+    currentPreviewValues[field.key] = JSON.stringify({ options: opts, correct });
+    updateCardPreview(genre, currentPreviewValues);
+  };
+
+  const applyMarkStyle = (btn, isCorrect) => {
+    btn.style.cssText = `width:32px;height:32px;border-radius:50%;font-weight:700;font-size:1rem;cursor:pointer;flex-shrink:0;border:2px solid ${isCorrect ? 'rgba(34,197,94,0.6)' : 'rgba(239,68,68,0.4)'};background:${isCorrect ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.1)'};color:${isCorrect ? '#4ade80' : '#f87171'};transition:all 0.2s;display:flex;align-items:center;justify-content:center;`;
+  };
+
+  const addOption = (text = '', isCorrect = false) => {
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;align-items:center;gap:0.5rem;';
+
+    const markBtn = document.createElement('button');
+    markBtn.type = 'button';
+    markBtn.className = 'choice-correct-btn';
+    markBtn.dataset.correct = isCorrect ? '1' : '0';
+    markBtn.textContent = isCorrect ? '○' : '×';
+    markBtn.title = isMulti ? '○=正解 / ×=不正解（複数可）' : '○=正解 / ×=不正解（1つのみ）';
+    applyMarkStyle(markBtn, isCorrect);
+
+    markBtn.addEventListener('click', () => {
+      const wasCorrect = markBtn.dataset.correct === '1';
+      if (!wasCorrect && !isMulti) {
+        // choice_single: 他の○をすべて×にリセット
+        choiceList.querySelectorAll('.choice-correct-btn').forEach(btn => {
+          btn.dataset.correct = '0';
+          btn.textContent = '×';
+          applyMarkStyle(btn, false);
+        });
+      }
+      const newState = !wasCorrect;
+      markBtn.dataset.correct = newState ? '1' : '0';
+      markBtn.textContent = newState ? '○' : '×';
+      applyMarkStyle(markBtn, newState);
+      updateChoicePreview();
+    });
+
+    const optionInput = document.createElement('input');
+    optionInput.type = 'text';
+    optionInput.className = 'choice-option-input';
+    optionInput.value = text;
+    optionInput.placeholder = '選択肢を入力…';
+    optionInput.style.cssText = 'flex:1;background:rgba(0,0,0,0.2);border:1px solid var(--glass-border);border-radius:6px;padding:0.5rem 0.75rem;color:var(--text-primary);font-family:inherit;font-size:0.9rem;';
+
+    const removeBtn = document.createElement('button');
+    removeBtn.type = 'button';
+    removeBtn.textContent = '×';
+    removeBtn.style.cssText = 'background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);color:#ef4444;border-radius:4px;width:28px;height:28px;cursor:pointer;font-size:0.9rem;flex-shrink:0;display:flex;align-items:center;justify-content:center;';
+    removeBtn.addEventListener('click', () => { row.remove(); updateChoicePreview(); });
+
+    optionInput.addEventListener('input', updateChoicePreview);
+    row.appendChild(markBtn);
+    row.appendChild(optionInput);
+    row.appendChild(removeBtn);
+    choiceList.appendChild(row);
+    updateChoicePreview();
+  };
+
+  // 詳細設定の「選択肢数」変更に対応するコールバック
+  field._updateChoiceCount = (newCount) => {
+    newCount = Math.max(2, Math.min(6, Number(newCount) || 3));
+    const rows = choiceList.querySelectorAll('.choice-option-input');
+    const currentCount = rows.length;
+    if (newCount > currentCount) {
+      for (let i = currentCount; i < newCount; i++) addOption();
+    } else if (newCount < currentCount) {
+      // 末尾から空の選択肢を削除
+      const allRows = choiceList.children;
+      for (let i = allRows.length - 1; i >= newCount; i--) {
+        const inp = allRows[i]?.querySelector('.choice-option-input');
+        if (inp && !inp.value.trim()) allRows[i].remove();
+      }
+    }
+    updateChoicePreview();
+  };
+
+  // 初期選択肢数は詳細設定の defaultCount に従う
+  const initCount = Math.max(2, Math.min(6, Number(field.options?.defaultCount) || 3));
+  addOption('', true);
+  for (let i = 1; i < initCount; i++) addOption();
+
+  div._setChoiceData = (data) => {
+    choiceList.innerHTML = '';
+    (data.options || []).forEach((opt, i) => addOption(opt, (data.correct || []).includes(i)));
+  };
+
+  const addChoiceBtn = document.createElement('button');
+  addChoiceBtn.type = 'button';
+  addChoiceBtn.textContent = '＋ 選択肢を追加';
+  addChoiceBtn.style.cssText = 'background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.3);color:#a78bfa;padding:0.35rem 0.8rem;border-radius:6px;cursor:pointer;font-size:0.85rem;';
+  addChoiceBtn.addEventListener('click', () => addOption());
+
+  const choiceHint = document.createElement('div');
+  choiceHint.style.cssText = 'font-size:0.78rem;color:var(--text-secondary);margin-top:0.3rem;';
+  choiceHint.textContent = isMulti ? '○=正解（複数可） / ×=不正解　でマーク' : '○=正解 / ×=不正解　でマーク（正解は1つ）';
+
+  div.appendChild(label);
+  div.appendChild(choiceList);
+  div.appendChild(addChoiceBtn);
+  div.appendChild(choiceHint);
+  return div;
+}
+
 function renderForm() {
   el.formFields.innerHTML = '';
   pendingImages = {};
@@ -1030,71 +1162,7 @@ function renderForm() {
 
     // ===== 選択肢 (choice_single / choice_multi) =====
     if (field.type === 'choice_single' || field.type === 'choice_multi') {
-      const isMulti = field.type === 'choice_multi';
-      const div = document.createElement('div');
-      div.className = 'form-group';
-      div.id = `field-container-${field.key}`;
-      const label = document.createElement('label');
-      label.innerHTML = `${isMulti ? '☑️' : '🔘'} ${field.label}${field.required ? '<span class="required-badge">必須</span>' : ''}`;
-      const choiceList = document.createElement('div');
-      choiceList.className = 'choice-list';
-      choiceList.style.cssText = 'display:flex;flex-direction:column;gap:0.5rem;margin-bottom:0.5rem;';
-      const updateChoicePreview = () => {
-        const opts = Array.from(choiceList.querySelectorAll('.choice-option-input')).map(i => i.value.trim());
-        const corrects = Array.from(choiceList.querySelectorAll('.choice-correct-input')).map(i => i.checked);
-        const correct = corrects.reduce((acc, v, i) => v ? [...acc, i] : acc, []);
-        currentPreviewValues[field.key] = JSON.stringify({ options: opts, correct });
-        updateCardPreview(genre, currentPreviewValues);
-      };
-      const addOption = (text = '', isCorrect = false) => {
-        const row = document.createElement('div');
-        row.style.cssText = 'display:flex;align-items:center;gap:0.5rem;';
-        const correctInput = document.createElement('input');
-        correctInput.type = isMulti ? 'checkbox' : 'radio';
-        correctInput.name = `choice-correct-${field.key}`;
-        correctInput.className = 'choice-correct-input';
-        correctInput.checked = isCorrect;
-        correctInput.title = isMulti ? '複数の正解をマーク' : '正解をマーク';
-        correctInput.style.cssText = 'width:16px;height:16px;cursor:pointer;accent-color:#6366f1;flex-shrink:0;';
-        const optionInput = document.createElement('input');
-        optionInput.type = 'text';
-        optionInput.className = 'choice-option-input';
-        optionInput.value = text;
-        optionInput.placeholder = '選択肢を入力…';
-        optionInput.style.cssText = 'flex:1;background:rgba(0,0,0,0.2);border:1px solid var(--glass-border);border-radius:6px;padding:0.5rem 0.75rem;color:var(--text-primary);font-family:inherit;font-size:0.9rem;';
-        const removeBtn = document.createElement('button');
-        removeBtn.type = 'button';
-        removeBtn.textContent = '×';
-        removeBtn.style.cssText = 'background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);color:#ef4444;border-radius:4px;width:28px;height:28px;cursor:pointer;font-size:0.9rem;flex-shrink:0;display:flex;align-items:center;justify-content:center;';
-        removeBtn.addEventListener('click', () => { row.remove(); updateChoicePreview(); });
-        optionInput.addEventListener('input', updateChoicePreview);
-        correctInput.addEventListener('change', updateChoicePreview);
-        row.appendChild(correctInput);
-        row.appendChild(optionInput);
-        row.appendChild(removeBtn);
-        choiceList.appendChild(row);
-        updateChoicePreview();
-      };
-      addOption('', true);
-      addOption();
-      addOption();
-      const addChoiceBtn = document.createElement('button');
-      addChoiceBtn.type = 'button';
-      addChoiceBtn.textContent = '＋ 選択肢を追加';
-      addChoiceBtn.style.cssText = 'background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.3);color:#a78bfa;padding:0.35rem 0.8rem;border-radius:6px;cursor:pointer;font-size:0.85rem;';
-      addChoiceBtn.addEventListener('click', () => addOption());
-      const choiceHint = document.createElement('div');
-      choiceHint.style.cssText = 'font-size:0.78rem;color:var(--text-secondary);margin-top:0.3rem;';
-      choiceHint.textContent = isMulti ? '☑️ で正解をすべてマーク（複数可）' : '🔘 で正解の1つをマーク';
-      div._setChoiceData = (data) => {
-        choiceList.innerHTML = '';
-        (data.options || []).forEach((opt, i) => addOption(opt, (data.correct || []).includes(i)));
-      };
-      div.appendChild(label);
-      div.appendChild(choiceList);
-      div.appendChild(addChoiceBtn);
-      div.appendChild(choiceHint);
-      targetInner.appendChild(wrapFieldWithToolbar(field, div));
+      targetInner.appendChild(wrapFieldWithToolbar(field, buildChoiceFieldUI(field, genre)));
       return;
     }
 

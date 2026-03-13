@@ -1714,6 +1714,16 @@ function setupGlobalListeners() {
       if (editingCardId) {
         // ===== 編集モード: 既存カードを更新 =====
         await StorageManager.updateCardContent(editingCardId, question, fullAnswer, imageValue);
+
+        // field.options（詳細設定）の変更をジャンル定義に反映して保存
+        if (activeGenreId && activeGenre) {
+          const gIdx = genres.findIndex(g => g.id === activeGenreId);
+          if (gIdx !== -1) {
+            genres[gIdx] = { ...genres[gIdx], fields: activeGenre.fields };
+            await StorageManager.saveGenres(genres);
+          }
+        }
+
         el.successMsg.classList.remove('hidden');
         setTimeout(() => {
           el.successMsg.classList.add('hidden');

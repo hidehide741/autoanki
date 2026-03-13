@@ -1711,10 +1711,11 @@ function setupGlobalListeners() {
         if (field.type === 'choice_single' || field.type === 'choice_multi') {
           const container = document.getElementById(`field-container-${field.key}`);
           if (container) {
-            const opts = Array.from(container.querySelectorAll('.choice-option-input')).map(i => i.value.trim()).filter(v => v);
-            const corrects = Array.from(container.querySelectorAll('.choice-correct-input'));
-            const correct = corrects.reduce((acc, inp, i) => inp.checked ? [...acc, i] : acc, []);
-            values[field.key] = JSON.stringify({ options: opts, correct });
+            const opts = Array.from(container.querySelectorAll('.choice-option-input')).map(i => i.value.trim());
+            const correct = Array.from(container.querySelectorAll('.choice-correct-btn'))
+              .map((btn, i) => btn.dataset.correct === '1' ? i : -1)
+              .filter(i => i !== -1);
+            if (opts.some(o => o)) values[field.key] = JSON.stringify({ options: opts, correct });
           }
         } else if (field.type === 'wrongexample') {
           const container = document.getElementById(`field-container-${field.key}`);

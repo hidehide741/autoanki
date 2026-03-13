@@ -1,4 +1,5 @@
 import StorageManager, { uploadImageToSupabase } from './storage.js';
+import { renderFieldHtml as _renderFieldHtml } from './renderCard.js';
 
 const PAGE_SIZE = 25;
 
@@ -252,6 +253,7 @@ function openModal(id) {
   if (!card) return;
   activeCardId = id;
 
+  const genreDef = genres.find(g => g.id === card.genre);
   const fields = genreDef?.fields || [
     { key: 'question', label: '問題', type: 'textarea', role: 'question' },
     { key: 'answer',   label: '答え', type: 'textarea', role: 'answer' }
@@ -277,53 +279,36 @@ function openModal(id) {
   el.modalImages.innerHTML = ''; // Clear the old modalImages container
   el.modalImages.classList.add('hidden'); // Hide it by default
 
-  // フィールドごとのレンダリング
-  fields.forEach(field => {
-    let val = '';
+  // フィールドごとのレンダリング（renderCard.js 共通ロジック使用）
+  function getFieldValue(field) {
     const rawContent = (field.role === 'question' ? card.question : card.answer) || '';
-    
-    // テキスト抽出
     const searchStr = `[${field.label}]\n`;
     const startIdx = rawContent.indexOf(searchStr);
     if (startIdx !== -1) {
       const contentStart = startIdx + searchStr.length;
       const nextIdx = rawContent.indexOf('\n\n[', contentStart);
-      val = (nextIdx !== -1 ? rawContent.substring(contentStart, nextIdx) : rawContent.substring(contentStart)).trim();
-    } else if (field.key === 'question' || field.key === 'answer') {
-      val = rawContent;
+      return (nextIdx !== -1 ? rawContent.substring(contentStart, nextIdx) : rawContent.substring(contentStart)).trim();
     }
+    if (field.key === 'question' || field.key === 'answer') return rawContent;
+    return '';
+  }
 
-    if (!val && !field.required && field.type !== 'image') return;
-
-    if (field.type === 'static') {
-      const staticEl = document.createElement('div');
-      staticEl.style.cssText = 'padding: 0.75rem 1rem; margin: 1rem 0; background: rgba(99,102,241,0.08); border-radius: 8px; border-left: 4px solid #a78bfa; font-weight: 600; font-size: 1rem; color: #a78bfa;';
-      staticEl.textContent = field.label;
-      (field.role === 'question' ? el.modalQ : el.modalAnswer).appendChild(staticEl);
-    } else if (field.type === 'image') {
-      const fieldImages = images.filter(img => img.role === field.role);
-      if (fieldImages.length > 0) {
-        const grid = document.createElement('div');
-        grid.className = 'image-grid';
-        grid.style.marginTop = '0.5rem';
-        grid.dataset.cols = Math.min(fieldImages.length, 3);
-        fieldImages.forEach(img => {
-          const imgEl = document.createElement('img');
-          imgEl.src = img.url;
-          grid.appendChild(imgEl);
-        });
-        (field.role === 'question' ? el.modalQ : el.modalAnswer).appendChild(grid);
-      }
-    } else {
-      const fieldWrap = document.createElement('div');
-      fieldWrap.style.marginBottom = '1rem';
-      fieldWrap.innerHTML = `
-        <p class="modal-label">${esc(field.label)}</p>
-        <div class="modal-value ${['answer', 'question'].includes(field.key) ? '' : 'modal-extra-value'}">${esc(val)}</div>
-      `;
-      // question 以外は answer 側に、question は Q 側に配置（既存UI互換）
-      if (field.key === 'question') el.modalQ.appendChild(fieldWrap);
-      else el.modalAnswer.appendChild(fieldWrap);
+  fields.filter(f => f.role === 'question').forEach(f => {
+    const imageList = images.filter(img => img.fieldKey ? img.fieldKey === f.key : img.role === f.role);
+    const html = _renderFieldHtml(f, true, getFieldValue, imageList);
+    if (html) {
+      const wrap = document.createElement('div');
+      wrap.innerHTML = html;
+      el.modalQ.appendChild(wrap);
+    }
+  });
+  fields.filter(f => f.role === 'answer').forEach(f => {
+    const imageList = images.filter(img => img.fieldKey ? img.fieldKey === f.key : img.role === f.role);
+    const html = _renderFieldHtml(f, false, getFieldValue, imageList);
+    if (html) {
+      const wrap = document.createElement('div');
+      wrap.innerHTML = html;
+      el.modalAnswer.appendChild(wrap);
     }
   });
 

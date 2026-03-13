@@ -3,8 +3,8 @@ import { renderFieldHtml as _renderFieldHtml, escapeHtml } from './renderCard.js
 
 const MAX_IMAGES = 3;
 
-// HTML エスケープ（短縮エイリアス）
-const esc = (s) => String(s).replace(/[&<>"'`]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;','`':'&#x60;'})[c]);
+// HTML エスケープ（renderCard.js からインポートした escapeHtml のエイリアス）
+const esc = escapeHtml;
 let genres = [];
 let pendingImages = {};
 let editingCardId = null;
@@ -1380,6 +1380,7 @@ function createRoleBlock(title, color) {
 }
 
 // ===== プレビューパネル：実際のカード表示と同じ見た目で描画 =====
+let _previewAnswerShown = false; // 答えエリアの表示状態を保持
 function updateCardPreview(genre, values) {
   const panel = document.getElementById('card-preview-panel');
   if (!panel) return;
@@ -1387,150 +1388,15 @@ function updateCardPreview(genre, values) {
   // 1フィールドを renderCard.js の共通ロジックでHTMLに変換（newtab.js と完全同一）
   function renderFieldHtml(f, isQuestion) {
     const imageList = (pendingImages[f.key] || []).map(img => ({ url: img.previewUrl || img.existingUrl || '' }));
-    return _renderFieldHtml(f, isQuestion, (field) => values[field.key] || '', imageList);
+    const html = _renderFieldHtml(f, isQuestion, (field) => values[field.key] || '', imageList);
+    if (html) return html;
+    // 空フィールドでもプレビューに表示（プレースホルダー）
+    const typeInfo = FIELD_TYPES.find(t => t.val === f.type);
+    const icon = typeInfo ? typeInfo.label.split(' ')[0] : '📝';
+    return `<div style="padding:0.4rem 0.75rem;margin:0.2rem 0 0.5rem;background:rgba(255,255,255,0.02);border:1px dashed rgba(255,255,255,0.08);border-radius:6px;color:#475569;font-size:0.82rem;display:flex;align-items:center;gap:0.4rem;">
+      <span>${icon}</span><span>${escapeHtml(f.label)}（未入力）</span>
+    </div>`;
   }
-  /* ===== 旧実装（renderCard.js に移行済み）=====
-  function _legacy_renderFieldHtml(f, isQuestion) {
-    const opts     = f.options || {};
-    const fsSz     = opts.fontSize === 'sm' ? '0.82rem' : opts.fontSize === 'lg' ? '1.25rem' : null;
-    const alignSt  = opts.align ? `text-align:${opts.align};` : '';
-    const boldSt   = opts.bold  ? 'font-weight:700;' : '';
-
-    // 文字揃え(縦) ラッパー
-    const valignWrap = (html) => {
-      const v = opts.valign || 'top';
-      if (v === 'top') return html;
-      const jc = v === 'bottom' ? 'flex-end' : 'center';
-      return `<div style="display:flex;flex-direction:column;justify-content:${jc};min-height:5rem;">${html}</div>`;
-    };
-
-    // 基本テキストスタイル（text / textarea / freetext / number / date 等）
-    const baseTextStyle = isQuestion
-      ? `font-size:${fsSz||'1.1rem'};font-weight:${opts.bold?'700':'400'};line-height:1.55;letter-spacing:-0.01em;${
-          opts.color
-            ? `color:${opts.color};-webkit-text-fill-color:${opts.color};background:none;-webkit-background-clip:initial;background-clip:initial;`
-            : 'background:linear-gradient(135deg,#f1f5f9,#cbd5e1);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;'
-        }white-space:pre-wrap;margin-bottom:0.75rem;display:block;${alignSt}`
-      : `font-size:${fsSz||'1rem'};font-weight:${opts.bold?'700':'600'};${
-          opts.color ? `color:${opts.color};` : 'color:#a78bfa;'
-        }line-height:1.5;white-space:pre-wrap;margin-bottom:0.75rem;display:block;${alignSt}`;
-
-    if (f.type === 'static') {
-      const v = (values[f.key] !== undefined && values[f.key] !== '') ? values[f.key] : f.label;
-      const showBorder = opts.border !== false; // default: true
-      const borderStyle = showBorder
-        ? 'background:rgba(99,102,241,0.08);border:1px solid rgba(167,139,250,0.35);border-radius:6px;'
-        : 'background:transparent;border:none;border-radius:0;';
-      return valignWrap(`<div style="padding:0.4rem 0.75rem;margin:0.3rem 0 0.6rem;${borderStyle}font-weight:${opts.bold?'700':'400'};font-size:${fsSz||'0.95rem'};color:${opts.color||'#a78bfa'};${alignSt}">${escapeHtml(v)}</div>`);
-    }
-
-    if (f.type === 'image') {
-      const imgs = pendingImages[f.key] || [];
-      if (!imgs.length) return '';
-      const cols = Math.min(imgs.length, 3);
-      const maxH = opts.size === 'sm' ? '100px' : opts.size === 'lg' ? '240px' : '160px';
-      return `<div style="display:grid;grid-template-columns:repeat(${cols},1fr);gap:0.5rem;margin:0.5rem 0 0.75rem;">
-        ${imgs.map(img => `<img src="${img.previewUrl}" style="width:100%;max-height:${maxH};object-fit:contain;border-radius:10px;border:1px solid rgba(255,255,255,0.1);">`).join('')}
-      </div>`;
-    }
-
-    if (f.type === 'fillblank') {
-      const val = values[f.key] || '';
-      const blankStyle = opts.blankStyle || 'underline';
-      const blankSpanStyle = blankStyle === 'box'
-        ? 'border:1px solid #fbbf24;border-radius:4px;padding:0 4px;color:#fbbf24;font-weight:700;'
-        : blankStyle === 'highlight'
-        ? 'background:rgba(251,191,36,0.4);padding:0 4px;border-radius:3px;color:#fbbf24;'
-        : 'background:rgba(250,204,21,0.2);border-bottom:2px solid #fbbf24;padding:0 4px;color:#fbbf24;font-weight:700;';
-      const displayed = val
-        ? escapeHtml(val).replace(/\{\{(.+?)\}\}/g, `<span style="${blankSpanStyle}">___</span>`)
-        : '<span style="color:#64748b;">（未入力）</span>';
-      return valignWrap(`<div style="font-size:${fsSz||'1.05rem'};font-weight:${opts.bold?'700':'400'};line-height:1.7;margin-bottom:0.75rem;color:${opts.color||'#f1f5f9'};${alignSt}">${displayed}</div>`);
-    }
-
-    if (f.type === 'choice_single' || f.type === 'choice_multi') {
-      const val = values[f.key];
-      if (!val) return '';
-      try {
-        const data = JSON.parse(val);
-        const layout = opts.layout === 'horizontal' ? 'flex-direction:row;flex-wrap:wrap;' : 'flex-direction:column;';
-        const choiceItems = (data.options || []).map((opt, i) => {
-          const isCorrect = (data.correct || []).includes(i);
-          return `<div style="padding:0.45rem 0.85rem;border-radius:8px;font-size:0.92rem;background:${isCorrect ? 'rgba(34,197,94,0.12)' : 'rgba(255,255,255,0.04)'};border:1px solid ${isCorrect ? 'rgba(34,197,94,0.35)' : 'rgba(255,255,255,0.07)'};color:${isCorrect ? '#4ade80' : '#e2e8f0'};display:flex;align-items:center;gap:0.5rem;">
-            <span style="opacity:0.8;">${isCorrect ? '✅' : (f.type === 'choice_multi' ? '☐' : '○')}</span>
-            ${escapeHtml(opt) || '<span style="color:#64748b;">（未入力）</span>'}
-          </div>`;
-        }).join('');
-        return valignWrap(`<div style="display:flex;${layout}gap:0.35rem;margin-bottom:0.75rem;">${choiceItems}</div>`);
-      } catch { return ''; }
-    }
-
-    if (f.type === 'tags') {
-      const val = values[f.key] || '';
-      if (!val) return '';
-      const tags = val.split(',').map(t => t.trim()).filter(t => t);
-      const tagColor  = opts.color || '#2dd4bf';
-      const tagBg     = opts.color ? 'rgba(255,255,255,0.1)' : 'rgba(20,184,166,0.18)';
-      const tagBorder = opts.color ? 'rgba(255,255,255,0.2)' : 'rgba(20,184,166,0.4)';
-      const justifySt = opts.align === 'center' ? 'justify-content:center;' : opts.align === 'right' ? 'justify-content:flex-end;' : '';
-      return valignWrap(`<div style="display:flex;flex-wrap:wrap;gap:0.3rem;margin-bottom:0.75rem;${justifySt}">${tags.map(t =>
-        `<span style="background:${tagBg};border:1px solid ${tagBorder};color:${tagColor};padding:0.18rem 0.55rem;border-radius:12px;font-size:0.82rem;">${escapeHtml(t)}</span>`
-      ).join('')}</div>`);
-    }
-
-    if (f.type === 'difficulty') {
-      const max = parseInt(opts.maxStars || 5);
-      const v   = parseInt(values[f.key] || String(opts.defaultVal || 3));
-      return `<div style="font-size:1.1rem;margin-bottom:0.75rem;">${'⭐'.repeat(v)}${'☆'.repeat(Math.max(0, max - v))} <span style="font-size:0.82rem;color:#94a3b8;">${v}/${max}</span></div>`;
-    }
-
-    if (f.type === 'hint') {
-      const val = values[f.key] || '';
-      if (!val) return '';
-      return valignWrap(`<div style="background:rgba(251,191,36,0.08);border-left:3px solid #fbbf24;padding:0.55rem 0.85rem;border-radius:6px;margin-bottom:0.75rem;font-size:${fsSz||'0.9rem'};color:${opts.color||'#fde68a'};${boldSt}${alignSt}">💡 ${escapeHtml(val)}</div>`);
-    }
-
-    if (f.type === 'explanation') {
-      const val = values[f.key] || '';
-      if (!val) return '';
-      return valignWrap(`<div style="background:rgba(99,102,241,0.08);border-left:3px solid #6366f1;padding:0.55rem 0.85rem;border-radius:6px;margin-bottom:0.75rem;font-size:${fsSz||'0.9rem'};line-height:1.65;color:${opts.color||'#c7d2fe'};${boldSt}${alignSt}">📖 ${escapeHtml(val).replace(/\n/g,'<br>')}</div>`);
-    }
-
-    if (f.type === 'wrongexample') {
-      const val = values[f.key];
-      if (!val) return '';
-      try {
-        const items = JSON.parse(val).filter(v => v);
-        if (!items.length) return '';
-        return valignWrap(`<div style="display:flex;flex-direction:column;gap:0.3rem;margin-bottom:0.75rem;">${items.map(item =>
-          `<div style="background:rgba(239,68,68,0.08);border-left:3px solid #ef4444;padding:0.4rem 0.75rem;border-radius:5px;font-size:${fsSz||'0.9rem'};color:${opts.color||'#fca5a5'};${boldSt}${alignSt}">❌ ${escapeHtml(item)}</div>`
-        ).join('')}</div>`);
-      } catch { return ''; }
-    }
-
-    if (f.type === 'feedback') {
-      const val = values[f.key] || '';
-      if (!val) return '';
-      return valignWrap(`<div style="background:rgba(34,197,94,0.08);border-left:3px solid #22c55e;padding:0.55rem 0.85rem;border-radius:6px;margin-bottom:0.75rem;font-size:${fsSz||'0.9rem'};color:${opts.color||'#86efac'};${boldSt}${alignSt}">💬 ${escapeHtml(val)}</div>`);
-    }
-
-    if (f.type === 'timer') {
-      const sec = parseInt(opts.defaultSec || values[f.key] || 30);
-      return `<div style="display:inline-flex;align-items:center;gap:0.4rem;background:rgba(248,113,113,0.1);border:1px solid rgba(248,113,113,0.25);border-radius:8px;padding:0.3rem 0.75rem;margin-bottom:0.75rem;font-size:0.92rem;color:#f87171;">⏱ ${sec}秒</div>`;
-    }
-
-    if (f.type === 'url') {
-      const val = values[f.key] || '';
-      const label = opts.linkLabel || '参考資料を見る';
-      if (!val) return '';
-      return `<div style="margin-bottom:0.75rem;"><a href="${escapeHtml(val)}" target="_blank" style="color:#60a5fa;text-decoration:underline;font-size:0.92rem;">🔗 ${escapeHtml(label)}</a></div>`;
-    }
-
-    // text / textarea / freetext / number / date / その他
-    const val = values[f.key] || '';
-    if (!val) return '';
-    return valignWrap(`<p style="${baseTextStyle}">${escapeHtml(val).replace(/\n/g,'<br>')}</p>`);
-  } ===== 旧実装ここまで ===== */
 
   // 問題・答えそれぞれのフィールドをHTML化
   const qFields = genre.fields.filter(f => f.role === 'question');
@@ -1552,10 +1418,10 @@ function updateCardPreview(genre, values) {
       <div id="preview-q-area">${qHtml}</div>
 
       <!-- 答えを見るボタン -->
-      <button id="preview-show-answer-btn" type="button" style="width:100%;padding:0.8rem;background:linear-gradient(135deg,#6366f1,#4f46e5);color:white;border:none;border-radius:12px;font-size:0.95rem;font-weight:600;cursor:pointer;margin-top:0.5rem;box-shadow:0 4px 15px rgba(99,102,241,0.35);font-family:inherit;transition:all 0.2s;">答えを見る</button>
+      <button id="preview-show-answer-btn" type="button" style="width:100%;padding:0.8rem;background:${_previewAnswerShown ? 'rgba(255,255,255,0.05)' : 'linear-gradient(135deg,#6366f1,#4f46e5)'};color:${_previewAnswerShown ? '#94a3b8' : 'white'};border:none;border-radius:12px;font-size:0.95rem;font-weight:600;cursor:pointer;margin-top:0.5rem;box-shadow:${_previewAnswerShown ? 'none' : '0 4px 15px rgba(99,102,241,0.35)'};font-family:inherit;transition:all 0.2s;">${_previewAnswerShown ? '答えを隠す' : '答えを見る'}</button>
 
-      <!-- 答えエリア（初期非表示） -->
-      <div id="preview-a-area" style="display:none;">
+      <!-- 答えエリア -->
+      <div id="preview-a-area" style="display:${_previewAnswerShown ? 'block' : 'none'};">
         <div style="height:1px;background:linear-gradient(90deg,transparent,rgba(255,255,255,0.1),transparent);margin:1.25rem 0;"></div>
         ${aHtml}
 
@@ -1577,19 +1443,19 @@ function updateCardPreview(genre, values) {
       </div>
     </div>`;
 
-  // 「答えを見る」ボタンのトグル
+  // 「答えを見る」ボタンのトグル（状態を保持）
   const showBtn = document.getElementById('preview-show-answer-btn');
   const aArea   = document.getElementById('preview-a-area');
   if (showBtn && aArea) {
     showBtn.addEventListener('click', () => {
-      const shown = aArea.style.display !== 'none';
-      aArea.style.display = shown ? 'none' : 'block';
-      showBtn.textContent = shown ? '答えを見る' : '答えを隠す';
-      showBtn.style.background = shown
-        ? 'linear-gradient(135deg,#6366f1,#4f46e5)'
-        : 'rgba(255,255,255,0.05)';
-      showBtn.style.color = shown ? 'white' : '#94a3b8';
-      showBtn.style.boxShadow = shown ? '0 4px 15px rgba(99,102,241,0.35)' : 'none';
+      _previewAnswerShown = !_previewAnswerShown;
+      aArea.style.display = _previewAnswerShown ? 'block' : 'none';
+      showBtn.textContent = _previewAnswerShown ? '答えを隠す' : '答えを見る';
+      showBtn.style.background = _previewAnswerShown
+        ? 'rgba(255,255,255,0.05)'
+        : 'linear-gradient(135deg,#6366f1,#4f46e5)';
+      showBtn.style.color = _previewAnswerShown ? '#94a3b8' : 'white';
+      showBtn.style.boxShadow = _previewAnswerShown ? 'none' : '0 4px 15px rgba(99,102,241,0.35)';
     });
   }
 }

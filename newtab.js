@@ -145,9 +145,6 @@ function showQuestionMode(genreDef) {
     }
   }
 
-  // HTMLエスケープ
-  const esc = (s) => String(s).replace(/[&<>"'`]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;','`':'&#x60;'})[c]);
-
   // rawContent から [ラベル]\n値 形式で値を取得
   function getFieldValue(field) {
     const raw = (field.role === 'question' ? currentCard.question : currentCard.answer) || '';

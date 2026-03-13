@@ -68,9 +68,15 @@ export function renderFieldHtml(f, isQuestion, getValue, imageList = []) {
       : blankStyle === 'highlight'
       ? 'background:rgba(251,191,36,0.4);padding:0 4px;border-radius:3px;color:#fbbf24;'
       : 'background:rgba(250,204,21,0.2);border-bottom:2px solid #fbbf24;padding:0 4px;color:#fbbf24;font-weight:700;';
-    const displayed = val
-      ? esc(val).replace(/\n/g, '<br>').replace(/\{\{(.+?)\}\}/g, `<span style="${blankSpanStyle}">___</span>`)
-      : '<span style="color:#64748b;">（未入力）</span>';
+    let displayed;
+    if (!val) {
+      displayed = '<span style="color:#64748b;">（未入力）</span>';
+    } else if (isQuestion) {
+      displayed = esc(val).replace(/\n/g, '<br>').replace(/\{\{(.+?)\}\}/g, `<span style="${blankSpanStyle}">___</span>`);
+    } else {
+      // 答え面: {{正解}} の中身を表示
+      displayed = esc(val).replace(/\n/g, '<br>').replace(/\{\{(.+?)\}\}/g, `<span style="${blankSpanStyle}">$1</span>`);
+    }
     return valignWrap(`<div style="font-size:${fsSz||'1.05rem'};font-weight:${opts.bold?'700':'400'};line-height:1.7;margin-bottom:0.75rem;color:${opts.color||'#f1f5f9'};${alignSt}">${displayed}</div>`);
   }
 

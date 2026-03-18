@@ -1800,10 +1800,10 @@ function setupGlobalListeners() {
           qParts.push(`[${f.label}]\n${val}`);
           // 選択肢フィールドは答え側にも自動保存（○×表示用）
           if (f.type === 'choice_multi' || f.type === 'choice_single') {
-            aParts.push(`[${f.label}]\n${saveVal}`);
+            aParts.push(`[${f.label}]\n${val}`);
           }
         } else if (f.role === 'answer') {
-          aParts.push(`[${f.label}]\n${saveVal}`);
+          aParts.push(`[${f.label}]\n${val}`);
         }
       });
 

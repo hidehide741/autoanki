@@ -119,6 +119,7 @@ async function init() {
   renderGenreTags();
   goStep(3);
   renderForm();
+  initCategoryInput();
   setupGlobalListeners();
 }
 
@@ -914,6 +915,7 @@ async function enterEditMode(cardId) {
   goStep(3);
   renderGenreTags();
   renderForm();
+  initCategoryInput();
   fillFormWithCard(card);
   setupGlobalListeners();
 }
@@ -937,9 +939,18 @@ function fillFormWithCard(card) {
   };
   const qParsed = parseSection(card.question);
   const aParsed = parseSection(card.answer);
+
+  // カテゴリタグを question テキストから抽出して入力欄に反映
+  const tagsMatch = card.question ? /\[__tags__\]\n([\s\S]*)$/.exec(card.question) : null;
+  const cardTags = tagsMatch ? tagsMatch[1].trim() : '';
+  const catInput = document.getElementById('card-category-input');
+  if (catInput) { catInput.value = cardTags; catInput.dispatchEvent(new Event('input')); }
+
   genre.fields.forEach(field => {
     const parsed = field.role === 'question' ? qParsed : aParsed;
     const val = parsed[field.label];
+    // static フィールドは常に field.label を固定表示するため、保存データからの読み込みをスキップ
+    if (field.type === 'static') return;
     if (field.type === 'image') {
       try {
         const imgs = card.image ? JSON.parse(card.image) : [];
@@ -1660,6 +1671,49 @@ function renderPreviews(fieldKey) {
   container.appendChild(countEl);
 }
 
+// ===== カテゴリタグ入力UI（フォーム上部に配置） =====
+function initCategoryInput(initialValue = '') {
+  const existing = document.getElementById('card-category-section');
+  if (existing) existing.remove();
+
+  const section = document.createElement('div');
+  section.id = 'card-category-section';
+  section.style.cssText = 'margin:-0.25rem 0 1.25rem;padding:0.85rem 1rem;background:rgba(20,184,166,0.04);border:1px solid rgba(20,184,166,0.2);border-radius:10px;';
+
+  const labelEl = document.createElement('div');
+  labelEl.style.cssText = 'font-size:0.8rem;font-weight:600;color:#14b8a6;margin-bottom:0.45rem;display:flex;align-items:center;gap:0.4rem;';
+  labelEl.innerHTML = '🏷️ カテゴリ <span style="font-weight:400;color:var(--text-secondary);font-size:0.75rem;">（任意・カンマ区切りで複数可）</span>';
+
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.id = 'card-category-input';
+  input.value = initialValue;
+  input.placeholder = '例: 英語, 文法, 基礎';
+  input.style.cssText = 'width:100%;background:rgba(0,0,0,0.2);border:1px solid rgba(20,184,166,0.3);border-radius:7px;padding:0.55rem 0.9rem;color:var(--text-primary);font-family:inherit;font-size:0.9rem;outline:none;transition:border-color 0.2s;box-sizing:border-box;';
+  input.addEventListener('focus', () => { input.style.borderColor = '#14b8a6'; });
+  input.addEventListener('blur',  () => { input.style.borderColor = 'rgba(20,184,166,0.3)'; });
+
+  const tagDisplay = document.createElement('div');
+  tagDisplay.style.cssText = 'display:flex;flex-wrap:wrap;gap:0.3rem;margin-top:0.4rem;min-height:18px;';
+
+  const renderTagDisp = () => {
+    const tags = input.value.split(',').map(t => t.trim()).filter(Boolean);
+    tagDisplay.innerHTML = tags.map(t =>
+      `<span style="background:rgba(20,184,166,0.18);border:1px solid rgba(20,184,166,0.35);color:#14b8a6;padding:0.12rem 0.5rem;border-radius:12px;font-size:0.78rem;">${esc(t)}</span>`
+    ).join('');
+  };
+  input.addEventListener('input', renderTagDisp);
+  if (initialValue) renderTagDisp();
+
+  section.appendChild(labelEl);
+  section.appendChild(input);
+  section.appendChild(tagDisplay);
+
+  // フォームの直前に挿入
+  const form = document.getElementById('add-card-form');
+  if (form) form.parentElement.insertBefore(section, form);
+}
+
 function setupGlobalListeners() {
   // 💾 型を保存ボタン
   const saveGenreBtn = document.getElementById('save-genre-btn');
@@ -1756,6 +1810,11 @@ function setupGlobalListeners() {
       const question = qParts.join('\n\n');
       const fullAnswer = aParts.join('\n\n');
 
+      // カテゴリタグを question テキスト末尾に追記
+      const catEl = document.getElementById('card-category-input');
+      const categoryTags = catEl ? catEl.value.trim() : '';
+      const finalQuestion = categoryTags ? question + `\n\n[__tags__]\n${categoryTags}` : question;
+
       // 画像: 既存URL はそのまま使い、新規ファイルのみアップロード
       let imageValue = null;
       const uploadTasks = [];
@@ -1785,7 +1844,7 @@ function setupGlobalListeners() {
 
       if (editingCardId) {
         // ===== 編集モード: 既存カードを更新 =====
-        await StorageManager.updateCardContent(editingCardId, question, fullAnswer, imageValue);
+        await StorageManager.updateCardContent(editingCardId, finalQuestion, fullAnswer, imageValue);
 
         // field.options（詳細設定）の変更をジャンル定義に反映して保存
         if (activeGenreId && activeGenre) {
@@ -1803,7 +1862,7 @@ function setupGlobalListeners() {
         }, 1500);
       } else {
         // ===== 新規モード: カードを追加 =====
-        await StorageManager.addCard(question, fullAnswer, imageValue, activeGenreId || 'other');
+        await StorageManager.addCard(finalQuestion, fullAnswer, imageValue, activeGenreId || 'other');
 
         // フォームリセット
         el.addForm.querySelectorAll('input:not([type="file"]), textarea').forEach(i => i.value = '');
@@ -1812,6 +1871,7 @@ function setupGlobalListeners() {
         );
         pendingImages = {};
         renderForm();
+        initCategoryInput();
 
         el.successMsg.classList.remove('hidden');
         setTimeout(() => el.successMsg.classList.add('hidden'), 3000);

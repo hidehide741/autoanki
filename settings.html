@@ -270,6 +270,18 @@
         </div>
       </section>
 
+      <!-- カテゴリ一覧 -->
+      <section class="section glass-panel" id="category-list-section" style="margin-top:1.5rem;">
+        <div class="section-header" style="margin-bottom:1rem;">
+          <h2 class="section-title" style="margin:0; border:none; padding:0;">🏷️ カテゴリ一覧</h2>
+          <button type="button" id="refresh-category-btn" class="btn btn-secondary btn-sm">🔄 更新</button>
+        </div>
+        <p style="font-size:0.82rem;color:var(--text-secondary);margin:0 0 1rem;">問題作成時に入力したカテゴリの一覧です。カードに付けたタグで整理できます。</p>
+        <div id="category-tag-list" style="display:flex;flex-wrap:wrap;gap:0.6rem;min-height:40px;">
+          <span style="color:var(--text-secondary);font-size:0.85rem;">読み込み中...</span>
+        </div>
+      </section>
+
       <!-- ジャンル詳細エディタ (2つの独立したパネル) -->
       <div class="genre-editor-grid hidden" id="genre-editor">
         <!-- 左カラム: 入力フォームパネル -->

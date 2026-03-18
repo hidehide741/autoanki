@@ -22,6 +22,9 @@ const el = {
 async function init() {
   genres = await StorageManager.getGenres();
   renderGenreList();
+  loadCategoryList();
+
+  document.getElementById('refresh-category-btn')?.addEventListener('click', loadCategoryList);
 
   el.addGenreBtn.addEventListener('click', () => {
     editingGenreId = null;
@@ -596,3 +599,41 @@ function renderPreview() {
 }
 
 document.addEventListener('DOMContentLoaded', init);
+
+// ===== カテゴリ一覧 =====
+async function loadCategoryList() {
+  const container = document.getElementById('category-tag-list');
+  if (!container) return;
+  container.innerHTML = '<span style="color:var(--text-secondary);font-size:0.85rem;">読み込み中...</span>';
+
+  try {
+    const cards = await StorageManager.getAllCards();
+    const tagCount = {};
+
+    cards.forEach(card => {
+      if (!card.question) return;
+      const m = /\[__tags__\]\n([\s\S]*)$/.exec(card.question);
+      if (!m) return;
+      const tags = m[1].trim().split(',').map(t => t.trim()).filter(Boolean);
+      tags.forEach(tag => {
+        tagCount[tag] = (tagCount[tag] || 0) + 1;
+      });
+    });
+
+    const entries = Object.entries(tagCount).sort((a, b) => b[1] - a[1]);
+
+    if (!entries.length) {
+      container.innerHTML = '<span style="color:var(--text-secondary);font-size:0.85rem;">カテゴリがまだありません。問題作成でカテゴリを入力してください。</span>';
+      return;
+    }
+
+    container.innerHTML = entries.map(([tag, count]) =>
+      `<span style="display:inline-flex;align-items:center;gap:0.35rem;background:rgba(20,184,166,0.12);border:1px solid rgba(20,184,166,0.3);color:#14b8a6;padding:0.3rem 0.75rem;border-radius:20px;font-size:0.85rem;cursor:default;" title="${esc(String(count))}件のカード">
+        <span>🏷️</span><span>${esc(tag)}</span><span style="background:rgba(20,184,166,0.2);border-radius:10px;padding:0.05rem 0.4rem;font-size:0.72rem;">${count}</span>
+      </span>`
+    ).join('');
+  } catch (e) {
+    console.error('loadCategoryList failed:', e);
+    container.innerHTML = '<span style="color:#f87171;font-size:0.85rem;">カテゴリの読み込みに失敗しました。</span>';
+  }
+}

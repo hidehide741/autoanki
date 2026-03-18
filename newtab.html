@@ -35,23 +35,89 @@
 
       <!-- トップバー -->
       <div class="top-bar">
-        <div class="stats" id="stats-display">
-          <span class="stat-item" title="今日の学習数">
-            <span class="stat-icon">📗</span>
-            <span class="stat-value" id="today-count">0</span>
-            <span class="stat-label">今日</span>
-          </span>
-          <span class="stat-divider"></span>
-          <span class="stat-item" title="連続学習日数">
-            <span class="stat-icon">🔥</span>
-            <span class="stat-value" id="streak-count">0</span>
-            <span class="stat-label">連続</span>
-          </span>
+        <div class="top-bar-left">
+          <div class="stats" id="stats-display">
+            <span class="stat-item" title="今日の学習数">
+              <span class="stat-icon">📗</span>
+              <span class="stat-value" id="today-count">0</span>
+              <span class="stat-label">今日</span>
+            </span>
+            <span class="stat-divider"></span>
+            <span class="stat-item" title="連続学習日数">
+              <span class="stat-icon">🔥</span>
+              <span class="stat-value" id="streak-count">0</span>
+              <span class="stat-label">連続</span>
+            </span>
+            <span class="stat-divider"></span>
+            <span class="stat-item" title="残り問題数">
+              <span class="stat-icon">📋</span>
+              <span class="stat-value" id="card-counter">—</span>
+              <span class="stat-label">残り</span>
+            </span>
+          </div>
         </div>
-        <div class="card-counter" id="card-counter"></div>
-        <div class="actions">
-          <button id="skip-btn"    class="icon-btn" title="スキップ (Esc)">⏭ スキップ</button>
-          <button id="options-btn" class="icon-btn" title="管理">⚙️ 管理</button>
+
+        <div class="top-bar-center">
+          <div class="genre-filter" id="genre-filter"></div>
+        </div>
+
+        <div class="top-bar-right">
+          <button id="skip-btn" class="toolbar-btn" title="スキップ (Esc)">
+            <span class="toolbar-icon">⏭</span>
+            <span class="toolbar-label">スキップ</span>
+          </button>
+          <div class="settings-wrapper">
+            <button id="quiz-settings-btn" class="toolbar-btn" title="出題設定">
+              <span class="toolbar-icon">⚙️</span>
+              <span class="toolbar-label">出題設定</span>
+            </button>
+            <!-- 出題設定パネル -->
+            <div class="settings-panel hidden" id="quiz-settings-panel">
+              <div class="settings-panel-header">
+                <span>⚙️ 出題設定</span>
+                <button class="settings-close-btn" id="settings-close-btn">✕</button>
+              </div>
+              <div class="settings-panel-body">
+                <label class="setting-row">
+                  <div class="setting-info">
+                    <span class="setting-name">定着済みを除外</span>
+                    <span class="setting-desc">復習回数6回以上のカードを出題しない</span>
+                  </div>
+                  <input type="checkbox" class="setting-toggle" id="setting-hide-mastered">
+                </label>
+                <label class="setting-row">
+                  <div class="setting-info">
+                    <span class="setting-name">新規カード優先</span>
+                    <span class="setting-desc">まだ1度も正解していないカードを先に出す</span>
+                  </div>
+                  <input type="checkbox" class="setting-toggle" id="setting-new-first">
+                </label>
+                <label class="setting-row">
+                  <div class="setting-info">
+                    <span class="setting-name">出題順</span>
+                    <span class="setting-desc">期限順 or ランダム</span>
+                  </div>
+                  <select class="setting-select" id="setting-order">
+                    <option value="due">期限が近い順</option>
+                    <option value="random">ランダム</option>
+                  </select>
+                </label>
+                <label class="setting-row">
+                  <div class="setting-info">
+                    <span class="setting-name">クールタイム</span>
+                    <span class="setting-desc">全問回答後の待ち時間</span>
+                  </div>
+                  <select class="setting-select" id="setting-cooldown">
+                    <option value="0">なし</option>
+                    <option value="5">5分</option>
+                    <option value="15" selected>15分</option>
+                    <option value="30">30分</option>
+                    <option value="60">60分</option>
+                  </select>
+                </label>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 

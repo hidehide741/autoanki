@@ -148,8 +148,17 @@ const StorageManager = {
   
   // URLのベース（画像表示用など）を取得する
   getBaseUrl() {
-    // 画像がURL形式ならそのまま、相対パスならSupabaseなどを考慮（今回は一旦そのまま）
     return '';
+  },
+
+  // ========== クイズ設定 ==========
+  async getQuizSettings() {
+    const defaults = { hideMastered: false, newFirst: false, order: 'due', cooldown: 15, genreFilter: null };
+    const saved = await LocalStore.get('quizSettings');
+    return saved ? { ...defaults, ...saved } : defaults;
+  },
+  async saveQuizSettings(settings) {
+    await LocalStore.set('quizSettings', settings);
   },
 
   // ========== ジャンル管理 (Supabase 同期) ==========
@@ -361,13 +370,11 @@ const StorageManager = {
   // 今日復習すべきカードを1件取得（なければnull）
   async getDueCardOrStatus() {
     const now = Date.now();
+    const qs = await this.getQuizSettings();
 
     // ======= WEBアプリ版（URLからのアクセス）の場合：ランダム出題 =======
     if (!this.isExtension) {
       try {
-        // 全件からランダムに1件取得するのはクエリで書くと複雑（かつ重い）ため、
-        // Web版では以前の「一旦全て取って計算」を許容するか、あるいは「最近追加されたものからランダム」などで妥協する。
-        // ここでは、直近に追加された100件からランダムに選ぶことで負荷を抑える。
         const res = await fetch(`${API_BASE}?select=*&limit=100&order=id.desc`, { headers: HEADERS });
         if (!res.ok) throw new Error('Fetch Error');
         const cards = await res.json();
@@ -386,23 +393,37 @@ const StorageManager = {
     }
 
     // ======= Chrome拡張機能（Spaced Repetition）の場合 =======
-    const lastAnswerTime = await LocalStore.get('lastAnswerTime');
-    if (lastAnswerTime && (now - lastAnswerTime < 15 * 60 * 1000)) {
-      return { status: 'cooldown', card: null };
+    const cooldownMs = (qs.cooldown || 0) * 60 * 1000;
+    if (cooldownMs > 0) {
+      const lastAnswerTime = await LocalStore.get('lastAnswerTime');
+      if (lastAnswerTime && (now - lastAnswerTime < cooldownMs)) {
+        return { status: 'cooldown', card: null };
+      }
     }
 
     try {
-      // 期限切れ(next_review_date <= now) のものを1つだけ取得
-      const res = await fetch(`${API_BASE}?select=*&next_review_date=lte.${now}&order=next_review_date.asc&limit=1`, { headers: HEADERS });
+      // PostgREST フィルターを構築
+      let filters = `next_review_date=lte.${now}`;
+      if (qs.hideMastered) filters += '&repetition=lt.6';
+      if (qs.genreFilter)  filters += `&genre=eq.${encodeURIComponent(qs.genreFilter)}`;
+
+      // 並び順
+      let orderClause;
+      if (qs.newFirst)             orderClause = 'repetition.asc,next_review_date.asc';
+      else if (qs.order === 'random') orderClause = 'id.asc';
+      else                          orderClause = 'next_review_date.asc';
+
+      const limit = qs.order === 'random' ? 50 : 1;
+      const res = await fetch(`${API_BASE}?select=*&${filters}&order=${orderClause}&limit=${limit}`, { headers: HEADERS });
       if (!res.ok) throw new Error('Fetch Error');
       const cards = await res.json();
       if (cards.length === 0) return { status: 'empty', card: null };
 
-      const c = cards[0];
+      const pick = qs.order === 'random' ? cards[Math.floor(Math.random() * cards.length)] : cards[0];
       const card = {
-        id: c.id, question: c.question, answer: c.answer, image: c.image, genre: c.genre,
-        nextReviewDate: parseInt(c.next_review_date, 10), interval: parseInt(c.interval, 10),
-        repetition: c.repetition, easiness: c.easiness
+        id: pick.id, question: pick.question, answer: pick.answer, image: pick.image, genre: pick.genre,
+        nextReviewDate: parseInt(pick.next_review_date, 10), interval: parseInt(pick.interval, 10),
+        repetition: pick.repetition, easiness: pick.easiness
       };
       return { status: 'due', card: card };
     } catch (e) {
@@ -416,8 +437,12 @@ const StorageManager = {
     if (!this.isExtension) return null;
     try {
       const now = Date.now();
+      const qs = await this.getQuizSettings();
+      let filters = `next_review_date=lte.${now}`;
+      if (qs.hideMastered) filters += '&repetition=lt.6';
+      if (qs.genreFilter)  filters += `&genre=eq.${encodeURIComponent(qs.genreFilter)}`;
       const res = await fetch(
-        `${API_BASE}?select=id&next_review_date=lte.${now}&limit=0`,
+        `${API_BASE}?select=id&${filters}&limit=0`,
         { method: 'HEAD', headers: { ...HEADERS, 'Prefer': 'count=exact' } }
       );
       const range = res.headers.get('content-range');
@@ -541,10 +566,12 @@ const StorageManager = {
   },
 
   async getCooldownRemainingMs() {
-    const COOLDOWN_MS = 15 * 60 * 1000;
+    const qs = await this.getQuizSettings();
+    const cooldownMs = (qs.cooldown || 0) * 60 * 1000;
+    if (cooldownMs <= 0) return 0;
     const lastAnswerTime = await LocalStore.get('lastAnswerTime');
     if (!lastAnswerTime) return 0;
-    const remaining = COOLDOWN_MS - (Date.now() - lastAnswerTime);
+    const remaining = cooldownMs - (Date.now() - lastAnswerTime);
     return remaining > 0 ? remaining : 0;
   },
 

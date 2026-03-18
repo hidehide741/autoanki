@@ -20,7 +20,6 @@ async function init() {
     showAnswerBtn: document.getElementById('show-answer-btn'),
     ratingButtons: document.querySelectorAll('.rating-btn'),
     skipBtn:       document.getElementById('skip-btn'),
-    optionsBtn:    document.getElementById('options-btn'),
     todayCount:    document.getElementById('today-count'),
     streakCount:   document.getElementById('streak-count'),
     genreBadge:    document.getElementById('genre-badge'),
@@ -34,8 +33,14 @@ async function init() {
     errorMessage:    document.getElementById('error-message'),
     cardCounter:     document.getElementById('card-counter'),
     nextBtn:         document.getElementById('next-btn'),
+    genreFilter:     document.getElementById('genre-filter'),
+    settingsPanel:   document.getElementById('quiz-settings-panel'),
+    settingsBtn:     document.getElementById('quiz-settings-btn'),
+    settingsCloseBtn: document.getElementById('settings-close-btn'),
   };
   await updateStats();
+  await initGenreFilter();
+  await initQuizSettings();
   await loadNextCard();
   setupEventListeners();
 }
@@ -44,6 +49,98 @@ async function updateStats() {
   const stats = await StorageManager.getStats();
   if (el.todayCount)  el.todayCount.textContent = stats.todayReviews;
   if (el.streakCount) el.streakCount.textContent = stats.streak;
+}
+
+// ===== ジャンルフィルターチップ =====
+async function initGenreFilter() {
+  if (!el.genreFilter) return;
+  const genres = cachedGenres || (cachedGenres = await StorageManager.getGenres());
+  const qs = await StorageManager.getQuizSettings();
+
+  el.genreFilter.innerHTML = '';
+
+  // 「すべて」チップ
+  const allChip = document.createElement('button');
+  allChip.className = 'genre-chip' + (!qs.genreFilter ? ' active' : '');
+  allChip.textContent = 'すべて';
+  allChip.addEventListener('click', () => selectGenre(null));
+  el.genreFilter.appendChild(allChip);
+
+  genres.forEach(g => {
+    const chip = document.createElement('button');
+    chip.className = 'genre-chip' + (qs.genreFilter === g.id ? ' active' : '');
+    chip.textContent = g.name;
+    chip.addEventListener('click', () => selectGenre(g.id));
+    el.genreFilter.appendChild(chip);
+  });
+}
+
+async function selectGenre(genreId) {
+  const qs = await StorageManager.getQuizSettings();
+  qs.genreFilter = genreId;
+  await StorageManager.saveQuizSettings(qs);
+
+  // チップUI更新
+  el.genreFilter.querySelectorAll('.genre-chip').forEach((chip, i) => {
+    chip.classList.toggle('active', i === 0 ? !genreId : chip.textContent === (cachedGenres.find(g => g.id === genreId)?.name));
+  });
+
+  // 次のカードをリロード
+  await loadNextCard();
+  updateCardCounter();
+}
+
+// ===== 出題設定パネル =====
+async function initQuizSettings() {
+  const qs = await StorageManager.getQuizSettings();
+  const hideMastered = document.getElementById('setting-hide-mastered');
+  const newFirst     = document.getElementById('setting-new-first');
+  const order        = document.getElementById('setting-order');
+  const cooldown     = document.getElementById('setting-cooldown');
+
+  if (hideMastered) hideMastered.checked = qs.hideMastered;
+  if (newFirst)     newFirst.checked     = qs.newFirst;
+  if (order)        order.value          = qs.order;
+  if (cooldown)     cooldown.value       = String(qs.cooldown);
+
+  // 変更時に即保存 + リロード
+  const onSettingChange = async () => {
+    const updated = {
+      hideMastered: hideMastered?.checked || false,
+      newFirst:     newFirst?.checked     || false,
+      order:        order?.value          || 'due',
+      cooldown:     parseInt(cooldown?.value || '15', 10),
+      genreFilter:  (await StorageManager.getQuizSettings()).genreFilter
+    };
+    await StorageManager.saveQuizSettings(updated);
+    await loadNextCard();
+    updateCardCounter();
+  };
+
+  [hideMastered, newFirst, order, cooldown].forEach(input => {
+    if (input) input.addEventListener('change', onSettingChange);
+  });
+
+  // パネル開閉
+  if (el.settingsBtn) {
+    el.settingsBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      el.settingsPanel.classList.toggle('hidden');
+    });
+  }
+  if (el.settingsCloseBtn) {
+    el.settingsCloseBtn.addEventListener('click', () => {
+      el.settingsPanel.classList.add('hidden');
+    });
+  }
+  // パネル外クリックで閉じる
+  document.addEventListener('click', (e) => {
+    if (el.settingsPanel && !el.settingsPanel.classList.contains('hidden')) {
+      if (!el.settingsPanel.contains(e.target) && e.target !== el.settingsBtn) {
+        el.settingsPanel.classList.add('hidden');
+      }
+    }
+  });
 }
 
 // カードの読み込み
@@ -365,7 +462,7 @@ function updateLearningStage() {
 async function updateCardCounter() {
   if (!el.cardCounter) return;
   const count = await StorageManager.getDueCount();
-  el.cardCounter.textContent = count != null ? `残り ${count} 問` : '';
+  el.cardCounter.textContent = count != null ? count : '—';
 }
 
 function showAnswerMode() {
@@ -475,14 +572,6 @@ function setupEventListeners() {
       }, 300);
     });
   }
-
-  el.optionsBtn.addEventListener('click', () => {
-    if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.openOptionsPage) {
-      chrome.runtime.openOptionsPage();
-    } else {
-      window.location.href = 'options.html';
-    }
-  });
 
   // エラー画面の再読み込みボタン（onclick属性は使えないためここで登録）
   const reloadBtn = document.getElementById('reload-btn');

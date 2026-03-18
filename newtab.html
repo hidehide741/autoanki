@@ -36,9 +36,19 @@
       <!-- トップバー -->
       <div class="top-bar">
         <div class="stats" id="stats-display">
-          <span class="stat-item" title="今日の学習数">✅ <span id="today-count">0</span></span>
-          <span class="stat-item" title="連続学習日数">🔥 <span id="streak-count">0</span></span>
+          <span class="stat-item" title="今日の学習数">
+            <span class="stat-icon">📗</span>
+            <span class="stat-value" id="today-count">0</span>
+            <span class="stat-label">今日</span>
+          </span>
+          <span class="stat-divider"></span>
+          <span class="stat-item" title="連続学習日数">
+            <span class="stat-icon">🔥</span>
+            <span class="stat-value" id="streak-count">0</span>
+            <span class="stat-label">連続</span>
+          </span>
         </div>
+        <div class="card-counter" id="card-counter"></div>
         <div class="actions">
           <button id="skip-btn"    class="icon-btn" title="スキップ (Esc)">⏭ スキップ</button>
           <button id="options-btn" class="icon-btn" title="管理">⚙️ 管理</button>
@@ -51,10 +61,16 @@
         <!-- 問題カード -->
         <div id="card-container" class="glass-card hidden">
           <div class="card-content">
-            <!-- ジャンルバッジ -->
-            <div id="genre-badge" class="genre-badge-display hidden"></div>
-            <!-- カテゴリタグバッジ -->
-            <div id="category-badge-area" style="display:none;flex-wrap:wrap;gap:0.3rem;margin-top:0.3rem;margin-bottom:0.2rem;"></div>
+            <!-- カードヘッダー: カテゴリ + 学習ステージ -->
+            <div class="card-header">
+              <div class="card-header-left">
+                <div id="genre-badge" class="genre-badge-display hidden"></div>
+                <div id="category-badge-area" style="display:none;flex-wrap:wrap;gap:0.3rem;"></div>
+              </div>
+              <div class="card-header-right">
+                <div class="learning-stage" id="learning-stage"></div>
+              </div>
+            </div>
 
             <!-- 進捗バー -->
             <div class="progress-bar-wrap">
@@ -65,7 +81,10 @@
             <div id="question-area"></div>
 
             <!-- 答えを見るボタン -->
-            <button id="show-answer-btn" class="primary-btn">答えを見る&nbsp;&nbsp;<span style="opacity:0.6;font-size:0.85em;">(Space)</span></button>
+            <button id="show-answer-btn" class="primary-btn">
+              <span class="btn-text">答えを見る</span>
+              <span class="btn-shortcut">Space</span>
+            </button>
 
             <!-- 答えセクション -->
             <div id="answer-section" class="answer-section hidden">
@@ -73,31 +92,35 @@
               <!-- 動的コンテンツ：回答エリア -->
               <div id="answer-area"></div>
 
-              <div class="rating-buttons">
-                <button class="rating-btn btn-again" data-quality="1">
-                  <span class="rating-icon">😰</span>
-                  <span class="label">忘れた</span>
-                  <span class="sub" data-quality="1"></span>
-                  <span class="kbd-hint">[1]</span>
-                </button>
-                <button class="rating-btn btn-hard" data-quality="3">
-                  <span class="rating-icon">😓</span>
-                  <span class="label">難しい</span>
-                  <span class="sub" data-quality="3"></span>
-                  <span class="kbd-hint">[2]</span>
-                </button>
-                <button class="rating-btn btn-good" data-quality="4">
-                  <span class="rating-icon">😊</span>
-                  <span class="label">普通</span>
-                  <span class="sub" data-quality="4"></span>
-                  <span class="kbd-hint">[3]</span>
-                </button>
-                <button class="rating-btn btn-easy" data-quality="5">
-                  <span class="rating-icon">🎯</span>
-                  <span class="label">簡単</span>
-                  <span class="sub" data-quality="5"></span>
-                  <span class="kbd-hint">[4]</span>
-                </button>
+              <!-- 自己評価セクション -->
+              <div class="rating-section">
+                <p class="rating-prompt">どのくらい覚えていましたか？</p>
+                <div class="rating-buttons">
+                  <button class="rating-btn btn-again" data-quality="1">
+                    <span class="rating-icon">😰</span>
+                    <span class="label">忘れた</span>
+                    <span class="sub" data-quality="1"></span>
+                    <span class="kbd-hint">[1]</span>
+                  </button>
+                  <button class="rating-btn btn-hard" data-quality="3">
+                    <span class="rating-icon">😓</span>
+                    <span class="label">難しい</span>
+                    <span class="sub" data-quality="3"></span>
+                    <span class="kbd-hint">[2]</span>
+                  </button>
+                  <button class="rating-btn btn-good" data-quality="4">
+                    <span class="rating-icon">😊</span>
+                    <span class="label">普通</span>
+                    <span class="sub" data-quality="4"></span>
+                    <span class="kbd-hint">[3]</span>
+                  </button>
+                  <button class="rating-btn btn-easy" data-quality="5">
+                    <span class="rating-icon">🎯</span>
+                    <span class="label">簡単</span>
+                    <span class="sub" data-quality="5"></span>
+                    <span class="kbd-hint">[4]</span>
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -106,10 +129,10 @@
         <!-- カードなし画面 -->
         <div id="empty-container" class="glass-card done-card hidden">
           <div class="done-icon">📭</div>
-          <h1 class="done-title">今日の問題はありません</h1>
-          <p class="done-message">すべての問題は復習済みです。<br>次のタブを開くと Google に戻ります。</p>
+          <h1 class="done-title">問題がありません</h1>
+          <p class="done-message">まだカードが登録されていません。<br>さっそく問題を追加して学習を始めましょう！</p>
           <div class="done-links">
-            <a href="options.html" class="link-btn">➕ 問題を追加</a>
+            <a href="options.html" class="link-btn link-btn-primary">➕ 問題を追加する</a>
             <a href="dashboard.html" class="link-btn">📊 ダッシュボード</a>
           </div>
         </div>
@@ -117,18 +140,18 @@
         <!-- エラー画面 -->
         <div id="error-container" class="glass-card done-card hidden">
           <div class="done-icon">⚠️</div>
-          <h1 class="done-title" style="font-size:1.4rem;">読み込みエラー</h1>
+          <h1 class="done-title" style="background:linear-gradient(135deg,#fbbf24,#f59e0b);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">接続エラー</h1>
           <p class="done-message" id="error-message">データの取得に失敗しました。<br>ネットワーク接続を確認してください。</p>
           <div class="done-links">
-            <button class="link-btn" id="reload-btn">🔄 再読み込み</button>
+            <button class="link-btn link-btn-primary" id="reload-btn">🔄 再読み込み</button>
           </div>
         </div>
 
         <!-- 完了画面 -->
         <div id="done-container" class="glass-card done-card hidden">
           <div class="done-icon">🎉</div>
-          <h1 class="done-title">All Done!</h1>
-          <p class="done-message">今日の復習は完了です。<br>また明日続けましょう！</p>
+          <h1 class="done-title">おつかれさまでした！</h1>
+          <p class="done-message">今日予定の復習は完了しました。<br>しっかり記憶に定着しています！</p>
           <div class="done-stats">
             <div class="done-stat">
               <span class="val" id="done-today">—</span>
@@ -140,7 +163,8 @@
             </div>
           </div>
           <div class="done-links">
-            <a href="options.html" class="link-btn">➕ 問題を追加</a>
+            <a href="options.html" class="link-btn link-btn-primary">➕ 新しい問題を追加</a>
+            <a href="cardlist.html" class="link-btn">📋 問題一覧</a>
             <a href="dashboard.html" class="link-btn">📊 ダッシュボード</a>
           </div>
         </div>

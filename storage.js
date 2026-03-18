@@ -411,6 +411,24 @@ const StorageManager = {
     }
   },
 
+  // 期限切れカードの残り枚数を取得（Supabase HEAD + count=exact）
+  async getDueCount() {
+    if (!this.isExtension) return null;
+    try {
+      const now = Date.now();
+      const res = await fetch(
+        `${API_BASE}?select=id&next_review_date=lte.${now}&limit=0`,
+        { method: 'HEAD', headers: { ...HEADERS, 'Prefer': 'count=exact' } }
+      );
+      const range = res.headers.get('content-range');
+      if (range) {
+        const m = range.match(/\/(\d+)/);
+        if (m) return parseInt(m[1], 10);
+      }
+      return null;
+    } catch { return null; }
+  },
+
   // SM-2 インターバル計算（純粋関数 — シミュレーションにも使う）
   _calcNext(card, quality) {
     let { interval, repetition, easiness } = card;

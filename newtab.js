@@ -32,6 +32,7 @@ async function init() {
     emptyContainer:  document.getElementById('empty-container'),
     errorContainer:  document.getElementById('error-container'),
     errorMessage:    document.getElementById('error-message'),
+    cardCounter:     document.getElementById('card-counter'),
   };
   await updateStats();
   await loadNextCard();
@@ -93,6 +94,8 @@ async function loadNextCard() {
       
       showQuestionMode(genreDef);
       updateRatingLabels();
+      updateLearningStage();
+      updateCardCounter();
       
       // ジャンルバッジ（型名は表示しない）
       if (el.genreBadge) {
@@ -295,6 +298,40 @@ function updateRatingLabels() {
     const sub = document.querySelector(`.rating-btn[data-quality="${q}"] .sub[data-quality="${q}"]`);
     if (sub) sub.textContent = formatInterval(intervals[q]);
   }
+}
+
+// カードの学習ステージを表示（New / Learning / Review / Mature）
+function updateLearningStage() {
+  const stageEl = document.getElementById('learning-stage');
+  if (!stageEl || !currentCard) return;
+
+  const rep = currentCard.repetition || 0;
+  const intervalDays = (currentCard.interval || 0) / 86400000;
+
+  let label, className;
+  if (rep === 0) {
+    label = '🆕 はじめて';
+    className = 'stage-new';
+  } else if (rep <= 2) {
+    label = '📖 学習中';
+    className = 'stage-learning';
+  } else if (intervalDays < 21) {
+    label = '🔄 復習';
+    className = 'stage-review';
+  } else {
+    label = '✅ 定着';
+    className = 'stage-mature';
+  }
+
+  stageEl.textContent = label;
+  stageEl.className = 'learning-stage ' + className;
+}
+
+// 残りカード数を表示
+async function updateCardCounter() {
+  if (!el.cardCounter) return;
+  const count = await StorageManager.getDueCount();
+  el.cardCounter.textContent = count != null ? `残り ${count} 問` : '';
 }
 
 function showAnswerMode() {

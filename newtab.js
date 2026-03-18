@@ -93,14 +93,9 @@ async function loadNextCard() {
       
       showQuestionMode(genreDef);
       
-      // ジャンルバッジ
+      // ジャンルバッジ（型名は表示しない）
       if (el.genreBadge) {
-        if (genreDef) {
-          el.genreBadge.textContent = genreDef.name;
-          el.genreBadge.classList.remove('hidden');
-        } else {
-          el.genreBadge.classList.add('hidden');
-        }
+        el.genreBadge.classList.add('hidden');
       }
 
       // アニメーションのリセット

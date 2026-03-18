@@ -1557,7 +1557,7 @@ function updateCardPreview(genre, values) {
 
       <!-- ジャンルバッジ + カテゴリバッジ -->
       <div style="display:flex;align-items:center;flex-wrap:wrap;gap:0.3rem;margin-bottom:1rem;">
-        <span style="font-size:0.68rem;font-weight:600;color:#a78bfa;background:rgba(99,102,241,0.15);padding:0.12rem 0.55rem;border-radius:4px;letter-spacing:0.04em;text-transform:uppercase;">${escapeHtml(genre.name || 'プレビュー')}</span>${catBadgesHtml}
+        ${catBadgesHtml || '<span style="font-size:0.68rem;color:#475569;">（カテゴリ未設定）</span>'}
       </div>
 
       <!-- 問題エリア -->

@@ -411,6 +411,51 @@ const StorageManager = {
     }
   },
 
+  // SM-2 インターバル計算（純粋関数 — シミュレーションにも使う）
+  _calcNext(card, quality) {
+    let { interval, repetition, easiness } = card;
+    const DAY = 24 * 60 * 60 * 1000;
+
+    if (quality < 3) {
+      // 忘れた → リセット。10分後に再挑戦
+      repetition = 0;
+      interval = 10 * 60 * 1000; // 10分
+    } else {
+      // quality 3=難しい, 4=普通, 5=簡単
+      if (repetition === 0) {
+        // 初回正解
+        interval = quality === 3 ? 1 * DAY
+                 : quality === 5 ? 4 * DAY
+                 :                 1 * DAY;
+      } else if (repetition === 1) {
+        // 2回目正解
+        interval = quality === 3 ? 3 * DAY
+                 : quality === 5 ? 7 * DAY
+                 :                 3 * DAY;
+      } else {
+        // 3回目以降: easiness × quality係数で伸び率を調整
+        const qMul = quality === 3 ? 1.0 : quality === 5 ? 1.3 : 1.0;
+        interval = Math.round(interval * easiness * qMul);
+      }
+      repetition += 1;
+    }
+
+    // Easiness factor の更新
+    easiness = easiness + (0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02));
+    if (easiness < 1.3) easiness = 1.3;
+
+    return { interval, repetition, easiness };
+  },
+
+  // ボタン表示用: 各quality(1,3,4,5)を押した場合の次回インターバルを返す
+  simulateIntervals(card) {
+    const results = {};
+    for (const q of [1, 3, 4, 5]) {
+      results[q] = this._calcNext(card, q).interval;
+    }
+    return results;
+  },
+
   // カードの学習結果を記録し、次の復習日時を計算 (SM-2類似アルゴリズム)
   async updateCard(cardId, quality) {
     // 全件取得ではなくID指定の1件だけ取得する（ブラウザフリーズ防止）
@@ -433,25 +478,10 @@ const StorageManager = {
       return;
     }
 
-    if (quality < 3) {
-      // 忘れていた場合、リセット
-      card.repetition = 0;
-      card.interval = 0.5 * 24 * 60 * 60 * 1000; // 12時間後
-    } else {
-      if (card.repetition === 0) {
-        card.interval = 1 * 24 * 60 * 60 * 1000; // 1日後
-      } else if (card.repetition === 1) {
-        card.interval = 3 * 24 * 60 * 60 * 1000; // 3日後
-      } else {
-        card.interval = Math.round(card.interval * card.easiness);
-      }
-      card.repetition += 1;
-    }
-
-    // Easiness factorの更新
-    card.easiness = card.easiness + (0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02));
-    if (card.easiness < 1.3) card.easiness = 1.3;
-
+    const next = this._calcNext(card, quality);
+    card.interval   = next.interval;
+    card.repetition = next.repetition;
+    card.easiness   = next.easiness;
     card.nextReviewDate = Date.now() + card.interval;
 
     // サーバーに個別保存

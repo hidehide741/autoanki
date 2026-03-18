@@ -92,6 +92,7 @@ async function loadNextCard() {
       const genreDef = genres.find(g => g.id === currentCard.genre);
       
       showQuestionMode(genreDef);
+      updateRatingLabels();
       
       // ジャンルバッジ（型名は表示しない）
       if (el.genreBadge) {
@@ -270,6 +271,30 @@ function showQuestionMode(genreDef) {
     }, 1000);
     activeTimers.push(id);
   });
+}
+
+// インターバルを人間が読める文字列に変換
+function formatInterval(ms) {
+  const min = Math.round(ms / 60000);
+  if (min < 60) return `${min}分`;
+  const hr = Math.round(ms / 3600000);
+  if (hr < 24) return `${hr}時間`;
+  const day = Math.round(ms / 86400000);
+  if (day < 30) return `${day}日`;
+  const month = Math.round(day / 30);
+  if (month < 12) return `${month}ヶ月`;
+  const year = (day / 365).toFixed(1);
+  return `${year}年`;
+}
+
+// 各評価ボタンに「次回までの間隔」を動的表示
+function updateRatingLabels() {
+  if (!currentCard) return;
+  const intervals = StorageManager.simulateIntervals(currentCard);
+  for (const q of [1, 3, 4, 5]) {
+    const sub = document.querySelector(`.rating-btn[data-quality="${q}"] .sub[data-quality="${q}"]`);
+    if (sub) sub.textContent = formatInterval(intervals[q]);
+  }
 }
 
 function showAnswerMode() {

@@ -156,16 +156,25 @@ function showQuestionMode(genreDef) {
   function getFieldValue(field) {
     // static フィールドはジャンル定義のラベルをそのまま表示（保存データ不要）
     if (field.type === 'static') {
-      // DB上に同ラベルの保存データがあれば "消費" だけしておく（後続フィールドの衝突防止）
+      // 旧データに [ラベル]\nラベル 形式で保存されている場合のみ消費（新カードはstatic未保存）
       const raw2 = (field.role === 'question' ? currentCard.question : currentCard.answer) || '';
       const rc2 = raw2.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
       const ss2 = `[${field.label}]\n`;
+      const consumedSet2 = field.role === 'question' ? consumedQPos : consumedAPos;
       let sf2 = 0;
       while (true) {
         const si2 = rc2.indexOf(ss2, sf2);
         if (si2 === -1) break;
-        const consumedSet2 = field.role === 'question' ? consumedQPos : consumedAPos;
-        if (!consumedSet2.has(si2)) { consumedSet2.add(si2); break; }
+        if (!consumedSet2.has(si2)) {
+          // そのセクションの内容がラベル自身と一致する場合のみ消費（旧static保存データ）
+          const cs2 = si2 + ss2.length;
+          const ni2 = rc2.indexOf('\n\n[', cs2);
+          const content2 = (ni2 !== -1 ? rc2.substring(cs2, ni2) : rc2.substring(cs2)).trim();
+          if (content2 === field.label) {
+            consumedSet2.add(si2);
+          }
+          break;
+        }
         sf2 = si2 + 1;
       }
       return field.label;

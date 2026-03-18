@@ -294,7 +294,8 @@ function openModal(id) {
 
   function getFieldValue(field) {
     if (field.type === 'static') {
-      // static フィールドはラベル表示のみ（DBの同ラベルデータを消費して衝突防止）
+      // static フィールドはラベル表示のみ
+      // 旧データに [ラベル]\nラベル 形式で保存されている場合のみ消費（新カードはstatic未保存）
       const raw2 = (field.role === 'question' ? card.question : card.answer) || '';
       const rc2 = raw2.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
       const ss2 = `[${field.label}]\n`;
@@ -303,7 +304,15 @@ function openModal(id) {
       while (true) {
         const si2 = rc2.indexOf(ss2, sf2);
         if (si2 === -1) break;
-        if (!consumedSet.has(si2)) { consumedSet.add(si2); break; }
+        if (!consumedSet.has(si2)) {
+          const cs2 = si2 + ss2.length;
+          const ni2 = rc2.indexOf('\n\n[', cs2);
+          const content2 = (ni2 !== -1 ? rc2.substring(cs2, ni2) : rc2.substring(cs2)).trim();
+          if (content2 === field.label) {
+            consumedSet.add(si2);
+          }
+          break;
+        }
         sf2 = si2 + 1;
       }
       return field.label;

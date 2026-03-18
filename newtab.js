@@ -1,5 +1,5 @@
 import StorageManager from './storage.js';
-import { renderFieldHtml as _renderFieldHtml } from './renderCard.js';
+import { renderFieldHtml as _renderFieldHtml, escapeHtml } from './renderCard.js';
 
 let currentCard = null;
 let answerShown = false;
@@ -33,6 +33,7 @@ async function init() {
     errorContainer:  document.getElementById('error-container'),
     errorMessage:    document.getElementById('error-message'),
     cardCounter:     document.getElementById('card-counter'),
+    nextBtn:         document.getElementById('next-btn'),
   };
   await updateStats();
   await loadNextCard();
@@ -123,6 +124,18 @@ async function loadNextCard() {
   }
 }
 
+// rawテキストから最初のセクション内容を抽出（ラベル・タグを除去）
+function extractFirstSectionContent(raw) {
+  let cleaned = raw.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  // [__tags__] セクション除去
+  cleaned = cleaned.replace(/\n\n\[__tags__\]\n[\s\S]*$/, '');
+  // [ラベル]\n形式のセクション区切りがある場合、最初のセクション内容を返す
+  const m = cleaned.match(/^\[.*?\]\n([\s\S]*?)(?:\n\n\[|$)/);
+  if (m) return m[1].trim();
+  // セクション形式でなければそのまま返す
+  return cleaned.trim();
+}
+
 function showQuestionMode(genreDef) {
   answerShown = false;
   el.answerSection.classList.add('hidden');
@@ -132,10 +145,11 @@ function showQuestionMode(genreDef) {
   activeTimers.forEach(id => clearInterval(id));
   activeTimers = [];
 
-  const fields = genreDef?.fields || [
+  const defaultFields = [
     { key: 'question', label: '問題', type: 'textarea', role: 'question' },
     { key: 'answer',   label: '答え', type: 'textarea', role: 'answer' }
   ];
+  const fields = (genreDef?.fields?.length) ? genreDef.fields : defaultFields;
 
   // 画像データのパース
   let images = [];
@@ -202,7 +216,10 @@ function showQuestionMode(genreDef) {
       }
       searchFrom = startIdx + 1;
     }
-    if (field.key === 'question' || field.key === 'answer') return rawContent;
+    // ラベル不一致でも raw テキストからコンテンツを救出する
+    if (consumedPos.size === 0 && rawContent) {
+      return extractFirstSectionContent(rawContent);
+    }
     return '';
   }
 
@@ -250,11 +267,28 @@ function showQuestionMode(genreDef) {
   const qChoiceFields = qFields.filter(f => f.type === 'choice_multi' || f.type === 'choice_single');
 
   el.questionArea.innerHTML = qFields.map(f => renderFieldHtml(f, true)).join('');
+
+  // 安全策: フィールドレンダリングで何も表示されなかった場合、raw テキストを直接表示
+  if (!el.questionArea.textContent.trim() && currentCard.question) {
+    const raw = extractFirstSectionContent(currentCard.question);
+    if (raw) {
+      el.questionArea.innerHTML = `<p style="font-size:1.1rem;line-height:1.55;background:linear-gradient(135deg,#f1f5f9,#cbd5e1);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;white-space:pre-wrap;margin-bottom:0.75rem;display:block;">${escapeHtml(raw).replace(/\n/g, '<br>')}</p>`;
+    }
+  }
+
   el.answerArea.innerHTML   = aFields.map(f => renderFieldHtml(f, false)).join('') +
                                qChoiceFields.map(f => {
                                  const imageList = images.filter(img => img.fieldKey ? img.fieldKey === f.key : img.role === f.role);
                                  return _renderFieldHtml(f, false, getChoiceAnswerValue, imageList);
                                }).join('');
+
+  // 安全策: 答えエリアも空なら raw テキストを表示
+  if (!el.answerArea.textContent.trim() && currentCard.answer) {
+    const raw = extractFirstSectionContent(currentCard.answer);
+    if (raw) {
+      el.answerArea.innerHTML = `<p style="font-size:1rem;font-weight:600;color:#a78bfa;line-height:1.5;white-space:pre-wrap;margin-bottom:0.75rem;display:block;">${escapeHtml(raw).replace(/\n/g, '<br>')}</p>`;
+    }
+  }
 
   // F6: タイマーカウントダウン開始
   el.questionArea.querySelectorAll('.timer-field').forEach(timerEl => {
@@ -428,6 +462,19 @@ function setupEventListeners() {
       await loadNextCard();
     }
   });
+
+  // 次の問題へ進む（評価せずにスキップ）
+  if (el.nextBtn) {
+    el.nextBtn.addEventListener('click', async () => {
+      if (isProcessing) return;
+      isProcessing = true;
+      el.cardContainer.classList.add('fade-out');
+      await StorageManager.updateLastAnswerTime();
+      setTimeout(async () => {
+        await loadNextCard();
+      }, 300);
+    });
+  }
 
   el.optionsBtn.addEventListener('click', () => {
     if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.openOptionsPage) {

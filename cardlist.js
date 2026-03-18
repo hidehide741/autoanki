@@ -256,16 +256,27 @@ function renderPagination() {
 }
 
 // ===== 詳細モーダル =====
+
+// rawテキストから最初のセクション内容を抽出（ラベル・タグを除去）
+function extractFirstSectionContent(raw) {
+  let cleaned = raw.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  cleaned = cleaned.replace(/\n\n\[__tags__\]\n[\s\S]*$/, '');
+  const m = cleaned.match(/^\[.*?\]\n([\s\S]*?)(?:\n\n\[|$)/);
+  if (m) return m[1].trim();
+  return cleaned.trim();
+}
+
 function openModal(id) {
   const card = allCards.find(c => c.id === id);
   if (!card) return;
   activeCardId = id;
 
   const genreDef = genres.find(g => g.id === card.genre);
-  const fields = genreDef?.fields || [
+  const defaultFields = [
     { key: 'question', label: '問題', type: 'textarea', role: 'question' },
     { key: 'answer',   label: '答え', type: 'textarea', role: 'answer' }
   ];
+  const fields = (genreDef?.fields?.length) ? genreDef.fields : defaultFields;
 
   // 画像のパース
   let images = [];
@@ -336,6 +347,10 @@ function openModal(id) {
       searchFrom = startIdx + 1;
     }
     if (field.key === 'question' || field.key === 'answer') return rawContent;
+    // ラベル不一致でも raw テキストからコンテンツを救出する
+    if (consumedPos.size === 0 && rawContent) {
+      return extractFirstSectionContent(rawContent);
+    }
     return '';
   }
 
@@ -375,9 +390,30 @@ function openModal(id) {
   };
 
   renderToContainer(qFields, true, el.modalQ);
+
+  // 安全策: 問題エリアが空のままなら raw テキストを直接表示
+  if (!el.modalQ.textContent.trim() && card.question) {
+    const raw = extractFirstSectionContent(card.question);
+    if (raw) {
+      const wrap = document.createElement('div');
+      wrap.innerHTML = `<p style="font-size:1.05rem;line-height:1.55;background:linear-gradient(135deg,#f1f5f9,#cbd5e1);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;white-space:pre-wrap;margin-bottom:0.75rem;">${escapeHtml(raw).replace(/\n/g, '<br>')}</p>`;
+      el.modalQ.appendChild(wrap);
+    }
+  }
+
   renderToContainer(aFields, false, el.modalAnswer);
   // 問題側の選択肢を答え側にも自動反映（○×表示）― answer テキストから値を取得
   renderToContainer(qChoiceFields, false, el.modalAnswer, getChoiceAnswerValue);
+
+  // 安全策: 答えエリアが空のままなら raw テキストを直接表示
+  if (!el.modalAnswer.textContent.trim() && card.answer) {
+    const raw = extractFirstSectionContent(card.answer);
+    if (raw) {
+      const wrap = document.createElement('div');
+      wrap.innerHTML = `<p style="font-size:1rem;font-weight:600;color:#a78bfa;line-height:1.5;white-space:pre-wrap;margin-bottom:0.75rem;">${escapeHtml(raw).replace(/\n/g, '<br>')}</p>`;
+      el.modalAnswer.appendChild(wrap);
+    }
+  }
 
   const isDue = card.nextReviewDate && card.nextReviewDate <= Date.now();
   el.statNext.textContent     = card.nextReviewDate ? (isDue ? '🎯 今すぐ' : fmtDate(card.nextReviewDate)) : '未設定';
@@ -470,7 +506,7 @@ function openEditModal(id) {
 
   const genreDef = genres.find(g => g.id === card.genre);
   editPreviewGenre = genreDef || null;
-  const fields = genreDef?.fields || [
+  const fields = (genreDef?.fields?.length) ? genreDef.fields : [
     { key: 'question', label: '問題', type: 'textarea', required: true, role: 'question' },
     { key: 'answer',   label: '答え', type: 'textarea', required: false, role: 'answer' }
   ];
@@ -557,6 +593,9 @@ function openEditModal(id) {
       input.value = (nextIdx !== -1 ? rawContent.substring(contentStart, nextIdx) : rawContent.substring(contentStart)).trim();
     } else if (!rawContent.includes('[') && (field.key === 'question' || field.key === 'answer')) {
       input.value = rawContent;
+    } else if (rawContent) {
+      // ラベル不一致（ジャンル再保存等）でもテキストを抽出
+      input.value = extractFirstSectionContent(rawContent);
     } else {
       input.value = '';
     }

@@ -493,6 +493,29 @@ body {
 .btn-easy .label  { color: var(--color-easy); }
 .btn-easy:hover   { border-color: var(--color-easy); box-shadow: 0 6px 20px rgba(59,130,246,0.2); background: rgba(59,130,246,0.1); }
 
+/* ===== 次の問題へ進むボタン ===== */
+.next-btn {
+  display: block;
+  width: 100%;
+  margin-top: 1rem;
+  padding: 0.7rem 1.2rem;
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 12px;
+  color: var(--text-secondary);
+  font-size: 0.88rem;
+  font-weight: 600;
+  font-family: 'Inter', sans-serif;
+  cursor: pointer;
+  transition: all 0.2s;
+  letter-spacing: 0.02em;
+}
+.next-btn:hover {
+  background: rgba(99,102,241,0.08);
+  border-color: rgba(99,102,241,0.3);
+  color: #a78bfa;
+}
+
 /* ===== 完了画面 ===== */
 .done-card {
   text-align: center;

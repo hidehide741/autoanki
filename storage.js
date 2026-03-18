@@ -6,6 +6,7 @@ const SUPABASE_KEY = 'sb_publishable_g3U08ZrJjKyXaeaEuPeuaQ_SNoUxyVg';
 const API_BASE = `${SUPABASE_URL}/rest/v1/cards`;
 const CARD_TYPE_API_BASE = `${SUPABASE_URL}/rest/v1/card_types`;
 const MEMO_API_BASE = `${SUPABASE_URL}/rest/v1/memos`;
+const SETTINGS_API_BASE = `${SUPABASE_URL}/rest/v1/settings`;
 
 // デフォルトカード型定義
 const DEFAULT_CARD_TYPES = [
@@ -143,6 +144,31 @@ const LocalStore = {
   }
 };
 
+// ===== Supabase settings テーブルへのKVアクセス =====
+// quizSettings, stats, lastAnswerTime, emptyNotified 等を全てクラウドに保存
+const CloudSettings = {
+  async get(key) {
+    try {
+      const res = await fetch(`${SETTINGS_API_BASE}?key=eq.${encodeURIComponent(key)}&select=value`, { headers: HEADERS });
+      if (!res.ok) return null;
+      const rows = await res.json();
+      return rows.length > 0 ? rows[0].value : null;
+    } catch { return null; }
+  },
+  async set(key, value) {
+    try {
+      const res = await fetch(SETTINGS_API_BASE, {
+        method: 'POST',
+        headers: { ...HEADERS, 'Prefer': 'resolution=merge-duplicates' },
+        body: JSON.stringify({ key, value, updated_at: new Date().toISOString() })
+      });
+      if (!res.ok) console.error('CloudSettings.set failed:', await res.text());
+    } catch (e) {
+      console.error('CloudSettings.set failed:', e);
+    }
+  }
+};
+
 const StorageManager = {
   isExtension: isExtension,
   
@@ -154,7 +180,9 @@ const StorageManager = {
   // ========== クイズ設定 ==========
   async getQuizSettings() {
     const defaults = { hideMastered: false, newFirst: false, order: 'due', cooldown: 15, categoryFilter: null };
-    const saved = await LocalStore.get('quizSettings');
+    // まずSupabaseから取得、失敗時はLocalStore（移行用フォールバック）
+    let saved = await CloudSettings.get('quizSettings');
+    if (!saved) saved = await LocalStore.get('quizSettings');
     if (saved) {
       // 旧 genreFilter → categoryFilter マイグレーション
       if (saved.genreFilter !== undefined && saved.categoryFilter === undefined) {
@@ -166,7 +194,7 @@ const StorageManager = {
     return defaults;
   },
   async saveQuizSettings(settings) {
-    await LocalStore.set('quizSettings', settings);
+    await CloudSettings.set('quizSettings', settings);
   },
 
   // ========== カード型管理 (Supabase 同期) ==========
@@ -358,15 +386,15 @@ const StorageManager = {
   },
 
 
-  // インストール時の初期処理（統計のみブラウザに残す）
+  // インストール時の初期処理
   async initDemoData() {
     await this.initStats();
   },
 
   async initStats() {
-    const stats = await LocalStore.get('stats');
+    const stats = await CloudSettings.get('stats');
     if (!stats) {
-      await LocalStore.set('stats', {
+      await CloudSettings.set('stats', {
         todayReviews: 0,
         lastReviewDate: new Date().toDateString(),
         streak: 0,
@@ -374,7 +402,7 @@ const StorageManager = {
       });
     } else if (!stats.history) {
       stats.history = {};
-      await LocalStore.set('stats', stats);
+      await CloudSettings.set('stats', stats);
     }
   },
 
@@ -406,7 +434,7 @@ const StorageManager = {
     // ======= Chrome拡張機能（Spaced Repetition）の場合 =======
     const cooldownMs = (qs.cooldown || 0) * 60 * 1000;
     if (cooldownMs > 0) {
-      const lastAnswerTime = await LocalStore.get('lastAnswerTime');
+      const lastAnswerTime = await CloudSettings.get('lastAnswerTime');
       if (lastAnswerTime && (now - lastAnswerTime < cooldownMs)) {
         return { status: 'cooldown', card: null };
       }
@@ -551,8 +579,8 @@ const StorageManager = {
     // サーバーに個別保存
     await this.saveCardUpdate(card);
 
-    // lastAnswerTime をブラウザに記録して次回出題を15分後に制限する
-    await LocalStore.set('lastAnswerTime', Date.now());
+    // lastAnswerTime をSupabaseに記録して次回出題を制限する
+    await CloudSettings.set('lastAnswerTime', Date.now());
     
     // Statsの更新
     await this.incrementStats();
@@ -583,14 +611,14 @@ const StorageManager = {
   },
 
   async updateLastAnswerTime() {
-    await LocalStore.set('lastAnswerTime', Date.now());
+    await CloudSettings.set('lastAnswerTime', Date.now());
   },
 
   async getCooldownRemainingMs() {
     const qs = await this.getQuizSettings();
     const cooldownMs = (qs.cooldown || 0) * 60 * 1000;
     if (cooldownMs <= 0) return 0;
-    const lastAnswerTime = await LocalStore.get('lastAnswerTime');
+    const lastAnswerTime = await CloudSettings.get('lastAnswerTime');
     if (!lastAnswerTime) return 0;
     const remaining = cooldownMs - (Date.now() - lastAnswerTime);
     return remaining > 0 ? remaining : 0;
@@ -598,15 +626,17 @@ const StorageManager = {
 
   // 「問題なし」画面を一度表示したかフラグ
   async getEmptyNotified() {
-    return await LocalStore.get('emptyNotified');
+    return await CloudSettings.get('emptyNotified');
   },
   async setEmptyNotified(val) {
-    await LocalStore.set('emptyNotified', !!val);
+    await CloudSettings.set('emptyNotified', !!val);
   },
 
   async incrementStats() {
-    let stats = await LocalStore.get('stats');
-    if (!stats) return;
+    let stats = await CloudSettings.get('stats');
+    if (!stats) {
+      stats = { todayReviews: 0, lastReviewDate: new Date().toDateString(), streak: 0, history: {} };
+    }
 
     const todayObj = new Date();
     const todayString = todayObj.toDateString();
@@ -632,12 +662,12 @@ const StorageManager = {
     // 履歴を更新
     stats.history[historyKey] = (stats.history[historyKey] || 0) + 1;
     
-    await LocalStore.set('stats', stats);
+    await CloudSettings.set('stats', stats);
   },
 
-  // 統計情報取得（ストレージから）
+  // 統計情報取得（Supabaseから）
   async getStats() {
-    const stats = await LocalStore.get('stats');
+    const stats = await CloudSettings.get('stats');
     return stats || { todayReviews: 0, streak: 0 };
   },
 

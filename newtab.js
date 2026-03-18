@@ -153,18 +153,60 @@ function showQuestionMode(genreDef) {
   }
 
   // rawContent から [ラベル]\n値 形式で値を取得
+  // 同一ラベルが複数存在する場合（例: static見出し + textarea内容）も正しく処理するため
+  // 「消費済みインデックス」を追跡し、次のフィールドは次の出現を使う
+  const consumedQPos = new Set();
+  const consumedAPos = new Set();
+
   function getFieldValue(field) {
+    // static フィールドはジャンル定義のラベルをそのまま表示（保存データ不要）
+    if (field.type === 'static') {
+      // DB上に同ラベルの保存データがあれば "消費" だけしておく（後続フィールドの衝突防止）
+      const raw2 = (field.role === 'question' ? currentCard.question : currentCard.answer) || '';
+      const rc2 = raw2.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+      const ss2 = `[${field.label}]\n`;
+      let sf2 = 0;
+      while (true) {
+        const si2 = rc2.indexOf(ss2, sf2);
+        if (si2 === -1) break;
+        const consumedSet2 = field.role === 'question' ? consumedQPos : consumedAPos;
+        if (!consumedSet2.has(si2)) { consumedSet2.add(si2); break; }
+        sf2 = si2 + 1;
+      }
+      return field.label;
+    }
+
     const raw = (field.role === 'question' ? currentCard.question : currentCard.answer) || '';
     const rawContent = raw.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
     const searchStr = `[${field.label}]\n`;
-    const startIdx = rawContent.indexOf(searchStr);
-    if (startIdx !== -1) {
-      const contentStart = startIdx + searchStr.length;
-      const nextIdx = rawContent.indexOf('\n\n[', contentStart);
-      return (nextIdx !== -1 ? rawContent.substring(contentStart, nextIdx) : rawContent.substring(contentStart)).trim();
+    const consumedPos = field.role === 'question' ? consumedQPos : consumedAPos;
+
+    let searchFrom = 0;
+    while (true) {
+      const startIdx = rawContent.indexOf(searchStr, searchFrom);
+      if (startIdx === -1) break;
+      if (!consumedPos.has(startIdx)) {
+        consumedPos.add(startIdx);
+        const contentStart = startIdx + searchStr.length;
+        // [__tags__] や次の [ セクション手前まで
+        const nextIdx = rawContent.indexOf('\n\n[', contentStart);
+        return (nextIdx !== -1 ? rawContent.substring(contentStart, nextIdx) : rawContent.substring(contentStart)).trim();
+      }
+      searchFrom = startIdx + 1;
     }
     if (field.key === 'question' || field.key === 'answer') return rawContent;
     return '';
+  }
+
+  // カテゴリタグを question テキストから抽出してバッジエリアに表示
+  const tagsMatch = /\[__tags__\]\n([\s\S]*)$/.exec((currentCard.question || '').replace(/\r\n/g, '\n'));
+  const categoryTags = tagsMatch ? tagsMatch[1].trim().split(',').map(t => t.trim()).filter(Boolean) : [];
+  const catBadgeArea = document.getElementById('category-badge-area');
+  if (catBadgeArea) {
+    catBadgeArea.innerHTML = categoryTags.map(tag =>
+      `<span style="display:inline-block;background:rgba(20,184,166,0.18);border:1px solid rgba(20,184,166,0.35);color:#14b8a6;padding:0.1rem 0.55rem;border-radius:12px;font-size:0.72rem;font-weight:600;">${tag.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c])}</span>`
+    ).join('');
+    catBadgeArea.style.display = categoryTags.length ? 'flex' : 'none';
   }
 
   // options.js のプレビューと完全同一のロジックで描画（renderCard.js 共通関数を使用）

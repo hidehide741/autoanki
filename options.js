@@ -1545,11 +1545,20 @@ function updateCardPreview(genre, values) {
   ) || '<p style="color:#475569;font-size:0.9rem;">（答えフィールドなし）</p>';
 
   // カード本体HTML（newtab.htmlの.glass-cardに近いスタイル）
+  // カテゴリタグをバッジとして表示
+  const catEl2 = document.getElementById('card-category-input');
+  const previewCatTags = catEl2 ? catEl2.value.split(',').map(t => t.trim()).filter(Boolean) : [];
+  const catBadgesHtml = previewCatTags.map(t =>
+    `<span style="display:inline-block;background:rgba(20,184,166,0.18);border:1px solid rgba(20,184,166,0.35);color:#14b8a6;padding:0.1rem 0.5rem;border-radius:12px;font-size:0.68rem;font-weight:600;margin-left:0.3rem;">${escapeHtml(t)}</span>`
+  ).join('');
+
   panel.innerHTML = `
     <div style="background:rgba(20,27,50,0.75);border:1px solid rgba(255,255,255,0.1);border-radius:20px;padding:1.75rem 2rem;box-shadow:0 20px 40px -10px rgba(0,0,0,0.5);">
 
-      <!-- ジャンルバッジ -->
-      <div style="display:inline-block;font-size:0.68rem;font-weight:600;color:#a78bfa;background:rgba(99,102,241,0.15);padding:0.12rem 0.55rem;border-radius:4px;margin-bottom:1rem;letter-spacing:0.04em;text-transform:uppercase;">${escapeHtml(genre.name || 'プレビュー')}</div>
+      <!-- ジャンルバッジ + カテゴリバッジ -->
+      <div style="display:flex;align-items:center;flex-wrap:wrap;gap:0.3rem;margin-bottom:1rem;">
+        <span style="font-size:0.68rem;font-weight:600;color:#a78bfa;background:rgba(99,102,241,0.15);padding:0.12rem 0.55rem;border-radius:4px;letter-spacing:0.04em;text-transform:uppercase;">${escapeHtml(genre.name || 'プレビュー')}</span>${catBadgesHtml}
+      </div>
 
       <!-- 問題エリア -->
       <div id="preview-q-area">${qHtml}</div>
@@ -1701,6 +1710,8 @@ function initCategoryInput(initialValue = '') {
     tagDisplay.innerHTML = tags.map(t =>
       `<span style="background:rgba(20,184,166,0.18);border:1px solid rgba(20,184,166,0.35);color:#14b8a6;padding:0.12rem 0.5rem;border-radius:12px;font-size:0.78rem;">${esc(t)}</span>`
     ).join('');
+    // カテゴリ変更時にプレビューも更新
+    if (activeGenre) updateCardPreview(activeGenre, currentPreviewValues);
   };
   input.addEventListener('input', renderTagDisp);
   if (initialValue) renderTagDisp();
@@ -1780,12 +1791,13 @@ function setupGlobalListeners() {
       const aParts = [];
       
       genre.fields.forEach(f => {
+        // static フィールドは表示専用（ジャンル定義から復元可能）なので保存しない
+        // 同一ラベルのフィールドが存在しても衝突しなくなる
+        if (f.type === 'static') return;
         const val = values[f.key];
-        // static は値が空のとき field.label を使用、それ以外は値がなければスキップ
-        const saveVal = f.type === 'static' ? (val || f.label) : val;
-        if (!saveVal) return;
+        if (!val) return;
         if (f.role === 'question') {
-          qParts.push(`[${f.label}]\n${saveVal}`);
+          qParts.push(`[${f.label}]\n${val}`);
           // 選択肢フィールドは答え側にも自動保存（○×表示用）
           if (f.type === 'choice_multi' || f.type === 'choice_single') {
             aParts.push(`[${f.label}]\n${saveVal}`);

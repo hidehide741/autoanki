@@ -17,32 +17,32 @@
     }
 
     /* ===== ジャンルリスト ===== */
-    .genre-grid {
+    .cardtype-grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
       gap: 1.25rem;
     }
-    .genre-card {
+    .cardtype-card {
       background: rgba(15,23,42,0.5);
       border: 1px solid var(--glass-border);
       border-radius: 12px;
       padding: 1.25rem;
       transition: all 0.2s;
     }
-    .genre-card:hover { border-color: rgba(99,102,241,0.4); transform: translateY(-2px); }
-    .genre-card-name {
+    .cardtype-card:hover { border-color: rgba(99,102,241,0.4); transform: translateY(-2px); }
+    .cardtype-card-name {
       font-weight: 600;
       font-size: 1.05rem;
       margin-bottom: 0.6rem;
       color: var(--text-primary);
     }
-    .genre-card-fields {
+    .cardtype-card-fields {
       font-size: 0.78rem;
       color: var(--text-secondary);
       margin-bottom: 1.25rem;
       line-height: 1.6;
     }
-    .genre-card-actions {
+    .cardtype-card-actions {
       display: flex;
       gap: 0.6rem;
       justify-content: flex-end;
@@ -71,14 +71,14 @@
     .btn-sm { padding: 0.4rem 0.8rem; font-size: 0.82rem; }
 
     /* ===== エディタ (2列レイアウト) ===== */
-    .genre-editor-grid {
+    .cardtype-editor-grid {
       display: grid;
       grid-template-columns: 6fr 4fr;
       gap: 2.5rem;
       align-items: start;
     }
     @media (max-width: 900px) {
-      .genre-editor-grid { grid-template-columns: 1fr; }
+      .cardtype-editor-grid { grid-template-columns: 1fr; }
       .editor-right { position: static !important; }
     }
 
@@ -170,7 +170,7 @@
     }
     .btn-remove:hover { opacity: 1; }
 
-    .genre-name-input {
+    .cardtype-name-input {
       width: 100%;
       background: rgba(0,0,0,0.3);
       border: 1px solid var(--glass-border);
@@ -260,12 +260,12 @@
 
     <main class="main-content">
       <!-- ジャンル一覧 -->
-      <section class="section glass-panel" id="genre-list-section">
+      <section class="section glass-panel" id="cardtype-list-section">
         <div class="section-header">
-          <h2 class="section-title" style="margin:0; border:none; padding:0;">⚙️ ジャンル管理</h2>
-          <button class="primary-btn" id="add-genre-btn">＋ 新規ジャンル</button>
+          <h2 class="section-title" style="margin:0; border:none; padding:0;">⚙️ カード型管理</h2>
+          <button class="primary-btn" id="add-cardtype-btn">＋ 新規カード型</button>
         </div>
-        <div class="genre-grid" id="genre-list">
+        <div class="cardtype-grid" id="cardtype-list">
           <!-- JSで動的生成 -->
         </div>
       </section>
@@ -283,7 +283,7 @@
       </section>
 
       <!-- ジャンル詳細エディタ (2つの独立したパネル) -->
-      <div class="genre-editor-grid hidden" id="genre-editor">
+      <div class="cardtype-editor-grid hidden" id="cardtype-editor">
         <!-- 左カラム: 入力フォームパネル -->
         <section class="section glass-panel editor-left" style="margin-bottom: 0; padding: 1.5rem 2rem;">
           <div class="section-header" style="border-bottom: 1px solid var(--glass-border); padding-bottom: 1rem; margin-bottom: 2rem;">
@@ -291,7 +291,7 @@
           </div>
 
           <div style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.5rem;">1. ジャンル名</div>
-          <input type="text" id="genre-name" class="genre-name-input" placeholder="例: 英単語、プログラミング">
+          <input type="text" id="cardtype-name" class="cardtype-name-input" placeholder="例: 語学、プログラミング">
 
           <!-- 2. 問題フィールド -->
           <div class="field-section">
@@ -313,7 +313,7 @@
 
           <div class="editor-footer">
             <button type="button" class="btn btn-secondary" id="cancel-btn">キャンセル</button>
-            <button type="button" class="primary-btn" id="save-genre-btn">保存する</button>
+            <button type="button" class="primary-btn" id="save-cardtype-btn">保存する</button>
           </div>
         </section>
 

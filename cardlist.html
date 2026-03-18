@@ -126,7 +126,7 @@
       overflow: hidden;
       line-height: 1.4;
     }
-    .genre-badge {
+    .cardtype-badge {
       font-size: 0.72rem;
       padding: 0.1rem 0.5rem;
       background: rgba(99,102,241,0.15);
@@ -302,8 +302,8 @@
         <!-- ツールバー -->
         <div class="toolbar">
           <input type="text" id="search-input" class="search-input" placeholder="🔍 問題・答えを検索…">
-          <select id="genre-filter" class="filter-select">
-            <option value="">すべてのジャンル</option>
+          <select id="cardtype-filter" class="filter-select">
+            <option value="">すべてのカード型</option>
           </select>
           <span class="count-badge" id="count-badge">読み込み中…</span>
           <button class="icon-btn-toolbar" id="export-btn" title="エクスポート">📥 エクスポート</button>
@@ -319,7 +319,7 @@
                 <th style="width:36px;cursor:default;"><input type="checkbox" class="row-checkbox" id="select-all-checkbox" title="全選択"></th>
                 <th data-col="thumb" style="width:56px;cursor:default;"></th>
                 <th data-col="question">問題 <span class="sort-indicator">↕</span></th>
-                <th data-col="genre">ジャンル <span class="sort-indicator">↕</span></th>
+                <th data-col="cardtype">カード型 <span class="sort-indicator">↕</span></th>
                 <th data-col="nextReviewDate">次回復習 <span class="sort-indicator">↕</span></th>
                 <th data-col="interval">間隔 <span class="sort-indicator">↕</span></th>
                 <th style="cursor:default;text-align:right;">操作</th>
@@ -344,7 +344,7 @@
     <div class="modal-box">
       <button class="modal-close" id="modal-close">✕</button>
 
-      <div id="modal-genre-badge" style="font-size:0.75rem;color:#a78bfa;background:rgba(99,102,241,0.15);padding:0.1rem 0.6rem;border-radius:4px;display:inline-block;margin-bottom:0.75rem;"></div>
+      <div id="modal-cardtype-badge" style="font-size:0.75rem;color:#a78bfa;background:rgba(99,102,241,0.15);padding:0.1rem 0.6rem;border-radius:4px;display:inline-block;margin-bottom:0.75rem;"></div>
 
       <p class="modal-label">問題</p>
       <div class="modal-value" id="modal-question"></div>

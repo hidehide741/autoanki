@@ -4,7 +4,7 @@ import { renderFieldHtml as _renderFieldHtml, escapeHtml } from './renderCard.js
 const PAGE_SIZE = 25;
 
 let allCards  = [];
-let genres    = [];
+let cardTypes    = [];
 let filtered  = [];
 let currentPage = 1;
 let sortCol   = 'nextReviewDate';
@@ -15,7 +15,7 @@ const MAX_EDIT_IMAGES = 3;
 
 const el = {
   searchInput:  document.getElementById('search-input'),
-  genreFilter:  document.getElementById('genre-filter'),
+  cardTypeFilter:  document.getElementById('cardtype-filter'),
   countBadge:   document.getElementById('count-badge'),
   tableWrap:    document.getElementById('table-wrap'),
   tableBody:    document.getElementById('table-body'),
@@ -24,7 +24,7 @@ const el = {
 
   modalOverlay: document.getElementById('modal-overlay'),
   modalClose:   document.getElementById('modal-close'),
-  modalGenre:   document.getElementById('modal-genre-badge'),
+  modalCardType:   document.getElementById('modal-cardtype-badge'),
   modalQ:       document.getElementById('modal-question'),
   modalImages:  document.getElementById('modal-images'),
   modalAnswer:  document.getElementById('modal-answer'),
@@ -49,24 +49,24 @@ const el = {
 
 // ===== 初期化 =====
 async function init() {
-  [allCards, genres] = await Promise.all([
+  [allCards, cardTypes] = await Promise.all([
     StorageManager.getAllCards(),
-    StorageManager.getGenres()
+    StorageManager.getCardTypes()
   ]);
-  buildGenreFilter();
+  buildCardTypeFilter();
   setupHeaderSort();
   setupListeners();
   applyAndRender();
 }
 
 // ===== ジャンルフィルター =====
-function buildGenreFilter() {
-  const used = new Set(allCards.map(c => c.genre).filter(Boolean));
-  genres.filter(g => used.has(g.id)).forEach(g => {
+function buildCardTypeFilter() {
+  const used = new Set(allCards.map(c => c.cardType).filter(Boolean));
+  cardTypes.filter(g => used.has(g.id)).forEach(g => {
     const opt = document.createElement('option');
     opt.value = g.id;
     opt.textContent = g.name;
-    el.genreFilter.appendChild(opt);
+    el.cardTypeFilter.appendChild(opt);
   });
 }
 
@@ -105,11 +105,11 @@ function updateSortUI() {
 // ===== フィルター → ソート → 描画 =====
 function applyAndRender() {
   const query = el.searchInput.value.trim().toLowerCase();
-  const genre = el.genreFilter.value;
+  const cardTypeVal = el.cardTypeFilter.value;
 
   filtered = allCards.filter(card => {
     const matchQ = !query || (card.question || '').toLowerCase().includes(query) || (card.answer || '').toLowerCase().includes(query);
-    const matchG = !genre || card.genre === genre;
+    const matchG = !cardTypeVal || card.cardType === cardTypeVal;
     return matchQ && matchG;
   });
 
@@ -121,8 +121,8 @@ function applyAndRender() {
       av = (av || '').toLowerCase();
       bv = (bv || '').toLowerCase();
     }
-    if (sortCol === 'genre') {
-      av = genreName(a.genre); bv = genreName(b.genre);
+    if (sortCol === 'cardtype') {
+      av = cardTypeName(a.cardType); bv = cardTypeName(b.cardType);
     }
     if (av < bv) return sortAsc ? -1 : 1;
     if (av > bv) return sortAsc ?  1 : -1;
@@ -133,7 +133,7 @@ function applyAndRender() {
   renderTable();
   renderPagination();
 
-  const totalLabel = query || genre ? `検索結果: ${filtered.length} 件 / 全 ${allCards.length} 件` : `全 ${allCards.length} 件`;
+  const totalLabel = query || cardTypeVal ? `検索結果: ${filtered.length} 件 / 全 ${allCards.length} 件` : `全 ${allCards.length} 件`;
   el.countBadge.textContent = totalLabel;
 }
 
@@ -186,7 +186,7 @@ function renderTable() {
       <td><input type="checkbox" class="row-checkbox" data-id="${card.id}"></td>
       ${thumbHtml}
       <td class="cell-question"><div class="cell-text" title="${esc(card.question)}">${esc(displayQ || '無題')}</div></td>
-      <td><span class="genre-badge">${esc(genreName(card.genre))}</span></td>
+      <td><span class="cardtype-badge">${esc(cardTypeName(card.cardType))}</span></td>
       <td><span class="due-badge ${isDue ? 'now' : 'later'}">${dueStr}</span></td>
       <td style="color:var(--text-secondary);">${fmtInterval(card.interval)}</td>
       <td class="action-cell">
@@ -271,12 +271,12 @@ function openModal(id) {
   if (!card) return;
   activeCardId = id;
 
-  const genreDef = genres.find(g => g.id === card.genre);
+  const cardTypeDef = cardTypes.find(g => g.id === card.cardType);
   const defaultFields = [
     { key: 'question', label: '問題', type: 'textarea', role: 'question' },
     { key: 'answer',   label: '答え', type: 'textarea', role: 'answer' }
   ];
-  const fields = (genreDef?.fields?.length) ? genreDef.fields : defaultFields;
+  const fields = (cardTypeDef?.fields?.length) ? cardTypeDef.fields : defaultFields;
 
   // 画像のパース
   let images = [];
@@ -292,7 +292,7 @@ function openModal(id) {
     }
   }
 
-  el.modalGenre.textContent = genreDef?.name || 'その他';
+  el.modalCardType.textContent = cardTypeDef?.name || 'その他';
   el.modalQ.innerHTML = ''; 
   el.modalAnswer.innerHTML = '';
   el.modalImages.innerHTML = ''; // Clear the old modalImages container
@@ -432,15 +432,15 @@ function closeModal() {
 }
 
 let editPreviewValues = {};
-let editPreviewGenre = null;
+let editPreviewCardType = null;
 
 // ===== 編集プレビュー更新 =====
 function updateEditPreview() {
   const panel = document.getElementById('edit-preview-panel');
-  if (!panel || !editPreviewGenre) return;
+  if (!panel || !editPreviewCardType) return;
 
   function buildSideHtml(role) {
-    const fields = editPreviewGenre.fields.filter(f => f.role === role);
+    const fields = editPreviewCardType.fields.filter(f => f.role === role);
     let html = '';
     fields.forEach(f => {
       if (f.type === 'image') {
@@ -504,9 +504,9 @@ function openEditModal(id) {
   pendingEditImages = {};
   editPreviewValues = {};
 
-  const genreDef = genres.find(g => g.id === card.genre);
-  editPreviewGenre = genreDef || null;
-  const fields = (genreDef?.fields?.length) ? genreDef.fields : [
+  const cardTypeDef = cardTypes.find(g => g.id === card.cardType);
+  editPreviewCardType = cardTypeDef || null;
+  const fields = (cardTypeDef?.fields?.length) ? cardTypeDef.fields : [
     { key: 'question', label: '問題', type: 'textarea', required: true, role: 'question' },
     { key: 'answer',   label: '答え', type: 'textarea', required: false, role: 'answer' }
   ];
@@ -730,8 +730,8 @@ async function saveCardEdit() {
   const card = allCards.find(c => c.id === activeCardId);
   if (!card) return;
 
-  const genreDef = genres.find(g => g.id === card.genre);
-  const fields = genreDef?.fields || [];
+  const cardTypeDef = cardTypes.find(g => g.id === card.cardType);
+  const fields = cardTypeDef?.fields || [];
 
   // 各フィールド値を収集
   const values = {};
@@ -811,7 +811,7 @@ async function confirmDelete(id) {
 // ===== リスナー =====
 function setupListeners() {
   el.searchInput.addEventListener('input', applyAndRender);
-  el.genreFilter.addEventListener('change', applyAndRender);
+  el.cardTypeFilter.addEventListener('change', applyAndRender);
   el.modalClose.addEventListener('click', closeModal);
   el.modalOverlay.addEventListener('click', e => { if (e.target === el.modalOverlay) closeModal(); });
   el.modalDelete.addEventListener('click', () => { if (activeCardId) confirmDelete(activeCardId); });
@@ -862,8 +862,8 @@ function setupListeners() {
 }
 
 // ===== ユーティリティ =====
-function genreName(id) {
-  return genres.find(g => g.id === id)?.name || id || 'その他';
+function cardTypeName(id) {
+  return cardTypes.find(g => g.id === id)?.name || id || 'その他';
 }
 function fmtInterval(ms) {
   if (ms == null) return '—';
@@ -930,7 +930,7 @@ function importCards() {
       let count = 0;
       for (const card of cards) {
         if (!card.question || !card.answer) continue;
-        await StorageManager.addCard(card.question, card.answer, card.image || null, card.genre || 'other');
+        await StorageManager.addCard(card.question, card.answer, card.image || null, card.cardType || 'other');
         count++;
       }
       alert(`${count} 件のカードをインポートしました`);

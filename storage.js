@@ -4,11 +4,11 @@
 const SUPABASE_URL = 'https://qahkvamgssedhjvtlika.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_g3U08ZrJjKyXaeaEuPeuaQ_SNoUxyVg';
 const API_BASE = `${SUPABASE_URL}/rest/v1/cards`;
-const GENRE_API_BASE = `${SUPABASE_URL}/rest/v1/genres`;
+const CARD_TYPE_API_BASE = `${SUPABASE_URL}/rest/v1/card_types`;
 const MEMO_API_BASE = `${SUPABASE_URL}/rest/v1/memos`;
 
-// デフォルトジャンル定義
-const DEFAULT_GENRES = [
+// デフォルトカード型定義
+const DEFAULT_CARD_TYPES = [
   {
     id: 'language', name: '🌐 語学', isDefault: true,
     fields: [
@@ -153,24 +153,32 @@ const StorageManager = {
 
   // ========== クイズ設定 ==========
   async getQuizSettings() {
-    const defaults = { hideMastered: false, newFirst: false, order: 'due', cooldown: 15, genreFilter: null };
+    const defaults = { hideMastered: false, newFirst: false, order: 'due', cooldown: 15, categoryFilter: null };
     const saved = await LocalStore.get('quizSettings');
-    return saved ? { ...defaults, ...saved } : defaults;
+    if (saved) {
+      // 旧 genreFilter → categoryFilter マイグレーション
+      if (saved.genreFilter !== undefined && saved.categoryFilter === undefined) {
+        saved.categoryFilter = null;
+        delete saved.genreFilter;
+      }
+      return { ...defaults, ...saved };
+    }
+    return defaults;
   },
   async saveQuizSettings(settings) {
     await LocalStore.set('quizSettings', settings);
   },
 
-  // ========== ジャンル管理 (Supabase 同期) ==========
-  async getGenres() {
+  // ========== カード型管理 (Supabase 同期) ==========
+  async getCardTypes() {
     try {
-      // 1. Supabase からジャンル一覧を取得
-      const res = await fetch(`${GENRE_API_BASE}?select=*&order=created_at.asc`, { headers: HEADERS });
+      // 1. Supabase からカード型一覧を取得
+      const res = await fetch(`${CARD_TYPE_API_BASE}?select=*&order=created_at.asc`, { headers: HEADERS });
       if (!res.ok) throw new Error('Supabase Fetch Error');
-      const cloudGenres = await res.json();
+      const cloudTypes = await res.json();
 
       // DB形式 (snake_case) から Object形式 (isDefault, etc) へ変換
-      const mappedCloud = cloudGenres.map(g => ({
+      const mappedCloud = cloudTypes.map(g => ({
         id: g.id,
         name: g.name,
         isDefault: g.is_default,
@@ -179,37 +187,37 @@ const StorageManager = {
       }));
 
       // 最初の起動時などでクラウドが空の場合、ローカルから移行を試みる
-      if (cloudGenres.length === 0) {
-        const localSaved = await LocalStore.get('genres');
-        const initialToSave = (localSaved && localSaved.length > 0) ? localSaved : DEFAULT_GENRES;
+      if (cloudTypes.length === 0) {
+        const localSaved = await LocalStore.get('cardTypes');
+        const initialToSave = (localSaved && localSaved.length > 0) ? localSaved : DEFAULT_CARD_TYPES;
         
-        console.log('Initializing cloud genres...');
-        await this.saveGenres(initialToSave);
+        console.log('Initializing cloud card types...');
+        await this.saveCardTypes(initialToSave);
         return initialToSave;
       }
 
       // ローカルキャッシュも更新
-      await LocalStore.set('genres', mappedCloud);
+      await LocalStore.set('cardTypes', mappedCloud);
       return mappedCloud;
     } catch (err) {
-      console.error('getGenres failed, falling back to local storage:', err);
-      const local = await LocalStore.get('genres');
-      return local || DEFAULT_GENRES;
+      console.error('getCardTypes failed, falling back to local storage:', err);
+      const local = await LocalStore.get('cardTypes');
+      return local || DEFAULT_CARD_TYPES;
     }
   },
 
-  async saveGenres(genres) {
+  async saveCardTypes(cardTypes) {
     try {
-      // 1. 各ジャンルをバッチでアップサート (Upsert)
+      // 1. 各カード型をバッチでアップサート (Upsert)
       // Supabase REST API では、POST + Prefer: resolution=merge-duplicates でアップサート
-      const payloads = genres.map(g => ({
+      const payloads = cardTypes.map(g => ({
         id: g.id,
         name: g.name,
         is_default: !!g.isDefault,
         fields: g.fields
       }));
 
-      const res = await fetch(GENRE_API_BASE, {
+      const res = await fetch(CARD_TYPE_API_BASE, {
         method: 'POST',
         headers: {
           ...HEADERS,
@@ -221,23 +229,23 @@ const StorageManager = {
       if (!res.ok) throw new Error('Supabase Upsert Error');
 
       // ローカル保存（バックアップ兼キャッシュ）
-      await LocalStore.set('genres', genres);
+      await LocalStore.set('cardTypes', cardTypes);
     } catch (err) {
-      console.error('saveGenres failed:', err);
+      console.error('saveCardTypes failed:', err);
       // 通信エラーでも利便性のためにローカルには保存
-      await LocalStore.set('genres', genres);
+      await LocalStore.set('cardTypes', cardTypes);
     }
   },
 
-  async deleteGenre(genreId) {
+  async deleteCardType(cardTypeId) {
     try {
-      const res = await fetch(`${GENRE_API_BASE}?id=eq.${encodeURIComponent(genreId)}`, {
+      const res = await fetch(`${CARD_TYPE_API_BASE}?id=eq.${encodeURIComponent(cardTypeId)}`, {
         method: 'DELETE',
         headers: HEADERS
       });
       if (!res.ok) throw new Error('Supabase Delete Error');
     } catch (err) {
-      console.error('deleteGenre failed:', err);
+      console.error('deleteCardType failed:', err);
     }
   },
   // ==================================
@@ -250,7 +258,7 @@ const StorageManager = {
     if (rows.length === 0) return null;
     const c = rows[0];
     return {
-      id: c.id, question: c.question, answer: c.answer, image: c.image, genre: c.genre,
+      id: c.id, question: c.question, answer: c.answer, image: c.image, cardType: c.card_type, category: c.category,
       nextReviewDate: parseInt(c.next_review_date, 10), interval: parseInt(c.interval, 10),
       repetition: c.repetition, easiness: c.easiness
     };
@@ -278,7 +286,8 @@ const StorageManager = {
         question: c.question,
         answer: c.answer,
         image: c.image,
-        genre: c.genre,
+        cardType: c.card_type,
+        category: c.category,
         nextReviewDate: parseInt(c.next_review_date, 10),
         interval: parseInt(c.interval, 10),
         repetition: c.repetition,
@@ -296,7 +305,8 @@ const StorageManager = {
       question: card.question,
       answer: card.answer,
       image: card.image,
-      genre: card.genre,
+      card_type: card.cardType,
+      category: card.category,
       next_review_date: card.nextReviewDate,
       interval: card.interval,
       repetition: card.repetition,
@@ -316,7 +326,7 @@ const StorageManager = {
   },
 
   // カードを新規追加 (Supabase REST API の POST を使用)
-  async addCard(question, answer, image = null, genre = 'other') {
+  async addCard(question, answer, image = null, cardType = 'other', category = null) {
     const now = Date.now();
     const id = 'card-' + now + '-' + Math.random().toString(36).substr(2, 9);
     const body = {
@@ -324,7 +334,8 @@ const StorageManager = {
       question,
       answer,
       image,
-      genre,
+      card_type: cardType,
+      category: category,
       next_review_date: now,
       interval:         86400000,     // 初期インターバル 1日
       repetition:       0,
@@ -380,7 +391,7 @@ const StorageManager = {
         const cards = await res.json();
         if (cards.length === 0) return { status: 'empty', card: null };
         const mapped = cards.map(c => ({
-          id: c.id, question: c.question, answer: c.answer, image: c.image, genre: c.genre,
+          id: c.id, question: c.question, answer: c.answer, image: c.image, cardType: c.card_type, category: c.category,
           nextReviewDate: parseInt(c.next_review_date, 10), interval: parseInt(c.interval, 10),
           repetition: c.repetition, easiness: c.easiness
         }));
@@ -405,7 +416,7 @@ const StorageManager = {
       // PostgREST フィルターを構築
       let filters = `next_review_date=lte.${now}`;
       if (qs.hideMastered) filters += '&repetition=lt.6';
-      if (qs.genreFilter)  filters += `&genre=eq.${encodeURIComponent(qs.genreFilter)}`;
+      if (qs.categoryFilter)  filters += `&category=eq.${encodeURIComponent(qs.categoryFilter)}`;
 
       // 並び順
       let orderClause;
@@ -421,7 +432,7 @@ const StorageManager = {
 
       const pick = qs.order === 'random' ? cards[Math.floor(Math.random() * cards.length)] : cards[0];
       const card = {
-        id: pick.id, question: pick.question, answer: pick.answer, image: pick.image, genre: pick.genre,
+        id: pick.id, question: pick.question, answer: pick.answer, image: pick.image, cardType: pick.card_type, category: pick.category,
         nextReviewDate: parseInt(pick.next_review_date, 10), interval: parseInt(pick.interval, 10),
         repetition: pick.repetition, easiness: pick.easiness
       };
@@ -440,7 +451,7 @@ const StorageManager = {
       const qs = await this.getQuizSettings();
       let filters = `next_review_date=lte.${now}`;
       if (qs.hideMastered) filters += '&repetition=lt.6';
-      if (qs.genreFilter)  filters += `&genre=eq.${encodeURIComponent(qs.genreFilter)}`;
+      if (qs.categoryFilter)  filters += `&category=eq.${encodeURIComponent(qs.categoryFilter)}`;
       const res = await fetch(
         `${API_BASE}?select=id&${filters}&limit=0`,
         { method: 'HEAD', headers: { ...HEADERS, 'Prefer': 'count=exact' } }
@@ -452,6 +463,16 @@ const StorageManager = {
       }
       return null;
     } catch { return null; }
+  },
+
+  // カードに設定されているカテゴリの一覧を取得（重複排除済み）
+  async getDistinctCategories() {
+    try {
+      const res = await fetch(`${API_BASE}?select=category&category=not.is.null&order=category.asc&limit=1000`, { headers: HEADERS });
+      if (!res.ok) return [];
+      const rows = await res.json();
+      return [...new Set(rows.map(r => r.category).filter(Boolean))];
+    } catch { return []; }
   },
 
   // SM-2 インターバル計算（純粋関数 — シミュレーションにも使う）
@@ -510,7 +531,7 @@ const StorageManager = {
       if (rows.length === 0) return;
       const c = rows[0];
       card = {
-        id: c.id, question: c.question, answer: c.answer, image: c.image, genre: c.genre,
+        id: c.id, question: c.question, answer: c.answer, image: c.image, cardType: c.card_type, category: c.category,
         nextReviewDate: parseInt(c.next_review_date, 10),
         interval: parseInt(c.interval, 10),
         repetition: c.repetition,

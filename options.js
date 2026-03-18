@@ -15,15 +15,15 @@ function debounce(fn, ms) {
   };
 }
 
-let genres = [];
+let cardTypes = [];
 let pendingImages = {};
 let editingCardId = null;
 let editingCardOriginal = null;
 
 // ===== ステップ管理 =====
 let currentStep = 1;          // 1=型選択, 2=微調整, 3=入力
-let activeGenre = null;       // ステップ2・3で使う「現在の型」(fields配列を含む)
-let activeGenreId = null;     // 選択したジャンルのid（保存時に使う）
+let activeCardType = null;       // ステップ2・3で使う「現在の型」(fields配列を含む)
+let activeCardTypeId = null;     // 選択したカード型のid（保存時に使う）
 let _qRoleInner = null;       // renderForm の問題ブロック inner 参照
 let _aRoleInner = null;       // renderForm の答えブロック inner 参照
 
@@ -95,7 +95,7 @@ function goStep(n) {
 }
 
 async function init() {
-  genres = await StorageManager.getGenres();
+  cardTypes = await StorageManager.getCardTypes();
 
   // URLパラメータ ?edit=<id> を検知して編集モードへ（直接STEP3）
   const params = new URLSearchParams(window.location.search);
@@ -110,30 +110,30 @@ async function init() {
   const stepInd = document.getElementById('step-indicator');
   if (stepInd) stepInd.style.display = 'none';
 
-  // デフォルトで最初のジャンルを選択
-  if (genres.length) {
-    activeGenre = { ...genres[0], fields: JSON.parse(JSON.stringify(genres[0].fields)) };
-    activeGenreId = genres[0].id;
+  // デフォルトで最初のカード型を選択
+  if (cardTypes.length) {
+    activeCardType = { ...cardTypes[0], fields: JSON.parse(JSON.stringify(cardTypes[0].fields)) };
+    activeCardTypeId = cardTypes[0].id;
   }
 
-  renderGenreTags();
+  renderCardTypeTags();
   goStep(3);
   renderForm();
   initCategoryInput();
   setupGlobalListeners();
 }
 
-// ===== ジャンルタグ =====
-function renderGenreTags() {
-  const container = document.getElementById('genre-tags-container');
+// ===== カード型タグ =====
+function renderCardTypeTags() {
+  const container = document.getElementById('cardtype-tags-container');
   if (!container) return;
   container.innerHTML = '';
-  genres.forEach(g => {
+  cardTypes.forEach(g => {
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.textContent = g.name;
-    btn.className = 'genre-tag-btn' + (g.id === activeGenreId ? ' active' : '');
-    btn.addEventListener('click', () => switchGenreWithWarning(g));
+    btn.className = 'cardtype-tag-btn' + (g.id === activeCardTypeId ? ' active' : '');
+    btn.addEventListener('click', () => switchCardTypeWithWarning(g));
     container.appendChild(btn);
   });
 }
@@ -144,12 +144,12 @@ function hasFormContent() {
   )].some(i => i.value.trim() !== '');
 }
 
-function switchGenreWithWarning(genre) {
-  if (genre.id === activeGenreId) return;
-  if (hasFormContent() && !confirm(`「${genre.name}」に切り替えます。\n入力済みの内容は消えます。よろしいですか？`)) return;
-  activeGenre = { ...genre, fields: JSON.parse(JSON.stringify(genre.fields)) };
-  activeGenreId = genre.id;
-  renderGenreTags();
+function switchCardTypeWithWarning(ct) {
+  if (ct.id === activeCardTypeId) return;
+  if (hasFormContent() && !confirm(`「${ct.name}」に切り替えます。\n入力済みの内容は消えます。よろしいですか？`)) return;
+  activeCardType = { ...ct, fields: JSON.parse(JSON.stringify(ct.fields)) };
+  activeCardTypeId = ct.id;
+  renderCardTypeTags();
   renderForm();
   initCategoryInput();
 }
@@ -219,8 +219,8 @@ function wrapFieldWithToolbar(field, formGroupDiv) {
 
   removeBtn.addEventListener('click', () => {
     container.remove();
-    activeGenre.fields = activeGenre.fields.filter(f => f.key !== field.key);
-    updateCardPreview(activeGenre, currentPreviewValues);
+    activeCardType.fields = activeCardType.fields.filter(f => f.key !== field.key);
+    updateCardPreview(activeCardType, currentPreviewValues);
   });
 
   // ===== D&D 処理 =====
@@ -243,9 +243,9 @@ function wrapFieldWithToolbar(field, formGroupDiv) {
     document.querySelectorAll('.field-container').forEach(c => c.classList.remove('fc-drop-above','fc-drop-below'));
     container.draggable = false;
     _formDragSrc = null;
-    // DOM 順序から activeGenre.fields を再構築
+    // DOM 順序から activeCardType.fields を再構築
     syncFieldsFromDom();
-    updateCardPreview(activeGenre, currentPreviewValues);
+    updateCardPreview(activeCardType, currentPreviewValues);
   });
 
   container.addEventListener('dragover', (e) => {
@@ -336,7 +336,7 @@ function createFieldDetailPanel(field) {
         if (hiddenInput) hiddenInput.value = color;
         if (!field.options) field.options = {};
         field.options.color = color;
-        updateCardPreview(activeGenre, currentPreviewValues);
+        updateCardPreview(activeCardType, currentPreviewValues);
       });
     });
   });
@@ -356,23 +356,23 @@ function createFieldDetailPanel(field) {
         field._updateChoiceCount(Number(newVal));
       }
     });
-    updateCardPreview(activeGenre, currentPreviewValues);
+    updateCardPreview(activeCardType, currentPreviewValues);
   });
   return panel;
 }
 
-// ===== DOM 順序から activeGenre.fields を再構築 =====
+// ===== DOM 順序から activeCardType.fields を再構築 =====
 function syncFieldsFromDom() {
-  if (!activeGenre) return;
-  const keyMap = Object.fromEntries(activeGenre.fields.map(f => [f.key, f]));
+  if (!activeCardType) return;
+  const keyMap = Object.fromEntries(activeCardType.fields.map(f => [f.key, f]));
   const newFields = [];
   document.querySelectorAll('#form-fields .field-container').forEach(c => {
     const f = keyMap[c.dataset.fieldKey];
     if (f) newFields.push(f);
   });
   // DOM に出ていないフィールド（万一）は末尾に追加
-  activeGenre.fields.forEach(f => { if (!newFields.includes(f)) newFields.push(f); });
-  activeGenre.fields = newFields;
+  activeCardType.fields.forEach(f => { if (!newFields.includes(f)) newFields.push(f); });
+  activeCardType.fields = newFields;
 }
 
 // ===== フィールド追加ボタン & 新フィールド追加 =====
@@ -420,7 +420,7 @@ function addNewFormField(inner, role, type) {
   const label = typeInfo ? typeInfo.label.replace(/^\S+\s/, '') : type;
   const key = (role === 'answer' ? 'a' : 'q') + '_' + Date.now();
   const newField = { key, type, label, required: false, role, options: {} };
-  activeGenre.fields.push(newField);
+  activeCardType.fields.push(newField);
 
   if (type === 'image') {
     if (!pendingImages[newField.key]) pendingImages[newField.key] = [];
@@ -429,7 +429,7 @@ function addNewFormField(inner, role, type) {
   }
 
   if (type === 'choice_single' || type === 'choice_multi') {
-    const choiceUI = buildChoiceFieldUI(newField, activeGenre);
+    const choiceUI = buildChoiceFieldUI(newField, activeCardType);
     const choiceContainer = wrapFieldWithToolbar(newField, choiceUI);
     inner.insertBefore(choiceContainer, inner.lastChild);
     // 問題側のみ: 答えブロックにミラーを自動挿入し、両方の × を連動
@@ -443,8 +443,8 @@ function addNewFormField(inner, role, type) {
         if (!confirm('選択肢フィールドを削除すると、問題・答えの両方から消えます。\nよろしいですか？')) return;
         choiceContainer.remove();
         mirrorBlock.remove();
-        activeGenre.fields = activeGenre.fields.filter(f => f.key !== newField.key);
-        updateCardPreview(activeGenre, currentPreviewValues);
+        activeCardType.fields = activeCardType.fields.filter(f => f.key !== newField.key);
+        updateCardPreview(activeCardType, currentPreviewValues);
       };
       newBtn.addEventListener('click', onDelete);
       mirrorBlock.querySelector('.choice-mirror-remove-btn').addEventListener('click', onDelete);
@@ -465,37 +465,37 @@ function addNewFormField(inner, role, type) {
     const ta = document.createElement('textarea');
     ta.rows = 3; ta.id = `field-${newField.key}`; ta.name = newField.key;
     ta.placeholder = '例: 日本の首都は{{東京}}です';
-    ta.addEventListener('input', () => { currentPreviewValues[newField.key] = ta.value; updateCardPreviewDebounced(activeGenre, currentPreviewValues); });
+    ta.addEventListener('input', () => { currentPreviewValues[newField.key] = ta.value; updateCardPreviewDebounced(activeCardType, currentPreviewValues); });
     div.appendChild(labelEl); div.appendChild(guide); div.appendChild(ta);
   } else if (type === 'static') {
     const inp = document.createElement('input');
     inp.type = 'text'; inp.id = `field-${newField.key}`; inp.name = newField.key;
     inp.value = label; inp.placeholder = label;
     inp.style.cssText = 'border-left:3px solid #a78bfa;color:#a78bfa;';
-    inp.addEventListener('input', () => { currentPreviewValues[newField.key] = inp.value; updateCardPreviewDebounced(activeGenre, currentPreviewValues); });
+    inp.addEventListener('input', () => { currentPreviewValues[newField.key] = inp.value; updateCardPreviewDebounced(activeCardType, currentPreviewValues); });
     currentPreviewValues[newField.key] = inp.value;
     div.appendChild(labelEl); div.appendChild(inp);
   } else if (['textarea', 'freetext', 'explanation'].includes(type)) {
     const ta = document.createElement('textarea');
     ta.rows = 3; ta.id = `field-${newField.key}`; ta.name = newField.key;
     ta.placeholder = `${label}を入力…`;
-    ta.addEventListener('input', () => { currentPreviewValues[newField.key] = ta.value; updateCardPreviewDebounced(activeGenre, currentPreviewValues); });
+    ta.addEventListener('input', () => { currentPreviewValues[newField.key] = ta.value; updateCardPreviewDebounced(activeCardType, currentPreviewValues); });
     div.appendChild(labelEl); div.appendChild(ta);
   } else {
     const inp = document.createElement('input');
     inp.type = ['number','date','url'].includes(type) ? type : (type === 'timer' ? 'number' : 'text');
     inp.id = `field-${newField.key}`; inp.name = newField.key;
     inp.placeholder = `${label}を入力…`;
-    inp.addEventListener('input', () => { currentPreviewValues[newField.key] = inp.value; updateCardPreviewDebounced(activeGenre, currentPreviewValues); });
+    inp.addEventListener('input', () => { currentPreviewValues[newField.key] = inp.value; updateCardPreviewDebounced(activeCardType, currentPreviewValues); });
     div.appendChild(labelEl); div.appendChild(inp);
   }
 
   inner.insertBefore(wrapFieldWithToolbar(newField, div), inner.lastChild);
-  updateCardPreview(activeGenre, currentPreviewValues);
+  updateCardPreview(activeCardType, currentPreviewValues);
 }
 
 // ===== 現在のフィールド構成を型として保存 =====
-async function saveCurrentAsGenre() {
+async function saveCurrentAsCardType() {
   const fields = [];
   document.querySelectorAll('#form-fields .field-container').forEach(container => {
     fields.push({
@@ -518,28 +518,28 @@ async function saveCurrentAsGenre() {
   });
   if (!fields.length) { alert('フィールドが1つもありません'); return; }
 
-  const defaultName = activeGenre?.name || '新しいジャンル';
-  const isExisting = genres.find(g => g.id === activeGenreId && !g.isDefault);
+  const defaultName = activeCardType?.name || '新しいカード型';
+  const isExisting = cardTypes.find(g => g.id === activeCardTypeId && !g.isDefault);
   const name = prompt(
     isExisting
       ? `「${defaultName}」を上書き保存しますか？\n別名にする場合は変更してください。`
-      : 'ジャンル名を入力してください',
+      : 'カード型名を入力してください',
     defaultName
   );
   if (!name) return;
 
-  const id = (name.trim() === defaultName && activeGenreId) ? activeGenreId : ('custom_' + Date.now());
-  const newGenre = { id, name: name.trim(), isDefault: false, fields };
-  genres = await StorageManager.getGenres();
-  const idx = genres.findIndex(g => g.id === id);
-  if (idx !== -1) genres[idx] = newGenre; else genres.push(newGenre);
-  await StorageManager.saveGenres(genres);
+  const id = (name.trim() === defaultName && activeCardTypeId) ? activeCardTypeId : ('custom_' + Date.now());
+  const newCardType = { id, name: name.trim(), isDefault: false, fields };
+  cardTypes = await StorageManager.getCardTypes();
+  const idx = cardTypes.findIndex(g => g.id === id);
+  if (idx !== -1) cardTypes[idx] = newCardType; else cardTypes.push(newCardType);
+  await StorageManager.saveCardTypes(cardTypes);
 
-  activeGenre = { ...newGenre, fields: JSON.parse(JSON.stringify(newGenre.fields)) };
-  activeGenreId = id;
-  renderGenreTags();
+  activeCardType = { ...newCardType, fields: JSON.parse(JSON.stringify(newCardType.fields)) };
+  activeCardTypeId = id;
+  renderCardTypeTags();
 
-  const saveBtn = document.getElementById('save-genre-btn');
+  const saveBtn = document.getElementById('save-cardtype-btn');
   if (saveBtn) {
     saveBtn.textContent = '✅ 保存しました';
     setTimeout(() => { saveBtn.textContent = '💾 型を保存'; }, 2000);
@@ -551,21 +551,21 @@ function renderStep1() {
   const grid = document.getElementById('template-grid');
   grid.innerHTML = '';
 
-  genres.forEach(genre => {
+  cardTypes.forEach(ct => {
     const card = document.createElement('div');
     card.className = 'template-card';
-    const fieldNames = genre.fields.map(f => {
+    const fieldNames = ct.fields.map(f => {
       const ti = FIELD_TYPES.find(t => t.val === f.type);
       return (ti ? ti.label.replace(/^\S+\s/, '') : f.type);
-    }).slice(0, 4).join('、') + (genre.fields.length > 4 ? '…' : '');
+    }).slice(0, 4).join('、') + (ct.fields.length > 4 ? '…' : '');
     card.innerHTML = `
-      <div class="template-card-name">${esc(genre.name)}</div>
+      <div class="template-card-name">${esc(ct.name)}</div>
       <div class="template-card-fields">${fieldNames}</div>
     `;
     card.addEventListener('click', () => {
-      // ジャンルのフィールドをディープコピーしてSTEP2へ
-      activeGenre = { ...genre, fields: JSON.parse(JSON.stringify(genre.fields)) };
-      activeGenreId = genre.id;
+      // カード型のフィールドをディープコピーしてSTEP2へ
+      activeCardType = { ...ct, fields: JSON.parse(JSON.stringify(ct.fields)) };
+      activeCardTypeId = ct.id;
       goStep(2);
       renderStep2();
     });
@@ -574,7 +574,7 @@ function renderStep1() {
 
   document.getElementById('scratch-btn').onclick = () => {
     // 空の型でSTEP2へ
-    activeGenre = {
+    activeCardType = {
       id: null,
       name: '新しい型',
       fields: [
@@ -582,7 +582,7 @@ function renderStep1() {
         { key: 'a_0', label: '答え', type: 'textarea', required: true, role: 'answer',   options: {} }
       ]
     };
-    activeGenreId = null;
+    activeCardTypeId = null;
     goStep(2);
     renderStep2();
   };
@@ -748,8 +748,8 @@ function renderStep2() {
   qCont.innerHTML = '';
   aCont.innerHTML = '';
 
-  const genre = activeGenre;
-  genre.fields.forEach(f => {
+  const ct = activeCardType;
+  ct.fields.forEach(f => {
     const cont = f.role === 'answer' ? aCont : qCont;
     s2AddFieldRow(cont, f.type, f.required, f.options || {});
   });
@@ -760,7 +760,7 @@ function renderStep2() {
   document.getElementById('back-to-step1').onclick = () => goStep(1);
 
   document.getElementById('step2-next-btn').onclick = async () => {
-    // フィールドを収集してactiveGenreに反映
+    // フィールドを収集してactiveCardTypeに反映
     const fields = [];
     let qi = 0, ai = 0;
     document.getElementById('s2-q-container').querySelectorAll('.field-row-wrapper').forEach(w => {
@@ -774,22 +774,22 @@ function renderStep2() {
     if (fields.filter(f => f.role === 'question').length === 0) { alert('問題フィールドを1つ以上追加してください'); return; }
     if (fields.filter(f => f.role === 'answer').length === 0) { alert('答えフィールドを1つ以上追加してください'); return; }
 
-    activeGenre = { ...activeGenre, fields };
+    activeCardType = { ...activeCardType, fields };
 
     // 「ジャンルとして保存」チェックが入っていれば保存
-    if (document.getElementById('save-as-genre-chk').checked) {
-      const newGenre = {
-        id: activeGenreId || ('custom_' + Date.now()),
-        name: activeGenre.name || '新しい型',
+    if (document.getElementById('save-as-cardtype-chk').checked) {
+      const newCardType = {
+        id: activeCardTypeId || ('custom_' + Date.now()),
+        name: activeCardType.name || '新しい型',
         isDefault: false,
         fields
       };
       // 既存ジャンルの更新か新規追加
-      const idx = genres.findIndex(g => g.id === newGenre.id);
-      if (idx !== -1) genres[idx] = newGenre;
-      else genres.push(newGenre);
-      await StorageManager.saveGenres(genres);
-      activeGenreId = newGenre.id;
+      const idx = cardTypes.findIndex(g => g.id === newCardType.id);
+      if (idx !== -1) cardTypes[idx] = newCardType;
+      else cardTypes.push(newCardType);
+      await StorageManager.saveCardTypes(cardTypes);
+      activeCardTypeId = newCardType.id;
     }
 
     goStep(3);
@@ -886,16 +886,16 @@ async function enterEditMode(cardId) {
   }
   editingCardOriginal = card;
 
-  // 対応するジャンルを activeGenre に設定
-  const genreExists = genres.find(g => g.id === card.genre);
-  if (!genreExists && genres.length === 0) {
-    alert('ジャンルが見つかりません。先にジャンルを作成してください。');
+  // 対応するカード型を activeCardType に設定
+  const cardTypeExists = cardTypes.find(g => g.id === card.cardType);
+  if (!cardTypeExists && cardTypes.length === 0) {
+    alert('カード型が見つかりません。先にカード型を作成してください。');
     window.location.href = 'settings.html';
     return;
   }
-  activeGenre = genreExists ? { ...genreExists, fields: JSON.parse(JSON.stringify(genreExists.fields)) }
-                            : { ...genres[0], fields: JSON.parse(JSON.stringify(genres[0].fields)) };
-  activeGenreId = activeGenre.id;
+  activeCardType = cardTypeExists ? { ...cardTypeExists, fields: JSON.parse(JSON.stringify(cardTypeExists.fields)) }
+                            : { ...cardTypes[0], fields: JSON.parse(JSON.stringify(cardTypes[0].fields)) };
+  activeCardTypeId = activeCardType.id;
 
   // ステップインジケーター非表示（編集モードはSTEP3直行）
   const stepInd = document.getElementById('step-indicator');
@@ -910,20 +910,20 @@ async function enterEditMode(cardId) {
   if (cancelBtn) cancelBtn.classList.remove('hidden');
 
   goStep(3);
-  renderGenreTags();
+  renderCardTypeTags();
   renderForm();
   initCategoryInput();
   fillFormWithCard(card);
   setupGlobalListeners();
 }
 
-let currentPreviewGenre = null;
+let currentPreviewCardType = null;
 let currentPreviewValues = {};
 
 // 編集モード用: フォームに既存カードデータを流し込む
 function fillFormWithCard(card) {
-  const genre = activeGenre;
-  if (!genre) return;
+  const ct = activeCardType;
+  if (!ct) return;
   const parseSection = (text) => {
     const result = {};
     if (!text) return result;
@@ -943,7 +943,7 @@ function fillFormWithCard(card) {
   const catInput = document.getElementById('card-category-input');
   if (catInput) { catInput.value = cardTags; catInput.dispatchEvent(new Event('input')); }
 
-  genre.fields.forEach(field => {
+  ct.fields.forEach(field => {
     const parsed = field.role === 'question' ? qParsed : aParsed;
     const val = parsed[field.label];
     // static フィールドは常に field.label を固定表示するため、保存データからの読み込みをスキップ
@@ -989,11 +989,11 @@ function fillFormWithCard(card) {
       currentPreviewValues[field.key] = val;
     }
   });
-  updateCardPreview(genre, currentPreviewValues);
+  updateCardPreview(ct, currentPreviewValues);
 }
 
 // ===== 選択肢フィールドUI構築（renderForm / addNewFormField 共通） =====
-function buildChoiceFieldUI(field, genre) {
+function buildChoiceFieldUI(field, ct) {
   const div = document.createElement('div');
   div.className = 'form-group';
   div.id = `field-container-${field.key}`;
@@ -1011,7 +1011,7 @@ function buildChoiceFieldUI(field, genre) {
       .map((btn, i) => btn.dataset.correct === '1' ? i : -1)
       .filter(i => i !== -1);
     currentPreviewValues[field.key] = JSON.stringify({ options: opts, correct });
-    updateCardPreview(genre, currentPreviewValues);
+    updateCardPreview(ct, currentPreviewValues);
     // 答え側ミラーブロックをリアルタイム更新
     const mirror = document.querySelector(`#form-fields .choice-mirror-block[data-mirror-for="${field.key}"]`);
     if (mirror && mirror.updateDisplay) mirror.updateDisplay(opts, correct);
@@ -1176,9 +1176,9 @@ function renderForm() {
   pendingImages = {};
   currentPreviewValues = {};
 
-  const genre = activeGenre;
-  if (!genre) return;
-  currentPreviewGenre = genre;
+  const ct = activeCardType;
+  if (!ct) return;
+  currentPreviewCardType = ct;
 
   // role ごとのブロックコンテナを作成
   const qBlock = createRoleBlock('問題（おもて）', '#6366f1');
@@ -1189,7 +1189,7 @@ function renderForm() {
   _aRoleInner = aInner;
 
   const questionChoiceMirrors = []; // 問題側選択肢 → 後でaInnerにミラーを挿入
-  genre.fields.forEach(field => {
+  ct.fields.forEach(field => {
     // role 未定義の場合: key名で判定（'answer'/'a_'始まり→answer、それ以外→question）
     if (!field.role) {
       field.role = (field.key === 'answer' || field.key.startsWith('a_')) ? 'answer' : 'question';
@@ -1219,7 +1219,7 @@ function renderForm() {
       input.style.cssText = 'border-left: 3px solid #a78bfa; color: #a78bfa;';
       input.addEventListener('input', () => {
         currentPreviewValues[field.key] = input.value;
-        updateCardPreview(genre, currentPreviewValues);
+        updateCardPreview(ct, currentPreviewValues);
       });
       // 初期値をプレビュー値にも反映
       currentPreviewValues[field.key] = input.value;
@@ -1247,7 +1247,7 @@ function renderForm() {
       textarea.style.cssText = 'width:100%;background:rgba(0,0,0,0.2);border:1px solid var(--glass-border);border-radius:8px;padding:0.8rem 1rem;color:var(--text-primary);font-family:inherit;font-size:0.95rem;resize:vertical;transition:border-color 0.2s;border-left:3px solid #f59e0b;';
       textarea.addEventListener('input', () => {
         currentPreviewValues[field.key] = textarea.value;
-        updateCardPreview(genre, currentPreviewValues);
+        updateCardPreview(ct, currentPreviewValues);
       });
       div.appendChild(label);
       div.appendChild(guide);
@@ -1258,7 +1258,7 @@ function renderForm() {
 
     // ===== 選択肢 (choice_single / choice_multi) =====
     if (field.type === 'choice_single' || field.type === 'choice_multi') {
-      const choiceContainer = wrapFieldWithToolbar(field, buildChoiceFieldUI(field, genre));
+      const choiceContainer = wrapFieldWithToolbar(field, buildChoiceFieldUI(field, ct));
       if (field.role === 'question') {
         qInner.appendChild(choiceContainer);
         questionChoiceMirrors.push({ field, choiceContainer });
@@ -1289,7 +1289,7 @@ function renderForm() {
         const tags = input.value.split(',').map(t => t.trim()).filter(t => t);
         tagDisplay.innerHTML = tags.map(t => `<span style="background:rgba(20,184,166,0.2);border:1px solid rgba(20,184,166,0.4);color:#14b8a6;padding:0.15rem 0.5rem;border-radius:12px;font-size:0.8rem;">${escapeHtml(t)}</span>`).join('');
         currentPreviewValues[field.key] = input.value;
-        updateCardPreview(genre, currentPreviewValues);
+        updateCardPreview(ct, currentPreviewValues);
       };
       input.addEventListener('input', renderTagDisplay);
       div.appendChild(label);
@@ -1340,7 +1340,7 @@ function renderForm() {
           hiddenInput.value = i;
           renderStars();
           currentPreviewValues[field.key] = String(i);
-          updateCardPreview(genre, currentPreviewValues);
+          updateCardPreview(ct, currentPreviewValues);
         });
         starBtns.push(star);
         starContainer.appendChild(star);
@@ -1351,7 +1351,7 @@ function renderForm() {
         hiddenInput.value = currentStars;
         renderStars();
         currentPreviewValues[field.key] = String(currentStars);
-        updateCardPreview(genre, currentPreviewValues);
+        updateCardPreview(ct, currentPreviewValues);
       };
       currentPreviewValues[field.key] = '3';
       div.appendChild(label);
@@ -1374,7 +1374,7 @@ function renderForm() {
       const updateWEPreview = () => {
         const vals = Array.from(weList.querySelectorAll('.we-input')).map(i => i.value.trim()).filter(v => v);
         currentPreviewValues[field.key] = JSON.stringify(vals);
-        updateCardPreview(genre, currentPreviewValues);
+        updateCardPreview(ct, currentPreviewValues);
       };
       const addWERow = (val = '') => {
         const row = document.createElement('div');
@@ -1443,7 +1443,7 @@ function renderForm() {
     // 入力イベントでプレビュー更新
     input.addEventListener('input', () => {
       currentPreviewValues[field.key] = input.value;
-      updateCardPreview(genre, currentPreviewValues);
+      updateCardPreview(ct, currentPreviewValues);
     });
 
     div.appendChild(label);
@@ -1463,8 +1463,8 @@ function renderForm() {
       if (!confirm('選択肢フィールドを削除すると、問題・答えの両方から消えます。\nよろしいですか？')) return;
       choiceContainer.remove();
       mirrorBlock.remove();
-      activeGenre.fields = activeGenre.fields.filter(f => f.key !== field.key);
-      updateCardPreview(activeGenre, currentPreviewValues);
+      activeCardType.fields = activeCardType.fields.filter(f => f.key !== field.key);
+      updateCardPreview(activeCardType, currentPreviewValues);
     };
     newBtn.addEventListener('click', onDelete);
     mirrorBlock.querySelector('.choice-mirror-remove-btn').addEventListener('click', onDelete);
@@ -1486,7 +1486,7 @@ function renderForm() {
   el.formFields.appendChild(aBlock);
 
   // 初期プレビュー
-  updateCardPreview(genre, currentPreviewValues);
+  updateCardPreview(ct, currentPreviewValues);
 }
 
 function createRoleBlock(title, color) {
@@ -1510,8 +1510,8 @@ function createRoleBlock(title, color) {
 
 // ===== プレビューパネル：実際のカード表示と同じ見た目で描画 =====
 let _previewAnswerShown = false; // 答えエリアの表示状態を保持
-const updateCardPreviewDebounced = debounce((genre, values) => updateCardPreview(genre, values), 150);
-function updateCardPreview(genre, values) {
+const updateCardPreviewDebounced = debounce((ct, values) => updateCardPreview(ct, values), 150);
+function updateCardPreview(ct, values) {
   const panel = document.getElementById('card-preview-panel');
   if (!panel) return;
 
@@ -1529,8 +1529,8 @@ function updateCardPreview(genre, values) {
   }
 
   // 問題・答えそれぞれのフィールドをHTML化
-  const qFields = genre.fields.filter(f => f.role === 'question');
-  const aFields = genre.fields.filter(f => f.role === 'answer');
+  const qFields = ct.fields.filter(f => f.role === 'question');
+  const aFields = ct.fields.filter(f => f.role === 'answer');
   // 問題側の選択肢フィールドを答え側にも自動反映（○×表示）
   const qChoiceFields = qFields.filter(f => f.type === 'choice_multi' || f.type === 'choice_single');
 
@@ -1651,7 +1651,7 @@ function renderPreviews(fieldKey) {
   container.innerHTML = '';
 
   // カードプレビューも同期更新
-  if (currentPreviewGenre) updateCardPreview(currentPreviewGenre, currentPreviewValues);
+  if (currentPreviewCardType) updateCardPreview(currentPreviewCardType, currentPreviewValues);
 
   pendingImages[fieldKey].forEach((img, i) => {
     const wrap = document.createElement('div');
@@ -1708,7 +1708,7 @@ function initCategoryInput(initialValue = '') {
       `<span style="background:rgba(20,184,166,0.18);border:1px solid rgba(20,184,166,0.35);color:#14b8a6;padding:0.12rem 0.5rem;border-radius:12px;font-size:0.78rem;">${esc(t)}</span>`
     ).join('');
     // カテゴリ変更時にプレビューも更新
-    if (activeGenre) updateCardPreview(activeGenre, currentPreviewValues);
+    if (activeCardType) updateCardPreview(activeCardType, currentPreviewValues);
   };
   input.addEventListener('input', renderTagDisp);
   if (initialValue) renderTagDisp();
@@ -1724,8 +1724,8 @@ function initCategoryInput(initialValue = '') {
 
 function setupGlobalListeners() {
   // 💾 型を保存ボタン
-  const saveGenreBtn = document.getElementById('save-genre-btn');
-  if (saveGenreBtn) saveGenreBtn.addEventListener('click', saveCurrentAsGenre);
+  const saveCardTypeBtn = document.getElementById('save-cardtype-btn');
+  if (saveCardTypeBtn) saveCardTypeBtn.addEventListener('click', saveCurrentAsCardType);
 
   // Ctrl+V でクリップボードから画像を取得
   document.addEventListener('paste', (e) => {
@@ -1757,11 +1757,11 @@ function setupGlobalListeners() {
     submitBtn.textContent = '保存中...';
 
     try {
-      const genre = activeGenre;
-      if (!genre) return;
+      const ct = activeCardType;
+      if (!ct) return;
 
       const values = {};
-      genre.fields.forEach(field => {
+      ct.fields.forEach(field => {
         if (field.type === 'choice_single' || field.type === 'choice_multi') {
           const container = document.getElementById(`field-container-${field.key}`);
           if (container) {
@@ -1787,7 +1787,7 @@ function setupGlobalListeners() {
       const qParts = [];
       const aParts = [];
       
-      genre.fields.forEach(f => {
+      ct.fields.forEach(f => {
         // static フィールドは表示専用（ジャンル定義から復元可能）なので保存しない
         // 同一ラベルのフィールドが存在しても衝突しなくなる
         if (f.type === 'static') return;
@@ -1809,7 +1809,7 @@ function setupGlobalListeners() {
       }
 
       // 必須フィールドのバリデーション
-      const missingFields = genre.fields
+      const missingFields = ct.fields
         .filter(f => f.required && !values[f.key])
         .map(f => f.label);
       if (missingFields.length > 0) {
@@ -1830,7 +1830,7 @@ function setupGlobalListeners() {
       const imageFieldKeys = Object.keys(pendingImages);
 
       for (const key of imageFieldKeys) {
-        const field = genre.fields.find(f => f.key === key);
+        const field = ct.fields.find(f => f.key === key);
         const role = field?.role || 'question';
 
         pendingImages[key].forEach(img => {
@@ -1855,12 +1855,12 @@ function setupGlobalListeners() {
         // ===== 編集モード: 既存カードを更新 =====
         await StorageManager.updateCardContent(editingCardId, finalQuestion, fullAnswer, imageValue);
 
-        // field.options（詳細設定）の変更をジャンル定義に反映して保存
-        if (activeGenreId && activeGenre) {
-          const gIdx = genres.findIndex(g => g.id === activeGenreId);
+        // field.options（詳細設定）の変更をカード型定義に反映して保存
+        if (activeCardTypeId && activeCardType) {
+          const gIdx = cardTypes.findIndex(g => g.id === activeCardTypeId);
           if (gIdx !== -1) {
-            genres[gIdx] = { ...genres[gIdx], fields: activeGenre.fields };
-            await StorageManager.saveGenres(genres);
+            cardTypes[gIdx] = { ...cardTypes[gIdx], fields: activeCardType.fields };
+            await StorageManager.saveCardTypes(cardTypes);
           }
         }
 
@@ -1871,7 +1871,8 @@ function setupGlobalListeners() {
         }, 1500);
       } else {
         // ===== 新規モード: カードを追加 =====
-        await StorageManager.addCard(finalQuestion, fullAnswer, imageValue, activeGenreId || 'other');
+        const primaryCategory = categoryTags ? categoryTags.split(',')[0].trim() : null;
+        await StorageManager.addCard(finalQuestion, fullAnswer, imageValue, activeCardTypeId || 'other', primaryCategory);
 
         // フォームリセット
         el.addForm.querySelectorAll('input:not([type="file"]), textarea').forEach(i => i.value = '');

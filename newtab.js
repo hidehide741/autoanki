@@ -4,7 +4,7 @@ import { renderFieldHtml as _renderFieldHtml, escapeHtml } from './renderCard.js
 let currentCard = null;
 let answerShown = false;
 let isProcessing = false; // 二重送信防止用
-let cachedGenres = null;  // ジャンルキャッシュ
+let cachedCardTypes = null;  // カード型キャッシュ
 let activeTimers = [];    // アクティブなタイマー
 
 // DOM要素（DOMContentLoaded後に init() で初期化）
@@ -22,7 +22,7 @@ async function init() {
     skipBtn:       document.getElementById('skip-btn'),
     todayCount:    document.getElementById('today-count'),
     streakCount:   document.getElementById('streak-count'),
-    genreBadge:    document.getElementById('genre-badge'),
+    cardTypeBadge:   document.getElementById('cardtype-badge'),
     progressBar:   document.getElementById('progress-bar'),
     doneToday:     document.getElementById('done-today'),
     doneStreak:    document.getElementById('done-streak'),
@@ -33,13 +33,13 @@ async function init() {
     errorMessage:    document.getElementById('error-message'),
     cardCounter:     document.getElementById('card-counter'),
     nextBtn:         document.getElementById('next-btn'),
-    genreFilter:     document.getElementById('genre-filter'),
+    categoryFilter:   document.getElementById('category-filter'),
     settingsPanel:   document.getElementById('quiz-settings-panel'),
     settingsBtn:     document.getElementById('quiz-settings-btn'),
     settingsCloseBtn: document.getElementById('settings-close-btn'),
   };
   await updateStats();
-  await initGenreFilter();
+  await initCategoryFilter();
   await initQuizSettings();
   await loadNextCard();
   setupEventListeners();
@@ -51,38 +51,38 @@ async function updateStats() {
   if (el.streakCount) el.streakCount.textContent = stats.streak;
 }
 
-// ===== ジャンルフィルターチップ =====
-async function initGenreFilter() {
-  if (!el.genreFilter) return;
-  const genres = cachedGenres || (cachedGenres = await StorageManager.getGenres());
+// ===== カテゴリフィルターチップ =====
+async function initCategoryFilter() {
+  if (!el.categoryFilter) return;
+  const categories = await StorageManager.getDistinctCategories();
   const qs = await StorageManager.getQuizSettings();
 
-  el.genreFilter.innerHTML = '';
+  el.categoryFilter.innerHTML = '';
 
   // 「すべて」チップ
   const allChip = document.createElement('button');
-  allChip.className = 'genre-chip' + (!qs.genreFilter ? ' active' : '');
+  allChip.className = 'category-chip' + (!qs.categoryFilter ? ' active' : '');
   allChip.textContent = 'すべて';
-  allChip.addEventListener('click', () => selectGenre(null));
-  el.genreFilter.appendChild(allChip);
+  allChip.addEventListener('click', () => selectCategory(null));
+  el.categoryFilter.appendChild(allChip);
 
-  genres.forEach(g => {
+  categories.forEach(cat => {
     const chip = document.createElement('button');
-    chip.className = 'genre-chip' + (qs.genreFilter === g.id ? ' active' : '');
-    chip.textContent = g.name;
-    chip.addEventListener('click', () => selectGenre(g.id));
-    el.genreFilter.appendChild(chip);
+    chip.className = 'category-chip' + (qs.categoryFilter === cat ? ' active' : '');
+    chip.textContent = cat;
+    chip.addEventListener('click', () => selectCategory(cat));
+    el.categoryFilter.appendChild(chip);
   });
 }
 
-async function selectGenre(genreId) {
+async function selectCategory(categoryName) {
   const qs = await StorageManager.getQuizSettings();
-  qs.genreFilter = genreId;
+  qs.categoryFilter = categoryName;
   await StorageManager.saveQuizSettings(qs);
 
   // チップUI更新
-  el.genreFilter.querySelectorAll('.genre-chip').forEach((chip, i) => {
-    chip.classList.toggle('active', i === 0 ? !genreId : chip.textContent === (cachedGenres.find(g => g.id === genreId)?.name));
+  el.categoryFilter.querySelectorAll('.category-chip').forEach((chip, i) => {
+    chip.classList.toggle('active', i === 0 ? !categoryName : chip.textContent === categoryName);
   });
 
   // 次のカードをリロード
@@ -110,7 +110,7 @@ async function initQuizSettings() {
       newFirst:     newFirst?.checked     || false,
       order:        order?.value          || 'due',
       cooldown:     parseInt(cooldown?.value || '15', 10),
-      genreFilter:  (await StorageManager.getQuizSettings()).genreFilter
+      categoryFilter:  (await StorageManager.getQuizSettings()).categoryFilter
     };
     await StorageManager.saveQuizSettings(updated);
     await loadNextCard();
@@ -187,17 +187,17 @@ async function loadNextCard() {
       if (StorageManager.isExtension) {
         await StorageManager.setEmptyNotified(false);
       }
-      const genres = cachedGenres || (cachedGenres = await StorageManager.getGenres());
-      const genreDef = genres.find(g => g.id === currentCard.genre);
+      const cardTypes = cachedCardTypes || (cachedCardTypes = await StorageManager.getCardTypes());
+      const cardTypeDef = cardTypes.find(g => g.id === currentCard.cardType);
       
-      showQuestionMode(genreDef);
+      showQuestionMode(cardTypeDef);
       updateRatingLabels();
       updateLearningStage();
       updateCardCounter();
       
-      // ジャンルバッジ（型名は表示しない）
-      if (el.genreBadge) {
-        el.genreBadge.classList.add('hidden');
+      // カード型バッジ（型名は表示しない）
+      if (el.cardTypeBadge) {
+        el.cardTypeBadge.classList.add('hidden');
       }
 
       // アニメーションのリセット
@@ -233,7 +233,7 @@ function extractFirstSectionContent(raw) {
   return cleaned.trim();
 }
 
-function showQuestionMode(genreDef) {
+function showQuestionMode(cardTypeDef) {
   answerShown = false;
   el.answerSection.classList.add('hidden');
   el.showAnswerBtn.classList.remove('hidden');
@@ -246,7 +246,7 @@ function showQuestionMode(genreDef) {
     { key: 'question', label: '問題', type: 'textarea', role: 'question' },
     { key: 'answer',   label: '答え', type: 'textarea', role: 'answer' }
   ];
-  const fields = (genreDef?.fields?.length) ? genreDef.fields : defaultFields;
+  const fields = (cardTypeDef?.fields?.length) ? cardTypeDef.fields : defaultFields;
 
   // 画像データのパース
   let images = [];

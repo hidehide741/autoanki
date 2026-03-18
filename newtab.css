@@ -231,14 +231,14 @@ body {
   background: var(--glass-border);
 }
 
-/* ===== ジャンルフィルター ===== */
-.genre-filter {
+/* ===== カテゴリフィルター ===== */
+.category-filter {
   display: flex;
   gap: 0.4rem;
   flex-wrap: nowrap;
   align-items: center;
 }
-.genre-chip {
+.category-chip {
   padding: 0.3rem 0.75rem;
   border-radius: 20px;
   border: 1px solid var(--glass-border);
@@ -252,12 +252,12 @@ body {
   font-family: 'Inter', sans-serif;
   user-select: none;
 }
-.genre-chip:hover {
+.category-chip:hover {
   background: rgba(99,102,241,0.1);
   border-color: rgba(99,102,241,0.3);
   color: var(--text-primary);
 }
-.genre-chip.active {
+.category-chip.active {
   background: rgba(99,102,241,0.2);
   border-color: rgba(99,102,241,0.5);
   color: #a78bfa;
@@ -428,8 +428,8 @@ body {
   to { opacity: 0; transform: translateY(-12px) scale(0.97); }
 }
 
-/* ===== ジャンルバッジ ===== */
-.genre-badge-display {
+/* ===== カード型バッジ ===== */
+.cardtype-badge-display {
   display: inline-block;
   font-size: 0.72rem;
   font-weight: 600;

@@ -215,9 +215,19 @@ function addFieldRow(container, label = '', type = 'textarea', required = false,
   row.className = 'field-row';
   row.draggable = true;
 
+  // タイプからデフォルトラベルを取得するヘルパー
+  const defaultLabelForType = (t) => {
+    const info = FIELD_TYPES.find(ft => ft.val === t);
+    return info ? info.label.replace(/^\S+\s/, '') : t;
+  };
+  // 渡された label がなければタイプ名から自動生成
+  const initialLabel = label || defaultLabelForType(type);
+
   // メイン行HTML
   row.innerHTML = `
     <div class="drag-handle" title="ドラッグして並び替え">⋮⋮</div>
+    <input type="text" class="field-label" value="${initialLabel.replace(/"/g, '&quot;')}" placeholder="ラベル名"
+      style="background:rgba(0,0,0,0.3);border:1px solid var(--glass-border);color:var(--text-primary);padding:0.3rem 0.5rem;border-radius:5px;font-size:0.82rem;width:120px;">
     <select class="field-type">
       ${FIELD_TYPES.map(t => `<option value="${t.val}" ${t.val === type ? 'selected' : ''}>${t.label}</option>`).join('')}
     </select>
@@ -285,10 +295,18 @@ function addFieldRow(container, label = '', type = 'textarea', required = false,
   wrapper.appendChild(row);
   wrapper.appendChild(detailPanel);
 
-  // フィールドタイプ変更時に詳細パネルを再構築
+  // フィールドタイプ変更時に詳細パネルを再構築 + デフォルトラベルの自動更新
   const typeSelect = row.querySelector('.field-type');
+  const labelInput = row.querySelector('.field-label');
   typeSelect.addEventListener('change', () => {
-    buildDetailPanel(typeSelect.value, {});
+    const oldDefault = defaultLabelForType(typeSelect.dataset.prevType || type);
+    const newType = typeSelect.value;
+    // ラベルが旧タイプのデフォルトのままならば新タイプのデフォルトに更新
+    if (labelInput.value === oldDefault) {
+      labelInput.value = defaultLabelForType(newType);
+    }
+    typeSelect.dataset.prevType = newType;
+    buildDetailPanel(newType, {});
     renderPreview();
   });
 
@@ -352,6 +370,7 @@ function addFieldRow(container, label = '', type = 'textarea', required = false,
   });
 
   row.querySelector('.btn-remove').addEventListener('click', () => { wrapper.remove(); renderPreview(); });
+  labelInput.addEventListener('input', renderPreview);
 
   container.appendChild(wrapper);
   renderPreview();
@@ -363,9 +382,11 @@ function collectFieldData(wrapper) {
   const typeSelect = row.querySelector('.field-type');
   const type = typeSelect.value;
   const required = row.querySelector('.field-required').checked;
+  // ラベルは入力欄から取得（カスタムラベルを保持）
+  const labelInput = row.querySelector('.field-label');
   const typeInfo = FIELD_TYPES.find(t => t.val === type);
-  // ラベルは種類名から自動生成（絵文字除去）
-  const label = typeInfo ? typeInfo.label.replace(/^\S+\s/, '') : type;
+  const defaultLabel = typeInfo ? typeInfo.label.replace(/^\S+\s/, '') : type;
+  const label = (labelInput && labelInput.value.trim()) || defaultLabel;
   const options = {};
   wrapper.querySelectorAll('.detail-input').forEach(inp => {
     const key = inp.dataset.key;

@@ -288,16 +288,64 @@ function openModal(id) {
   el.modalImages.classList.add('hidden'); // Hide it by default
 
   // フィールドごとのレンダリング（renderCard.js 共通ロジック使用）
+  // 同一ラベル重複に対応する消費位置追跡（newtab.jsと同様）
+  const consumedQPos = new Set();
+  const consumedAPos = new Set();
+
   function getFieldValue(field) {
-    const rawContent = (field.role === 'question' ? card.question : card.answer) || '';
+    if (field.type === 'static') {
+      // static フィールドはラベル表示のみ（DBの同ラベルデータを消費して衝突防止）
+      const raw2 = (field.role === 'question' ? card.question : card.answer) || '';
+      const rc2 = raw2.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+      const ss2 = `[${field.label}]\n`;
+      const consumedSet = field.role === 'question' ? consumedQPos : consumedAPos;
+      let sf2 = 0;
+      while (true) {
+        const si2 = rc2.indexOf(ss2, sf2);
+        if (si2 === -1) break;
+        if (!consumedSet.has(si2)) { consumedSet.add(si2); break; }
+        sf2 = si2 + 1;
+      }
+      return field.label;
+    }
+
+    const raw = (field.role === 'question' ? card.question : card.answer) || '';
+    const rawContent = raw.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
     const searchStr = `[${field.label}]\n`;
-    const startIdx = rawContent.indexOf(searchStr);
-    if (startIdx !== -1) {
-      const contentStart = startIdx + searchStr.length;
-      const nextIdx = rawContent.indexOf('\n\n[', contentStart);
-      return (nextIdx !== -1 ? rawContent.substring(contentStart, nextIdx) : rawContent.substring(contentStart)).trim();
+    const consumedPos = field.role === 'question' ? consumedQPos : consumedAPos;
+
+    let searchFrom = 0;
+    while (true) {
+      const startIdx = rawContent.indexOf(searchStr, searchFrom);
+      if (startIdx === -1) break;
+      if (!consumedPos.has(startIdx)) {
+        consumedPos.add(startIdx);
+        const contentStart = startIdx + searchStr.length;
+        const nextIdx = rawContent.indexOf('\n\n[', contentStart);
+        return (nextIdx !== -1 ? rawContent.substring(contentStart, nextIdx) : rawContent.substring(contentStart)).trim();
+      }
+      searchFrom = startIdx + 1;
     }
     if (field.key === 'question' || field.key === 'answer') return rawContent;
+    return '';
+  }
+
+  // 答え側の選択肢描画用（answer テキストから読む）
+  function getChoiceAnswerValue(field) {
+    const raw = (card.answer || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+    const searchStr = `[${field.label}]\n`;
+    let searchFrom = 0;
+    while (true) {
+      const startIdx = raw.indexOf(searchStr, searchFrom);
+      if (startIdx === -1) break;
+      if (!consumedAPos.has(startIdx)) {
+        consumedAPos.add(startIdx);
+        const contentStart = startIdx + searchStr.length;
+        const nextIdx = raw.indexOf('\n\n[', contentStart);
+        return (nextIdx !== -1 ? raw.substring(contentStart, nextIdx) : raw.substring(contentStart)).trim();
+      }
+      searchFrom = startIdx + 1;
+    }
     return '';
   }
 
@@ -305,10 +353,10 @@ function openModal(id) {
   const aFields = fields.filter(f => f.role === 'answer');
   const qChoiceFields = qFields.filter(f => f.type === 'choice_multi' || f.type === 'choice_single');
 
-  const renderToContainer = (fieldList, isQ, container) => {
+  const renderToContainer = (fieldList, isQ, container, getValue = getFieldValue) => {
     fieldList.forEach(f => {
       const imageList = images.filter(img => img.fieldKey ? img.fieldKey === f.key : img.role === f.role);
-      const html = _renderFieldHtml(f, isQ, getFieldValue, imageList);
+      const html = _renderFieldHtml(f, isQ, getValue, imageList);
       if (html) {
         const wrap = document.createElement('div');
         wrap.innerHTML = html;
@@ -319,8 +367,8 @@ function openModal(id) {
 
   renderToContainer(qFields, true, el.modalQ);
   renderToContainer(aFields, false, el.modalAnswer);
-  // 問題側の選択肢を答え側にも自動反映（○×表示）
-  renderToContainer(qChoiceFields, false, el.modalAnswer);
+  // 問題側の選択肢を答え側にも自動反映（○×表示）― answer テキストから値を取得
+  renderToContainer(qChoiceFields, false, el.modalAnswer, getChoiceAnswerValue);
 
   const isDue = card.nextReviewDate && card.nextReviewDate <= Date.now();
   el.statNext.textContent     = card.nextReviewDate ? (isDue ? '🎯 今すぐ' : fmtDate(card.nextReviewDate)) : '未設定';

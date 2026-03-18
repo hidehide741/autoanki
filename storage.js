@@ -234,6 +234,19 @@ const StorageManager = {
   // ==================================
 
   // サーバーから全カードを取得（ページネーション付き）
+  async getCardById(cardId) {
+    const res = await fetch(`${API_BASE}?id=eq.${encodeURIComponent(cardId)}&select=*`, { headers: HEADERS });
+    if (!res.ok) throw new Error('カードの取得に失敗しました');
+    const rows = await res.json();
+    if (rows.length === 0) return null;
+    const c = rows[0];
+    return {
+      id: c.id, question: c.question, answer: c.answer, image: c.image, genre: c.genre,
+      nextReviewDate: parseInt(c.next_review_date, 10), interval: parseInt(c.interval, 10),
+      repetition: c.repetition, easiness: c.easiness
+    };
+  },
+
   async getAllCards() {
     try {
       let allData = [];

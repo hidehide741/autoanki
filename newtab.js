@@ -210,6 +210,26 @@ function showQuestionMode(genreDef) {
     return _renderFieldHtml(f, isQuestion, getFieldValue, imageList);
   }
 
+  // 問題側の選択肢を答え面に表示する時は answer テキストから値を取得する
+  // （保存時に choice フィールドは qParts と aParts の両方に書き込まれるため）
+  function getChoiceAnswerValue(field) {
+    const raw = (currentCard.answer || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+    const searchStr = `[${field.label}]\n`;
+    let searchFrom = 0;
+    while (true) {
+      const startIdx = raw.indexOf(searchStr, searchFrom);
+      if (startIdx === -1) break;
+      if (!consumedAPos.has(startIdx)) {
+        consumedAPos.add(startIdx);
+        const contentStart = startIdx + searchStr.length;
+        const nextIdx = raw.indexOf('\n\n[', contentStart);
+        return (nextIdx !== -1 ? raw.substring(contentStart, nextIdx) : raw.substring(contentStart)).trim();
+      }
+      searchFrom = startIdx + 1;
+    }
+    return '';
+  }
+
   // プレビューと同じ構造でレンダリング
   const qFields = fields.filter(f => f.role === 'question');
   const aFields = fields.filter(f => f.role === 'answer');
@@ -218,7 +238,10 @@ function showQuestionMode(genreDef) {
 
   el.questionArea.innerHTML = qFields.map(f => renderFieldHtml(f, true)).join('');
   el.answerArea.innerHTML   = aFields.map(f => renderFieldHtml(f, false)).join('') +
-                               qChoiceFields.map(f => renderFieldHtml(f, false)).join('');
+                               qChoiceFields.map(f => {
+                                 const imageList = images.filter(img => img.fieldKey ? img.fieldKey === f.key : img.role === f.role);
+                                 return _renderFieldHtml(f, false, getChoiceAnswerValue, imageList);
+                               }).join('');
 
   // F6: タイマーカウントダウン開始
   el.questionArea.querySelectorAll('.timer-field').forEach(timerEl => {

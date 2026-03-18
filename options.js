@@ -151,6 +151,7 @@ function switchGenreWithWarning(genre) {
   activeGenreId = genre.id;
   renderGenreTags();
   renderForm();
+  initCategoryInput();
 }
 
 // ===== フィールドツールバーラッパー（⚙ 詳細・× 削除・☷☷ D&D） =====
@@ -876,17 +877,8 @@ function renderStep2Preview() {
 async function enterEditMode(cardId) {
   let card;
   try {
-    const res = await fetch(
-      `https://qahkvamgssedhjvtlika.supabase.co/rest/v1/cards?id=eq.${encodeURIComponent(cardId)}&select=*`,
-      { headers: {
-        'apikey': 'sb_publishable_g3U08ZrJjKyXaeaEuPeuaQ_SNoUxyVg',
-        'Authorization': 'Bearer sb_publishable_g3U08ZrJjKyXaeaEuPeuaQ_SNoUxyVg'
-      }}
-    );
-    const rows = await res.json();
-    if (!rows.length) throw new Error('カードが見つかりません');
-    const c = rows[0];
-    card = { id: c.id, question: c.question, answer: c.answer, image: c.image, genre: c.genre };
+    card = await StorageManager.getCardById(cardId);
+    if (!card) throw new Error('カードが見つかりません');
   } catch (e) {
     alert('カードの読み込みに失敗しました: ' + e.message);
     window.location.href = 'cardlist.html';
@@ -896,9 +888,14 @@ async function enterEditMode(cardId) {
 
   // 対応するジャンルを activeGenre に設定
   const genreExists = genres.find(g => g.id === card.genre);
+  if (!genreExists && genres.length === 0) {
+    alert('ジャンルが見つかりません。先にジャンルを作成してください。');
+    window.location.href = 'settings.html';
+    return;
+  }
   activeGenre = genreExists ? { ...genreExists, fields: JSON.parse(JSON.stringify(genreExists.fields)) }
-                            : { ...genres[0], fields: JSON.parse(JSON.stringify(genres[0]?.fields || [])) };
-  activeGenreId = activeGenre?.id || null;
+                            : { ...genres[0], fields: JSON.parse(JSON.stringify(genres[0].fields)) };
+  activeGenreId = activeGenre.id;
 
   // ステップインジケーター非表示（編集モードはSTEP3直行）
   const stepInd = document.getElementById('step-indicator');
@@ -1660,8 +1657,8 @@ function renderPreviews(fieldKey) {
     const wrap = document.createElement('div');
     wrap.style.cssText = 'position: relative; display: inline-block;';
     wrap.innerHTML = `
-      <img src="${img.previewUrl}" alt="preview" style="max-height: 120px; max-width: 180px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); object-fit: cover; display: block;">
-      <button type="button" class="remove-img-btn" data-field-key="${fieldKey}" data-idx="${i}" style="position: absolute; top: -8px; right: -8px; background: #ef4444; color: white; border: none; border-radius: 50%; width: 22px; height: 22px; cursor: pointer; font-size: 0.75rem; display: flex; align-items: center; justify-content: center; font-weight: bold;">✕</button>
+      <img src="${esc(img.previewUrl)}" alt="preview" style="max-height: 120px; max-width: 180px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); object-fit: cover; display: block;">
+      <button type="button" class="remove-img-btn" data-field-key="${esc(fieldKey)}" data-idx="${i}" style="position: absolute; top: -8px; right: -8px; background: #ef4444; color: white; border: none; border-radius: 50%; width: 22px; height: 22px; cursor: pointer; font-size: 0.75rem; display: flex; align-items: center; justify-content: center; font-weight: bold;">✕</button>
     `;
     wrap.querySelector('.remove-img-btn').addEventListener('click', (e) => {
       const fKey = e.target.dataset.fieldKey;

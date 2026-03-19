@@ -59,13 +59,13 @@ async function init() {
   applyAndRender();
 }
 
-// ===== ジャンルフィルター =====
+// ===== カテゴリフィルター =====
 function buildCardTypeFilter() {
-  const used = new Set(allCards.map(c => c.cardType).filter(Boolean));
-  cardTypes.filter(g => used.has(g.id)).forEach(g => {
+  const categories = [...new Set(allCards.map(c => c.category).filter(Boolean))].sort();
+  categories.forEach(cat => {
     const opt = document.createElement('option');
-    opt.value = g.id;
-    opt.textContent = g.name;
+    opt.value = cat;
+    opt.textContent = cat;
     el.cardTypeFilter.appendChild(opt);
   });
 }
@@ -109,7 +109,7 @@ function applyAndRender() {
 
   filtered = allCards.filter(card => {
     const matchQ = !query || (card.question || '').toLowerCase().includes(query) || (card.answer || '').toLowerCase().includes(query);
-    const matchG = !cardTypeVal || card.cardType === cardTypeVal;
+    const matchG = !cardTypeVal || card.category === cardTypeVal;
     return matchQ && matchG;
   });
 
@@ -121,8 +121,8 @@ function applyAndRender() {
       av = (av || '').toLowerCase();
       bv = (bv || '').toLowerCase();
     }
-    if (sortCol === 'cardtype') {
-      av = cardTypeName(a.cardType); bv = cardTypeName(b.cardType);
+    if (sortCol === 'category') {
+      av = a.category || ''; bv = b.category || '';
     }
     if (av < bv) return sortAsc ? -1 : 1;
     if (av > bv) return sortAsc ?  1 : -1;
@@ -186,7 +186,7 @@ function renderTable() {
       <td><input type="checkbox" class="row-checkbox" data-id="${card.id}"></td>
       ${thumbHtml}
       <td class="cell-question"><div class="cell-text" title="${esc(card.question)}">${esc(displayQ || '無題')}</div></td>
-      <td><span class="cardtype-badge">${esc(cardTypeName(card.cardType))}</span></td>
+      <td><span class="cardtype-badge">${esc(card.category || '—')}</span></td>
       <td><span class="due-badge ${isDue ? 'now' : 'later'}">${dueStr}</span></td>
       <td style="color:var(--text-secondary);">${fmtInterval(card.interval)}</td>
       <td class="action-cell">
@@ -292,7 +292,7 @@ function openModal(id) {
     }
   }
 
-  el.modalCardType.textContent = cardTypeDef?.name || 'その他';
+  el.modalCardType.textContent = card.category || cardTypeDef?.name || 'その他';
   el.modalQ.innerHTML = ''; 
   el.modalAnswer.innerHTML = '';
   el.modalImages.innerHTML = ''; // Clear the old modalImages container

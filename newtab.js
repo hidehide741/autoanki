@@ -57,19 +57,20 @@ async function initCategoryFilter() {
   if (!el.categoryFilter) return;
   const categories = await StorageManager.getDistinctCategories();
   const qs = await StorageManager.getQuizSettings();
+  const selected = qs.categoryFilter || [];
 
   el.categoryFilter.innerHTML = '';
 
   // 「すべて」チップ
   const allChip = document.createElement('button');
-  allChip.className = 'category-chip' + (!qs.categoryFilter ? ' active' : '');
+  allChip.className = 'category-chip' + (selected.length === 0 ? ' active' : '');
   allChip.textContent = 'すべて';
   allChip.addEventListener('click', () => selectCategory(null));
   el.categoryFilter.appendChild(allChip);
 
   categories.forEach(cat => {
     const chip = document.createElement('button');
-    chip.className = 'category-chip' + (qs.categoryFilter === cat ? ' active' : '');
+    chip.className = 'category-chip' + (selected.includes(cat) ? ' active' : '');
     chip.textContent = cat;
     chip.addEventListener('click', () => selectCategory(cat));
     el.categoryFilter.appendChild(chip);
@@ -78,12 +79,32 @@ async function initCategoryFilter() {
 
 async function selectCategory(categoryName) {
   const qs = await StorageManager.getQuizSettings();
-  qs.categoryFilter = categoryName;
+  let selected = Array.isArray(qs.categoryFilter) ? [...qs.categoryFilter] : [];
+
+  if (categoryName === null) {
+    // 「すべて」を選択 → フィルタークリア
+    selected = null;
+  } else {
+    // トグル: 既に選択済みなら除外、未選択なら追加
+    const idx = selected.indexOf(categoryName);
+    if (idx >= 0) {
+      selected.splice(idx, 1);
+      if (selected.length === 0) selected = null;
+    } else {
+      selected.push(categoryName);
+    }
+  }
+
+  qs.categoryFilter = selected;
   await StorageManager.saveQuizSettings(qs);
 
   // チップUI更新
   el.categoryFilter.querySelectorAll('.category-chip').forEach((chip, i) => {
-    chip.classList.toggle('active', i === 0 ? !categoryName : chip.textContent === categoryName);
+    if (i === 0) {
+      chip.classList.toggle('active', !selected || selected.length === 0);
+    } else {
+      chip.classList.toggle('active', Array.isArray(selected) && selected.includes(chip.textContent));
+    }
   });
 
   // 次のカードをリロード

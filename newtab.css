@@ -395,8 +395,9 @@ body {
   flex: 1;
   display: flex;
   justify-content: center;
-  align-items: center;
+  align-items: flex-start;
   padding: 2rem;
+  padding-top: 3rem;
 }
 
 .hidden { display: none !important; }
@@ -406,10 +407,10 @@ body {
   background: rgba(20, 27, 50, 0.75);
   backdrop-filter: blur(24px);
   border: 1px solid rgba(255,255,255,0.1);
-  border-radius: 24px;
-  padding: 2.5rem 3rem;
+  border-radius: 20px;
+  padding: 2rem 2.5rem;
   width: 100%;
-  max-width: 680px;
+  max-width: 720px;
   box-shadow:
     0 0 0 1px rgba(99,102,241,0.08),
     0 30px 60px -15px rgba(0,0,0,0.6),
@@ -493,11 +494,11 @@ body {
 
 /* ===== 問題テキスト ===== */
 .question {
-  font-size: 1.75rem;
+  font-size: 1.5rem;
   font-weight: 700;
-  text-align: center;
-  line-height: 1.45;
-  margin-bottom: 2rem;
+  text-align: left;
+  line-height: 1.55;
+  margin-bottom: 1.5rem;
   letter-spacing: -0.02em;
   background: linear-gradient(135deg, #f1f5f9, #cbd5e1);
   -webkit-background-clip: text;
@@ -544,17 +545,17 @@ body {
 .divider {
   height: 1px;
   background: linear-gradient(90deg, transparent, var(--glass-border), transparent);
-  margin: 2rem 0;
+  margin: 1.5rem 0;
 }
 
 /* ===== 答えテキスト ===== */
 .answer {
-  font-size: 1.4rem;
+  font-size: 1.15rem;
   font-weight: 600;
   color: #a78bfa;
-  text-align: center;
-  margin-bottom: 2.5rem;
-  line-height: 1.5;
+  text-align: left;
+  margin-bottom: 2rem;
+  line-height: 1.55;
   white-space: pre-wrap;
   animation: answerReveal 0.35s ease forwards;
 }
@@ -856,13 +857,54 @@ button:focus-visible, a:focus-visible {
 /* ===== レスポンシブ ===== */
 @media (max-width: 768px) {
   .sidebar { display: none; }
-  .glass-card { padding: 2rem 1.5rem; }
-  .question { font-size: 1.4rem; }
+  .glass-card { padding: 1.5rem 1.25rem; border-radius: 16px; }
+  .question { font-size: 1.2rem; }
   .rating-buttons { grid-template-columns: repeat(2, 1fr); }
-  .top-bar { padding: 0.6rem 0.8rem; flex-wrap: wrap; }
-  .top-bar-center { order: 3; flex: 0 0 100%; justify-content: flex-start; overflow-x: auto; }
+  .top-bar { padding: 0.6rem 0.8rem; flex-wrap: wrap; gap: 0.5rem; }
+  .top-bar-left { order: 1; }
+  .top-bar-right { order: 2; }
+  .top-bar-center { order: 3; flex: 0 0 100%; justify-content: flex-start; overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 0.3rem; }
+  .category-filter { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 0.2rem; }
+  .category-filter::-webkit-scrollbar { height: 3px; }
+  .category-filter::-webkit-scrollbar-thumb { background: rgba(99,102,241,0.3); border-radius: 3px; }
   .toolbar-label { display: none; }
   .settings-panel { width: 280px; right: -40px; }
-  .container { padding: 1rem; }
+  .container { padding: 1rem; padding-top: 1.5rem; }
   .mobile-menu-btn { display: flex; }
+  .done-card { padding: 2.5rem 1.5rem; }
+  .done-title { font-size: 1.5rem; }
+  .done-message { font-size: 0.95rem; }
+  .primary-btn { padding: 0.85rem 1.25rem; font-size: 0.95rem; }
+  .rating-btn { padding: 0.65rem 0.3rem 0.55rem; }
+  .rating-btn .rating-icon { font-size: 1.1rem; }
+  .rating-btn .label { font-size: 0.78rem; }
+  .stats { padding: 0.3rem 0.15rem; }
+  .stat-item { padding: 0.15rem 0.45rem; }
+  .stat-value { font-size: 0.85rem; }
+  .stat-label { font-size: 0.62rem; }
+}
+
+@media (max-width: 480px) {
+  .glass-card { padding: 1.25rem 1rem; border-radius: 14px; }
+  .question { font-size: 1.05rem; margin-bottom: 1rem; }
+  .primary-btn { padding: 0.75rem 1rem; font-size: 0.9rem; border-radius: 10px; }
+  .primary-btn .btn-shortcut { display: none; }
+  .rating-buttons { gap: 0.4rem; }
+  .rating-btn { padding: 0.55rem 0.2rem 0.45rem; border-radius: 10px; }
+  .rating-btn .rating-icon { font-size: 1rem; }
+  .rating-btn .label { font-size: 0.72rem; }
+  .rating-btn .sub { font-size: 0.62rem; }
+  .kbd-hint { display: none; }
+  .container { padding: 0.75rem; padding-top: 1rem; }
+  .top-bar { padding: 0.5rem 0.6rem; }
+  .done-card { padding: 2rem 1rem; }
+  .done-icon { font-size: 3rem; }
+  .done-title { font-size: 1.3rem; }
+  .done-stats { gap: 1.5rem; }
+  .done-stat .val { font-size: 1.5rem; }
+  .link-btn { padding: 0.6rem 1rem; font-size: 0.82rem; }
+  .next-btn { font-size: 0.82rem; padding: 0.6rem 1rem; }
+  .divider { margin: 1rem 0; }
+  .settings-panel { width: 260px; right: -60px; }
+  .progress-bar-wrap { margin-bottom: 1.25rem; }
 }

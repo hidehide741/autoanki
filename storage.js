@@ -189,6 +189,10 @@ const StorageManager = {
         saved.categoryFilter = null;
         delete saved.genreFilter;
       }
+      // 旧 string → array マイグレーション
+      if (typeof saved.categoryFilter === 'string') {
+        saved.categoryFilter = [saved.categoryFilter];
+      }
       return { ...defaults, ...saved };
     }
     return defaults;
@@ -414,7 +418,11 @@ const StorageManager = {
     // ======= WEBアプリ版（URLからのアクセス）の場合：ランダム出題 =======
     if (!this.isExtension) {
       try {
-        const res = await fetch(`${API_BASE}?select=*&limit=100&order=id.desc`, { headers: HEADERS });
+        let webFilter = '';
+        if (Array.isArray(qs.categoryFilter) && qs.categoryFilter.length > 0) {
+          webFilter = `&category=in.(${qs.categoryFilter.map(c => encodeURIComponent(c)).join(',')})`;
+        }
+        const res = await fetch(`${API_BASE}?select=*&limit=100&order=id.desc${webFilter}`, { headers: HEADERS });
         if (!res.ok) throw new Error('Fetch Error');
         const cards = await res.json();
         if (cards.length === 0) return { status: 'empty', card: null };
@@ -444,7 +452,9 @@ const StorageManager = {
       // PostgREST フィルターを構築
       let filters = `next_review_date=lte.${now}`;
       if (qs.hideMastered) filters += '&repetition=lt.6';
-      if (qs.categoryFilter)  filters += `&category=eq.${encodeURIComponent(qs.categoryFilter)}`;
+      if (Array.isArray(qs.categoryFilter) && qs.categoryFilter.length > 0) {
+        filters += `&category=in.(${qs.categoryFilter.map(c => encodeURIComponent(c)).join(',')})`;
+      }
 
       // 並び順
       let orderClause;
@@ -479,7 +489,9 @@ const StorageManager = {
       const qs = await this.getQuizSettings();
       let filters = `next_review_date=lte.${now}`;
       if (qs.hideMastered) filters += '&repetition=lt.6';
-      if (qs.categoryFilter)  filters += `&category=eq.${encodeURIComponent(qs.categoryFilter)}`;
+      if (Array.isArray(qs.categoryFilter) && qs.categoryFilter.length > 0) {
+        filters += `&category=in.(${qs.categoryFilter.map(c => encodeURIComponent(c)).join(',')})`;
+      }
       const res = await fetch(
         `${API_BASE}?select=id&${filters}&limit=0`,
         { method: 'HEAD', headers: { ...HEADERS, 'Prefer': 'count=exact' } }

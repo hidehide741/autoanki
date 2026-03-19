@@ -586,11 +586,13 @@ const StorageManager = {
     await this.incrementStats();
   },
 
-  // カードの内容（question/answer/image）だけを更新する（編集画面から呼び出す）
-  async updateCardContent(cardId, question, answer, image) {
+  // カードの内容（question/answer/image/card_type/category）だけを更新する（編集画面から呼び出す）
+  async updateCardContent(cardId, question, answer, image, cardType, category) {
     try {
       const body = { question, answer };
       if (image !== undefined) body.image = image;
+      if (cardType !== undefined) body.card_type = cardType;
+      if (category !== undefined) body.category = category;
       console.log('[updateCardContent] cardId:', cardId, 'body:', body);
       const res = await fetch(`${API_BASE}?id=eq.${encodeURIComponent(cardId)}`, {
         method: 'PATCH',

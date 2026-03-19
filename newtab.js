@@ -4,6 +4,7 @@ import { renderFieldHtml as _renderFieldHtml, escapeHtml } from './renderCard.js
 let currentCard = null;
 let answerShown = false;
 let isProcessing = false; // 二重送信防止用
+let isInitialLoad = true;  // 初回ページロードかどうか（Googleリダイレクト後は false）
 let cachedCardTypes = null;  // カード型キャッシュ
 let activeTimers = [];    // アクティブなタイマー
 
@@ -145,9 +146,9 @@ async function initQuizSettings() {
 
 // カードの読み込み
 async function loadNextCard() {
-  // Chromeが自動で新しいタブを開いた場合のみ true（referrerが空 = 新規タブ）
-  // サイドバーのリンクから来た場合は referrer に遷移元URLが入るので false
-  const isActualNewTab = StorageManager.isExtension && !document.referrer;
+  // 初回ロード時のみ Googleリダイレクトを許可（評価・スキップ後の再呼び出しではリダイレクトしない）
+  const isActualNewTab = StorageManager.isExtension && !document.referrer && isInitialLoad;
+  isInitialLoad = false;
 
   try {
     const result = await StorageManager.getDueCardOrStatus();

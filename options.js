@@ -1853,7 +1853,8 @@ function setupGlobalListeners() {
 
       if (editingCardId) {
         // ===== 編集モード: 既存カードを更新 =====
-        await StorageManager.updateCardContent(editingCardId, finalQuestion, fullAnswer, imageValue);
+        const primaryCategory = categoryTags ? categoryTags.split(',')[0].trim() : null;
+        await StorageManager.updateCardContent(editingCardId, finalQuestion, fullAnswer, imageValue, activeCardTypeId || 'other', primaryCategory);
 
         // field.options（詳細設定）の変更をカード型定義に反映して保存
         if (activeCardTypeId && activeCardType) {

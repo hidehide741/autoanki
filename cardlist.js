@@ -271,7 +271,14 @@ function openModal(id) {
   if (!card) return;
   activeCardId = id;
 
-  const cardTypeDef = cardTypes.find(g => g.id === card.cardType);
+  let cardTypeDef = cardTypes.find(g => g.id === card.cardType);
+  // カード型のフィールドラベルがデータと合致しない場合はフォールバック
+  if (cardTypeDef) {
+    const textQFields = cardTypeDef.fields.filter(f => f.role === 'question' && f.type !== 'static' && f.type !== 'image');
+    if (textQFields.length > 0 && !textQFields.some(f => (card.question || '').includes(`[${f.label}]`))) {
+      cardTypeDef = null;
+    }
+  }
   const defaultFields = [
     { key: 'question', label: '問題', type: 'textarea', role: 'question' },
     { key: 'answer',   label: '答え', type: 'textarea', role: 'answer' }

@@ -886,15 +886,33 @@ async function enterEditMode(cardId) {
   }
   editingCardOriginal = card;
 
-  // 対応するカード型を activeCardType に設定
+  // カード型のフィールド構造とデータが一致するか判定
   const cardTypeExists = cardTypes.find(g => g.id === card.cardType);
-  if (!cardTypeExists && cardTypes.length === 0) {
-    alert('カード型が見つかりません。先にカード型を作成してください。');
-    window.location.href = 'settings.html';
-    return;
+  const GENERIC_FIELDS = [
+    { key: 'question', label: '問題', type: 'textarea', required: true, role: 'question', rawMode: true },
+    { key: 'answer',   label: '答え', type: 'textarea', required: true, role: 'answer',   rawMode: true },
+    { key: 'image',    label: '画像', type: 'image',    required: false, role: 'question' }
+  ];
+
+  let useGeneric = false;
+  if (!cardTypeExists) {
+    useGeneric = true;
+  } else {
+    // カード型のテキストフィールドラベルがデータ内に存在するか確認
+    const textQFields = cardTypeExists.fields.filter(f =>
+      f.role === 'question' && f.type !== 'static' && f.type !== 'image'
+    );
+    if (textQFields.length > 0) {
+      const hasMatch = textQFields.some(f => (card.question || '').includes(`[${f.label}]`));
+      if (!hasMatch) useGeneric = true;
+    }
   }
-  activeCardType = cardTypeExists ? { ...cardTypeExists, fields: JSON.parse(JSON.stringify(cardTypeExists.fields)) }
-                            : { ...cardTypes[0], fields: JSON.parse(JSON.stringify(cardTypes[0].fields)) };
+
+  if (useGeneric) {
+    activeCardType = { id: card.cardType || 'other', name: 'テキスト', isDefault: false, fields: GENERIC_FIELDS };
+  } else {
+    activeCardType = { ...cardTypeExists, fields: JSON.parse(JSON.stringify(cardTypeExists.fields)) };
+  }
   activeCardTypeId = activeCardType.id;
 
   // ステップインジケーター非表示（編集モードはSTEP3直行）
@@ -944,6 +962,16 @@ function fillFormWithCard(card) {
   if (catInput) { catInput.value = cardTags; catInput.dispatchEvent(new Event('input')); }
 
   ct.fields.forEach(field => {
+    // rawMode: カード型が合致しないカードの編集。生テキストをそのまま表示
+    if (field.rawMode) {
+      let rawText = (field.role === 'question' ? card.question : card.answer) || '';
+      if (field.role === 'question') {
+        rawText = rawText.replace(/\n\n\[__tags__\]\n[\s\S]*$/, '');
+      }
+      const input = document.getElementById(`field-${field.key}`);
+      if (input) { input.value = rawText; currentPreviewValues[field.key] = rawText; }
+      return;
+    }
     const parsed = field.role === 'question' ? qParsed : aParsed;
     const val = parsed[field.label];
     // static フィールドは常に field.label を固定表示するため、保存データからの読み込みをスキップ
@@ -1793,6 +1821,12 @@ function setupGlobalListeners() {
         if (f.type === 'static') return;
         const val = values[f.key];
         if (!val) return;
+        // rawMode: [label] ラッパーなしで生テキストを保存
+        if (f.rawMode) {
+          if (f.role === 'question') qParts.push(val);
+          else aParts.push(val);
+          return;
+        }
         if (f.role === 'question') {
           qParts.push(`[${f.label}]\n${val}`);
           // 選択肢フィールドは答え側にも自動保存（○×表示用）

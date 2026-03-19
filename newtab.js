@@ -189,7 +189,14 @@ async function loadNextCard() {
         await StorageManager.setEmptyNotified(false);
       }
       const cardTypes = cachedCardTypes || (cachedCardTypes = await StorageManager.getCardTypes());
-      const cardTypeDef = cardTypes.find(g => g.id === currentCard.cardType);
+      let cardTypeDef = cardTypes.find(g => g.id === currentCard.cardType);
+      // カード型のフィールドラベルがデータと合致しない場合はフォールバック
+      if (cardTypeDef) {
+        const textQFields = cardTypeDef.fields.filter(f => f.role === 'question' && f.type !== 'static' && f.type !== 'image');
+        if (textQFields.length > 0 && !textQFields.some(f => (currentCard.question || '').includes(`[${f.label}]`))) {
+          cardTypeDef = null;
+        }
+      }
       
       showQuestionMode(cardTypeDef);
       updateRatingLabels();

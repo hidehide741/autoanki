@@ -516,46 +516,52 @@ const StorageManager = {
   },
 
   // SM-2 インターバル計算（純粋関数 — シミュレーションにも使う）
+  // 科学的根拠: Anki の Lapse 処理に準拠し、quality < 3（忘れた）の場合は
+  // 長期パラメータ（repetition / easiness / interval）を変更しない。
+  // nextReviewDate のみ短縮し、再学習キューに入れるだけにする。
+  // これにより同一カードを1日に複数回解いてもSM-2の学習履歴が壊れない。
   _calcNext(card, quality) {
     let { interval, repetition, easiness } = card;
     const DAY = 24 * 60 * 60 * 1000;
+    const RELEARN_INTERVAL = 10 * 60 * 1000; // 再学習: 10分後
 
     if (quality < 3) {
-      // 忘れた → リセット。10分後に再挑戦
-      repetition = 0;
-      interval = 10 * 60 * 1000; // 10分
-    } else {
-      // quality 3=難しい, 4=普通, 5=簡単
-      if (repetition === 0) {
-        // 初回正解
-        interval = quality === 3 ? 1 * DAY
-                 : quality === 5 ? 4 * DAY
-                 :                 1 * DAY;
-      } else if (repetition === 1) {
-        // 2回目正解
-        interval = quality === 3 ? 3 * DAY
-                 : quality === 5 ? 7 * DAY
-                 :                 3 * DAY;
-      } else {
-        // 3回目以降: easiness × quality係数で伸び率を調整
-        const qMul = quality === 3 ? 1.0 : quality === 5 ? 1.3 : 1.0;
-        interval = Math.round(interval * easiness * qMul);
-      }
-      repetition += 1;
+      // 忘れた (Lapse) → SM-2パラメータはそのまま保持し、再学習のみ行う
+      // interval / repetition / easiness は変更しない（長期学習履歴を保護）
+      return { interval, repetition, easiness, relearn: true, nextInterval: RELEARN_INTERVAL };
     }
+
+    // quality 3=難しい, 4=普通, 5=簡単
+    if (repetition === 0) {
+      // 初回正解
+      interval = quality === 3 ? 1 * DAY
+               : quality === 5 ? 4 * DAY
+               :                 1 * DAY;
+    } else if (repetition === 1) {
+      // 2回目正解
+      interval = quality === 3 ? 3 * DAY
+               : quality === 5 ? 7 * DAY
+               :                 3 * DAY;
+    } else {
+      // 3回目以降: easiness × quality係数で伸び率を調整
+      const qMul = quality === 3 ? 1.0 : quality === 5 ? 1.3 : 1.0;
+      interval = Math.round(interval * easiness * qMul);
+    }
+    repetition += 1;
 
     // Easiness factor の更新
     easiness = easiness + (0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02));
     if (easiness < 1.3) easiness = 1.3;
 
-    return { interval, repetition, easiness };
+    return { interval, repetition, easiness, relearn: false, nextInterval: interval };
   },
 
   // ボタン表示用: 各quality(1,3,4,5)を押した場合の次回インターバルを返す
+  // quality < 3 (忘れた) は常に「10分後」としてラベル表示する（パラメータ非破壊のため固定値）
   simulateIntervals(card) {
     const results = {};
     for (const q of [1, 3, 4, 5]) {
-      results[q] = this._calcNext(card, q).interval;
+      results[q] = this._calcNext(card, q).nextInterval;
     }
     return results;
   },
@@ -583,10 +589,19 @@ const StorageManager = {
     }
 
     const next = this._calcNext(card, quality);
-    card.interval   = next.interval;
-    card.repetition = next.repetition;
-    card.easiness   = next.easiness;
-    card.nextReviewDate = Date.now() + card.interval;
+
+    if (next.relearn) {
+      // 忘れた (Lapse): SM-2パラメータ（interval/repetition/easiness）は変更しない
+      // nextReviewDate のみ短縮して再学習キューに入れる
+      card.nextReviewDate = Date.now() + next.nextInterval;
+      // interval / repetition / easiness はそのまま保持
+    } else {
+      // 正解: SM-2パラメータを全て更新
+      card.interval       = next.interval;
+      card.repetition     = next.repetition;
+      card.easiness       = next.easiness;
+      card.nextReviewDate = Date.now() + card.interval;
+    }
 
     // サーバーに個別保存
     await this.saveCardUpdate(card);

@@ -580,34 +580,34 @@ body {
 /* ===== 評価ボタン ===== */
 .rating-buttons {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 0.6rem;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.75rem;
 }
 
 .rating-btn {
   background: rgba(255,255,255,0.03);
   border: 1px solid var(--glass-border);
-  padding: 0.75rem 0.4rem 0.6rem;
-  border-radius: 12px;
+  padding: 1rem 0.75rem 0.8rem;
+  border-radius: 14px;
   cursor: pointer;
   transition: all 0.2s;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.2rem;
+  gap: 0.25rem;
   font-family: 'Inter', sans-serif;
   position: relative;
 }
 .rating-btn:hover   { transform: translateY(-3px); }
 .rating-btn:active  { transform: scale(0.96); }
 
-.rating-btn .rating-icon { font-size: 1.2rem; }
+.rating-btn .rating-icon { font-size: 1.5rem; }
 .rating-btn .label {
-  font-size: 0.82rem;
+  font-size: 0.9rem;
   font-weight: 700;
 }
 .rating-btn .sub {
-  font-size: 0.7rem;
+  font-size: 0.72rem;
   color: var(--text-secondary);
   font-weight: 500;
 }
@@ -619,26 +619,12 @@ body {
 .btn-again .label { color: var(--color-again); }
 .btn-again:hover  { border-color: var(--color-again); box-shadow: 0 6px 20px rgba(239,68,68,0.2); background: rgba(239,68,68,0.1); }
 
-.btn-hard {
-  border-color: rgba(245,158,11,0.25);
-  background: rgba(245,158,11,0.06);
-}
-.btn-hard .label  { color: var(--color-hard); }
-.btn-hard:hover   { border-color: var(--color-hard); box-shadow: 0 6px 20px rgba(245,158,11,0.2); background: rgba(245,158,11,0.1); }
-
 .btn-good {
   border-color: rgba(16,185,129,0.25);
   background: rgba(16,185,129,0.06);
 }
 .btn-good .label  { color: var(--color-good); }
 .btn-good:hover   { border-color: var(--color-good); box-shadow: 0 6px 20px rgba(16,185,129,0.2); background: rgba(16,185,129,0.1); }
-
-.btn-easy {
-  border-color: rgba(59,130,246,0.25);
-  background: rgba(59,130,246,0.06);
-}
-.btn-easy .label  { color: var(--color-easy); }
-.btn-easy:hover   { border-color: var(--color-easy); box-shadow: 0 6px 20px rgba(59,130,246,0.2); background: rgba(59,130,246,0.1); }
 
 /* ===== 次の問題へ進むボタン ===== */
 .next-btn {

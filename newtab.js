@@ -450,14 +450,13 @@ function formatInterval(ms) {
   return `${year}年`;
 }
 
-// 各評価ボタンに「次回までの間隔」を動的表示
+// 各評価ボタンに「次回までの間隔」を動的表示（「覚えていた」のみ更新）
 function updateRatingLabels() {
   if (!currentCard) return;
   const intervals = StorageManager.simulateIntervals(currentCard);
-  for (const q of [1, 3, 4, 5]) {
-    const sub = document.querySelector(`.rating-btn[data-quality="${q}"] .sub[data-quality="${q}"]`);
-    if (sub) sub.textContent = formatInterval(intervals[q]);
-  }
+  // quality=4（覚えていた）の次回インターバルのみ表示する
+  const sub = document.querySelector(`.rating-btn[data-quality="4"] .sub[data-quality="4"]`);
+  if (sub) sub.textContent = formatInterval(intervals[4]);
 }
 
 // カードの学習ステージを表示（New / Learning / Review / Mature）
@@ -620,13 +619,13 @@ function setupEventListeners() {
         showAnswerMode();
       }
     } else {
-      if (['1', '2', '3', '4'].includes(e.key)) {
+      // 2択キーボードショートカット: Space/Enter/2=覚えていた、1=覚えていなかった
+      if (e.key === '1') {
         e.preventDefault();
-        const mapping = { '1': '1', '2': '3', '3': '4', '4': '5' };
-        handleRating(mapping[e.key]);
-      } else if (e.code === 'Space' || e.key === 'Enter') {
+        handleRating('1'); // 覚えていなかった
+      } else if (e.key === '2' || e.code === 'Space' || e.key === 'Enter') {
         e.preventDefault();
-        handleRating('4');
+        handleRating('4'); // 覚えていた
       }
     }
   });

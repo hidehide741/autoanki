@@ -840,59 +840,6 @@ button:focus-visible, a:focus-visible {
 .mobile-nav-panel a:hover { background: rgba(255,255,255,0.08); }
 .mobile-nav-panel a.active { background: rgba(99,102,241,0.2); color: #818cf8; }
 
-/* ===== Google検索モード ===== */
-.google-search-mode {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-height: 60vh;
-  gap: 1.5rem;
-  padding: 2rem;
-}
-.google-logo {
-  font-size: 5rem;
-  font-weight: 700;
-  background: linear-gradient(90deg, #4285F4, #EA4335, #FBBC05, #34A853);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  user-select: none;
-}
-.google-search-box {
-  display: flex;
-  align-items: center;
-  width: 100%;
-  max-width: 580px;
-  background: rgba(255,255,255,0.08);
-  border: 1px solid rgba(255,255,255,0.15);
-  border-radius: 24px;
-  padding: 0.6rem 1rem;
-  transition: background 0.2s, box-shadow 0.2s;
-}
-.google-search-box:focus-within {
-  background: rgba(255,255,255,0.12);
-  box-shadow: 0 2px 12px rgba(99,102,241,0.15);
-}
-.google-search-icon {
-  font-size: 1rem;
-  margin-right: 0.6rem;
-  opacity: 0.5;
-}
-.google-search-input {
-  flex: 1;
-  background: transparent;
-  border: none;
-  outline: none;
-  color: var(--text-primary);
-  font-size: 1rem;
-  font-family: inherit;
-}
-.google-search-input::placeholder {
-  color: var(--text-secondary);
-  opacity: 0.6;
-}
-
 /* ===== レスポンシブ ===== */
 @media (max-width: 768px) {
   .sidebar { display: none; }

@@ -39,7 +39,6 @@ async function init() {
     settingsPanel:   document.getElementById('quiz-settings-panel'),
     settingsBtn:     document.getElementById('quiz-settings-btn'),
     settingsCloseBtn: document.getElementById('settings-close-btn'),
-    googleContainer: document.getElementById('google-container'),
   };
   await updateStats();
   await initCategoryFilter();
@@ -178,11 +177,10 @@ async function loadNextCard() {
     
     if (result.status === 'empty') {
       if (isActualNewTab) {
-        // 新規タブのみ: 1回だけ「問題なし」表示、2回目以降はGoogle検索画面
+        // 新規タブのみ: 1回だけ「問題なし」表示、2回目以降はGoogle
         const alreadyNotified = await StorageManager.getEmptyNotified();
         if (alreadyNotified) {
-          showGoogleMode();
-          isProcessing = false;
+          window.location.replace('https://www.google.com/');
           return;
         }
         await StorageManager.setEmptyNotified(true);
@@ -194,9 +192,8 @@ async function loadNextCard() {
 
     if (result.status === 'cooldown') {
       if (isActualNewTab) {
-        // 新規タブのみ: 15分クールタイム中はGoogle検索画面
-        showGoogleMode();
-        isProcessing = false;
+        // 新規タブのみ: クールタイム中はGoogle
+        window.location.replace('https://www.google.com/');
         return;
       } else {
         const remainMs = await StorageManager.getCooldownRemainingMs();
@@ -238,7 +235,6 @@ async function loadNextCard() {
       el.doneContainer.classList.add('hidden');
       if (el.emptyContainer) el.emptyContainer.classList.add('hidden');
       if (el.errorContainer) el.errorContainer.classList.add('hidden');
-      if (el.googleContainer) el.googleContainer.classList.add('hidden');
       el.cardContainer.style.animation = 'none';
       setTimeout(() => {
         el.cardContainer.style.animation = 'floatIn 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards';
@@ -507,28 +503,10 @@ function showAnswerMode() {
   el.answerSection.classList.remove('hidden');
 }
 
-function showGoogleMode() {
-  el.cardContainer.classList.add('hidden');
-  el.doneContainer.classList.add('hidden');
-  if (el.emptyContainer) el.emptyContainer.classList.add('hidden');
-  if (el.errorContainer) el.errorContainer.classList.add('hidden');
-  if (el.googleContainer) {
-    el.googleContainer.classList.remove('hidden');
-    // サイドバー・トップバーを非表示にしてGoogle風の画面にする
-    const sidebar = document.getElementById('app-sidebar');
-    const topBar = document.querySelector('.top-bar');
-    if (sidebar) sidebar.style.display = 'none';
-    if (topBar) topBar.style.display = 'none';
-    const input = document.getElementById('google-search-input');
-    if (input) input.focus();
-  }
-}
-
 function showDoneMode() {
   el.cardContainer.classList.add('hidden');
   if (el.emptyContainer) el.emptyContainer.classList.add('hidden');
   if (el.errorContainer) el.errorContainer.classList.add('hidden');
-  if (el.googleContainer) el.googleContainer.classList.add('hidden');
   el.doneContainer.classList.remove('hidden');
   if (el.doneToday)  el.doneToday.textContent  = el.todayCount?.textContent  || '0';
   if (el.doneStreak) el.doneStreak.textContent = el.streakCount?.textContent || '0';
@@ -538,7 +516,6 @@ function showEmptyMode() {
   el.cardContainer.classList.add('hidden');
   el.doneContainer.classList.add('hidden');
   if (el.errorContainer) el.errorContainer.classList.add('hidden');
-  if (el.googleContainer) el.googleContainer.classList.add('hidden');
   if (el.emptyContainer) el.emptyContainer.classList.remove('hidden');
 }
 
@@ -546,7 +523,6 @@ function showErrorMode(msg = '') {
   el.cardContainer.classList.add('hidden');
   el.doneContainer.classList.add('hidden');
   if (el.emptyContainer) el.emptyContainer.classList.add('hidden');
-  if (el.googleContainer) el.googleContainer.classList.add('hidden');
   if (el.errorContainer) el.errorContainer.classList.remove('hidden');
   if (el.errorMessage && msg) el.errorMessage.textContent = msg;
 }
@@ -556,7 +532,6 @@ function showCooldownMode(remainMs) {
   el.cardContainer.classList.add('hidden');
   if (el.emptyContainer) el.emptyContainer.classList.add('hidden');
   if (el.errorContainer) el.errorContainer.classList.add('hidden');
-  if (el.googleContainer) el.googleContainer.classList.add('hidden');
   el.doneContainer.classList.remove('hidden');
   if (el.doneToday)  el.doneToday.textContent  = el.todayCount?.textContent  || '0';
   if (el.doneStreak) el.doneStreak.textContent = el.streakCount?.textContent || '0';

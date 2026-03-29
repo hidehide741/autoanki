@@ -7,6 +7,7 @@ let isProcessing = false; // 二重送信防止用
 let isInitialLoad = true;  // 初回ページロードかどうか（Googleリダイレクト後は false）
 let cachedCardTypes = null;  // カード型キャッシュ
 let activeTimers = [];    // アクティブなタイマー
+let lastAnsweredCardId = null; // 直前に回答したカードID（同一カード再出題防止用）
 
 // DOM要素（DOMContentLoaded後に init() で初期化）
 let el = {};
@@ -172,7 +173,7 @@ async function loadNextCard() {
   isInitialLoad = false;
 
   try {
-    const result = await StorageManager.getDueCardOrStatus();
+    const result = await StorageManager.getDueCardOrStatus(lastAnsweredCardId);
     
     if (result.status === 'empty') {
       if (isActualNewTab) {
@@ -549,18 +550,24 @@ function showCooldownMode(remainMs) {
 async function handleRating(quality) {
   if (!currentCard || isProcessing) return;
   isProcessing = true;
+  const answeredCardId = currentCard.id;
 
   el.cardContainer.classList.add('fade-out');
   
   try {
     await StorageManager.updateCard(currentCard.id, parseInt(quality, 10));
+    lastAnsweredCardId = answeredCardId;
     await updateStats();
     setTimeout(async () => {
       await loadNextCard();
     }, 300);
   } catch (err) {
     console.error('handleRating Failed:', err);
-    isProcessing = false;
+    // 保存失敗を通知
+    lastAnsweredCardId = answeredCardId;
+    setTimeout(async () => {
+      await loadNextCard();
+    }, 300);
   }
 }
 

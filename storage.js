@@ -357,6 +357,17 @@ const StorageManager = {
     }
   },
 
+  // スケジュール（復習日時・間隔・回数・容易さ）のみを更新（軽量PATCH）
+  async _saveCardSchedule(cardId, nextReviewDate, interval, repetition, easiness) {
+    const url = `${API_BASE}?id=eq.${encodeURIComponent(cardId)}`;
+    const body = JSON.stringify({ next_review_date: nextReviewDate, interval, repetition, easiness });
+    const res = await fetch(url, { method: 'PATCH', headers: HEADERS, body });
+    if (!res.ok) {
+      const errText = await res.text();
+      throw new Error(`Schedule save failed (${res.status}): ${errText}`);
+    }
+  },
+
   // カードを新規追加 (Supabase REST API の POST を使用)
   async addCard(question, answer, image = null, cardType = 'other', category = null) {
     const now = Date.now();
@@ -411,7 +422,8 @@ const StorageManager = {
   },
 
   // 今日復習すべきカードを1件取得（なければnull）
-  async getDueCardOrStatus() {
+  // excludeId: 直前に回答したカードIDを除外する
+  async getDueCardOrStatus(excludeId = null) {
     const now = Date.now();
     const qs = await this.getQuizSettings();
 
@@ -422,6 +434,7 @@ const StorageManager = {
         if (Array.isArray(qs.categoryFilter) && qs.categoryFilter.length > 0) {
           webFilter = `&category=in.(${qs.categoryFilter.map(c => encodeURIComponent(c)).join(',')})`;
         }
+        if (excludeId) webFilter += `&id=neq.${encodeURIComponent(excludeId)}`;
         const res = await fetch(`${API_BASE}?select=*&limit=100&order=id.desc${webFilter}`, { headers: HEADERS });
         if (!res.ok) throw new Error('Fetch Error');
         const cards = await res.json();
@@ -455,6 +468,7 @@ const StorageManager = {
       if (Array.isArray(qs.categoryFilter) && qs.categoryFilter.length > 0) {
         filters += `&category=in.(${qs.categoryFilter.map(c => encodeURIComponent(c)).join(',')})`;
       }
+      if (excludeId) filters += `&id=neq.${encodeURIComponent(excludeId)}`;
 
       // 並び順
       let orderClause;
@@ -571,7 +585,7 @@ const StorageManager = {
     // 全件取得ではなくID指定の1件だけ取得する（ブラウザフリーズ防止）
     let card;
     try {
-      const res = await fetch(`${API_BASE}?id=eq.${cardId}&select=*`, { headers: HEADERS });
+      const res = await fetch(`${API_BASE}?id=eq.${encodeURIComponent(cardId)}&select=*`, { headers: HEADERS });
       if (!res.ok) throw new Error('Fetch Error');
       const rows = await res.json();
       if (rows.length === 0) return;
@@ -585,26 +599,42 @@ const StorageManager = {
       };
     } catch (e) {
       console.error('updateCard fetch failed:', e);
-      return;
+      throw new Error('カード取得失敗');
     }
 
     const next = this._calcNext(card, quality);
+    let newNrd, newInterval, newRepetition, newEasiness;
 
     if (next.relearn) {
-      // 忘れた (Lapse): SM-2パラメータ（interval/repetition/easiness）は変更しない
-      // nextReviewDate のみ短縮して再学習キューに入れる
-      card.nextReviewDate = Date.now() + next.nextInterval;
-      // interval / repetition / easiness はそのまま保持
+      newNrd = Date.now() + next.nextInterval;
+      newInterval = card.interval;
+      newRepetition = card.repetition;
+      newEasiness = card.easiness;
     } else {
-      // 正解: SM-2パラメータを全て更新
-      card.interval       = next.interval;
-      card.repetition     = next.repetition;
-      card.easiness       = next.easiness;
-      card.nextReviewDate = Date.now() + card.interval;
+      newInterval = next.interval;
+      newRepetition = next.repetition;
+      newEasiness = next.easiness;
+      newNrd = Date.now() + newInterval;
     }
 
-    // サーバーに個別保存
-    await this.saveCardUpdate(card);
+    // スケジュールのみを軽量PATCHで保存（リトライ付き）
+    let saved = false;
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        await this._saveCardSchedule(cardId, newNrd, newInterval, newRepetition, newEasiness);
+        saved = true;
+        console.log(`[updateCard] OK: id=${cardId}, quality=${quality}, nextReview=${new Date(newNrd).toLocaleString()}, interval=${Math.round(newInterval/3600000)}h, rep=${newRepetition}`);
+        break;
+      } catch (e) {
+        console.warn(`[updateCard] save attempt ${attempt + 1} failed:`, e.message);
+        if (attempt === 0) await new Promise(r => setTimeout(r, 500));
+      }
+    }
+
+    if (!saved) {
+      console.error('[updateCard] スケジュール保存に完全に失敗しました');
+      throw new Error('カード更新の保存に失敗しました');
+    }
 
     // lastAnswerTime をSupabaseに記録して次回出題を制限する
     await CloudSettings.set('lastAnswerTime', Date.now());

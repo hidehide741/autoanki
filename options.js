@@ -962,14 +962,21 @@ function fillFormWithCard(card) {
   if (catInput) { catInput.value = cardTags; catInput.dispatchEvent(new Event('input')); }
 
   ct.fields.forEach(field => {
-    // rawMode: カード型が合致しないカードの編集。生テキストをそのまま表示
+    // rawMode: カード型が合致しないカードの編集。[label]\nvalue 形式のラベルを除去して値だけ表示
     if (field.rawMode) {
       let rawText = (field.role === 'question' ? card.question : card.answer) || '';
       if (field.role === 'question') {
         rawText = rawText.replace(/\n\n\[__tags__\]\n[\s\S]*$/, '');
       }
+      // [label]\nvalue 形式のセクションからラベル行を除去して値だけ取得
+      const parts = rawText.split(/\n\n(?=\[)/);
+      const cleanParts = parts.map(part => {
+        const match = part.match(/^\[.+?\]\n([\s\S]*)/);
+        return match ? match[1].trim() : part.trim();
+      }).filter(Boolean);
+      const cleanText = cleanParts.length > 0 ? cleanParts.join('\n\n') : rawText;
       const input = document.getElementById(`field-${field.key}`);
-      if (input) { input.value = rawText; currentPreviewValues[field.key] = rawText; }
+      if (input) { input.value = cleanText; currentPreviewValues[field.key] = cleanText; }
       return;
     }
     const parsed = field.role === 'question' ? qParsed : aParsed;

@@ -251,16 +251,18 @@ async function loadNextCard() {
   }
 }
 
-// rawテキストから最初のセクション内容を抽出（ラベル・タグを除去）
+// rawテキストから[label]ラベルを除去して値だけ抽出
 function extractFirstSectionContent(raw) {
   let cleaned = raw.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
   // [__tags__] セクション除去
   cleaned = cleaned.replace(/\n\n\[__tags__\]\n[\s\S]*$/, '');
-  // [ラベル]\n形式のセクション区切りがある場合、最初のセクション内容を返す
-  const m = cleaned.match(/^\[.*?\]\n([\s\S]*?)(?:\n\n\[|$)/);
-  if (m) return m[1].trim();
-  // セクション形式でなければそのまま返す
-  return cleaned.trim();
+  // [label]\nvalue 形式のセクションからラベルを除去して値だけ結合
+  const parts = cleaned.split(/\n\n(?=\[)/);
+  const cleanParts = parts.map(part => {
+    const m = part.match(/^\[.+?\]\n([\s\S]*)/);
+    return m ? m[1].trim() : part.trim();
+  }).filter(Boolean);
+  return cleanParts.length > 0 ? cleanParts.join('\n\n') : cleaned.trim();
 }
 
 function showQuestionMode(cardTypeDef) {

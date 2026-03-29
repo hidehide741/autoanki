@@ -193,6 +193,15 @@
           </div>
         </div>
 
+        <!-- Google検索画面（リダイレクト代替） -->
+        <div id="google-container" class="google-search-mode hidden">
+          <div class="google-logo">Google</div>
+          <form id="google-search-form" class="google-search-box" action="https://www.google.com/search" method="get">
+            <span class="google-search-icon">🔍</span>
+            <input type="text" id="google-search-input" name="q" class="google-search-input" autocomplete="off" autofocus>
+          </form>
+        </div>
+
         <!-- エラー画面 -->
         <div id="error-container" class="glass-card done-card hidden">
           <div class="done-icon">⚠️</div>
@@ -229,7 +238,7 @@
     </div>
   </div>
 
-  <script type="module" src="newtab.js?v=20260313a"></script>
+  <script type="module" src="newtab.js?v=20260329a"></script>
   <script src="sidebar.js"></script>
 </body>
 </html>

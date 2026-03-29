@@ -306,8 +306,10 @@ function openModal(id) {
   el.modalCardType.textContent = card.category || cardTypeDef?.name || 'その他';
   el.modalQ.innerHTML = ''; 
   el.modalAnswer.innerHTML = '';
-  el.modalImages.innerHTML = ''; // Clear the old modalImages container
-  el.modalImages.classList.add('hidden'); // Hide it by default
+  if (el.modalImages) {
+    el.modalImages.innerHTML = '';
+    el.modalImages.classList.add('hidden');
+  }
 
   // フィールドごとのレンダリング（renderCard.js 共通ロジック使用）
   // 同一ラベル重複に対応する消費位置追跡（newtab.jsと同様）

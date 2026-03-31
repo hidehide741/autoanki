@@ -427,32 +427,7 @@ const StorageManager = {
     const now = Date.now();
     const qs = await this.getQuizSettings();
 
-    // ======= WEBアプリ版（URLからのアクセス）の場合：ランダム出題 =======
-    if (!this.isExtension) {
-      try {
-        let webFilter = '';
-        if (Array.isArray(qs.categoryFilter) && qs.categoryFilter.length > 0) {
-          webFilter = `&category=in.(${qs.categoryFilter.map(c => encodeURIComponent(c)).join(',')})`;
-        }
-        if (excludeId) webFilter += `&id=neq.${encodeURIComponent(excludeId)}`;
-        const res = await fetch(`${API_BASE}?select=*&limit=100&order=id.desc${webFilter}`, { headers: HEADERS });
-        if (!res.ok) throw new Error('Fetch Error');
-        const cards = await res.json();
-        if (cards.length === 0) return { status: 'empty', card: null };
-        const mapped = cards.map(c => ({
-          id: c.id, question: c.question, answer: c.answer, image: c.image, cardType: c.card_type, category: c.category,
-          nextReviewDate: parseInt(c.next_review_date, 10), interval: parseInt(c.interval, 10),
-          repetition: c.repetition, easiness: c.easiness
-        }));
-        const randomCard = mapped[Math.floor(Math.random() * mapped.length)];
-        return { status: 'due', card: randomCard };
-      } catch (e) {
-        console.error(e);
-        return { status: 'empty', card: null };
-      }
-    }
-
-    // ======= Chrome拡張機能（Spaced Repetition）の場合 =======
+    // Web版・拡張機能共通で Spaced Repetition (スケジューリング) を適用する
     const cooldownMs = (qs.cooldown || 0) * 60 * 1000;
     if (cooldownMs > 0) {
       const lastAnswerTime = await CloudSettings.get('lastAnswerTime');
@@ -497,7 +472,6 @@ const StorageManager = {
 
   // 期限切れカードの残り枚数を取得（Supabase HEAD + count=exact）
   async getDueCount() {
-    if (!this.isExtension) return null;
     try {
       const now = Date.now();
       const qs = await this.getQuizSettings();
